@@ -15,6 +15,28 @@ SERVENT_SKILL = {
     8: (1200, 880),
     9: (1324, 880),
 }
+SERVENT_1 = {
+    "skill_1": (58, 812, 162, 921),
+    "skill_2": (191, 816, 292, 920),
+    "skill_3": (322, 810, 427, 922),
+}
+SERVENT_2 = {
+    "skill_1": (532, 811, 640, 922),
+    "skill_2": (665, 811, 773, 923),
+    "skill_3": (800, 810, 904, 923),
+}
+SERVENT_3 = {
+    "skill_1": (1011, 812, 1116, 923),
+    "skill_2": (1144, 812, 1249, 923),
+    "skill_3": (1277, 812, 1382, 923),
+}
+
+SKILL_SELECT_SERVENT = (849, 262, 1077, 314)
+ATTACK_BUTTON = (1600, 800, 1806, 1013)
+
+FIGHT_MENU = (1700, 220, 1882, 389)
+MASTER_SKILL = (1699, 379, 1885, 557)
+
 SPEED_SKIP = (1849, 651)
 IMAGE_PATH = r"test_image"
 
@@ -39,6 +61,12 @@ class DailyAction:
                 x, y = result
                 self.adb.common_click(x, y)
                 time.sleep(0.2)
+
+    def adjust_speed(self):
+        pass
+
+    def normal_fight(self):
+        pass
 
 
 class AdbController:
@@ -83,10 +111,17 @@ class AdbController:
             return
 
 
+# class ImageRecognizer:
+#     TEMPLATE_PHOTO = {
+#         "fight_menu": (1700, 220, 1882, 389),
+#         "master_skill": (1699, 379, 1885, 557),
+#     }
+
+#     def __init__(self) -> None:
+#         pass
+
+
 def main():
-    # subprocess.run(
-    #     [r"C:\Users\kk\scoop\apps\adb\current\platform-tools\adb.exe", "kill-server"]
-    # )
     subprocess.run(
         [r"C:\Users\kk\scoop\apps\adb\current\platform-tools\adb.exe", "start-server"],
         check=False,
@@ -95,22 +130,6 @@ def main():
     daily_action = DailyAction(adb_ctl)
     while True:
         daily_action.skip_dialog()
-    # while True:
-    #     adb_ctl.save_screenshot()
-    #     result = adb_ctl.cv_template(
-    #         IMAGE_PATH + "/skip.png", IMAGE_PATH + "/screen.png"
-    #     )
-    #     if result is not None:
-    #         x, y = result
-    #         adb_ctl.common_click(x, y)
-    #         time.sleep(0.2)
-    #         result = adb_ctl.cv_template(
-    #             IMAGE_PATH + "/yes.png", IMAGE_PATH + "/screen.png"
-    #         )
-    #         if result is not None:
-    #             x, y = result
-    #             adb_ctl.common_click(x, y)
-    #             time.sleep(0.2)
 
 
 if __name__ == "__main__":
