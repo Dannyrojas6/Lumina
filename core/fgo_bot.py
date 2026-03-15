@@ -161,11 +161,13 @@ class ImageRecognizer:
         if max_val >= self.threshold:
             h, w = template.shape
             cx, cy = max_loc[0] + w // 2, max_loc[1] + h // 2
+            print(max_val)
             log.debug(
                 f"匹配成功 [{max_val:.2f}]：{Path(template_path).name} → ({cx}, {cy})"
             )
             return cx, cy
 
+        print(max_val)
         log.debug(f"匹配失败 [{max_val:.2f}]：{Path(template_path).name}")
         return None
 
@@ -398,8 +400,15 @@ class DailyAction:
 # ─────────────────────────────────────────────
 def main():
     # 启动 ADB Server
+    # Windows
+    # subprocess.run(
+    #     [r"C:\Users\kk\scoop\apps\adb\current\platform-tools\adb.exe", "start-server"],
+    #     check=False,
+    # )
+
+    # CachyOS
     subprocess.run(
-        [r"C:\Users\kk\scoop\apps\adb\current\platform-tools\adb.exe", "start-server"],
+        ["adb", "start-server"],
         check=False,
     )
 
