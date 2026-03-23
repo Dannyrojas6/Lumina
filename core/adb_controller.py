@@ -1,10 +1,11 @@
 import logging
-from pathlib import Path
-import subprocess
-import shutil
 import platform
-from adbutils import adb, AdbDevice
+import shutil
+import subprocess
+from pathlib import Path
 from typing import Optional
+
+from adbutils import AdbDevice, adb
 
 log = logging.getLogger("core.adb_controller")
 
@@ -20,7 +21,7 @@ def find_adb_path() -> str:
             r"C:\Users\kk\scoop\apps\adb\current\platform-tools\adb.exe",
             r"C:\platform-tools\adb.exe",
         ],
-        "Linux": "/usr/bin/adb",
+        "Linux": ["/usr/bin/adb"],
     }
     system = platform.system()
     for path in fallbacks.get(system, []):
@@ -68,7 +69,7 @@ class AdbController:
 
     def _calc_scale(self) -> tuple[float, float]:
         info = self.device.info
-        w = info["display"]["weight"]
+        w = info["display"]["width"]
         h = info["display"]["height"]
 
         if w < h:
@@ -89,7 +90,7 @@ class AdbController:
 
     def click_raw(self, x: int, y: int) -> None:
         self.device.click(x, y)
-        log.debug(f"clicl_raw ({x},{y})")
+        log.debug(f"click_raw ({x},{y})")
 
     def click_region(self, region: tuple[int, int, int, int]) -> None:
         x1, y1, x2, y2 = region
