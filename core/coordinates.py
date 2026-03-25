@@ -1,7 +1,11 @@
+"""集中维护当前版本使用的游戏坐标常量。"""
+
 from typing import Final
 
 
 class GameCoordinates:
+    """统一收口所有点击坐标和矩形区域。"""
+
     SERVANT_SKILLS: Final[dict[int, tuple[int, int]]] = {
         1: (110, 880),
         2: (243, 880),
@@ -53,5 +57,6 @@ class GameCoordinates:
 
     @staticmethod
     def region_center(region: tuple[int, int, int, int]) -> tuple[int, int]:
+        """返回矩形区域中心点。"""
         x1, y1, x2, y2 = region
         return (x1 + x2) // 2, (y1 + y2) // 2

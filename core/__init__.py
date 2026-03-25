@@ -3,6 +3,7 @@ from core.battle_actions import BattleAction
 from core.config import BattleConfig, load_battle_config
 from core.coordinates import GameCoordinates
 from core.game_state import GameState
+from core.resources import ResourceCatalog
 from core.workflow import DailyAction
 
 __all__ = [
@@ -11,6 +12,7 @@ __all__ = [
     "DailyAction",
     "GameCoordinates",
     "GameState",
+    "ResourceCatalog",
     "load_battle_config",
     "run",
 ]
