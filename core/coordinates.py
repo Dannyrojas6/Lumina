@@ -6,6 +6,14 @@ from typing import Final
 class GameCoordinates:
     """统一收口所有点击坐标和矩形区域。"""
 
+    QUEST_SLOTS: Final[dict[int, tuple[int, int]]] = {
+        1: (1400, 300),
+        2: (1400, 550),
+        3: (1400, 800),
+    }
+    SUPPORT_SCROLL_START: Final[tuple[int, int]] = (960, 450)
+    SUPPORT_SCROLL_END: Final[tuple[int, int]] = (960, 50)
+
     SERVANT_SKILLS: Final[dict[int, tuple[int, int]]] = {
         1: (110, 880),
         2: (243, 880),
@@ -38,14 +46,29 @@ class GameCoordinates:
     RESULT_CONTINUE: Final[tuple[int, int]] = (960, 540)
     RESULT_NEXT: Final[tuple[int, int]] = (1677, 961)
     TARGET_POSITIONS: Final[dict[int, tuple[int, int]]] = {
-        1: (430, 600),
-        2: (720, 600),
-        3: (1010, 600),
+        1: (500, 600),
+        2: (1000, 600),
+        3: (1500, 600),
     }
     MASTER_SKILL_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (1580, 460),
         2: (1715, 460),
         3: (1850, 460),
+    }
+    SUPPORT_POSITIONS: Final[dict[int, tuple[int, int]]] = {
+        1: (200, 400),
+        2: (200, 700),
+        3: (200, 1000),
+    }
+    NOBLE_CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
+        1: (600, 300),
+        2: (950, 300),
+        3: (1300, 300),
+    }
+    NP_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (195, 715, 390, 760),
+        2: (730, 715, 925, 760),
+        3: (1265, 715, 1460, 760),
     }
     CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (290, 650),

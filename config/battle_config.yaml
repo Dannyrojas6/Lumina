@@ -1,15 +1,32 @@
 # FGO 刷本配置示例
 # 修改这个文件来调整每次刷本的策略，无需改代码
 
-total_waves: 3 # 总波数
 loop_count: 10 # 刷本次数（-1 为无限循环）
 match_threshold: 0.60 # 图像识别置信度阈值（0~1，越高越严格）
+log_level: DEBUG # 日志级别，可选 DEBUG/INFO/WARNING
+skill_interval: 1.5 # 每个技能释放后的额外等待时间（秒）
+quest_slot: 1 # 主菜单中要点击的关卡位，1/2/3 分别对应从上到下三个入口
 
-# 每波释放的技能编号（1-9 对应从者1技1/技2/技3 → 从者2技1... 以此类推）
+support:
+  class: berserker # v2 支持 all / berserker
+  servant: "morgan" # 目标助战从者英文目录名，例如 morgan；留空则沿用默认位选择
+  pick_index: 1 # 当前页助战位序号，1/2/3
+  max_scroll_pages: 10 # 最多向下搜索的页数，超出后回退到默认位
+
+# 本场战斗要依次释放的技能动作。
+# 纯数字 1-9 仍表示从者技能。
+# 如需释放御主技能，请使用 type/master/skill 结构。
 skill_sequence:
-  - wave: 1
-    skills: [1, 2, 3] # 第一波：从者1全开
-  - wave: 2
-    skills: [4, 5] # 第二波：从者2技1、技2
-  - wave: 3
-    skills: [7, 8, 9] # 第三波：从者3全开
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - type: master
+    skill: 1
+  - type: master
+    skill: 2

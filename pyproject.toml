@@ -1,7 +1,7 @@
 [project]
 name = "lumina"
 version = "0.1.0"
-description = "Add your description here"
+description = "基于 adbutils 与 OpenCV 的 FGO 自动化脚本，当前优先适配 MuMu 模拟器"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -2,6 +2,7 @@
 
 import logging
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -9,6 +10,14 @@ import cv2
 import numpy as np
 
 log = logging.getLogger("core.image_recognizer")
+
+
+@dataclass(frozen=True)
+class TemplateMatchResult:
+    """描述一次模板匹配的分数和命中坐标。"""
+
+    score: float
+    position: Optional[tuple[int, int]]
 
 
 class ImageRecognizer:
@@ -50,6 +59,16 @@ class ImageRecognizer:
         threshold: Optional[float] = None,
     ) -> Optional[tuple[int, int]]:
         """在截图中查找模板，命中时返回模板中心点。"""
+        result = self.match_with_score(template_path, screen, threshold)
+        return result.position
+
+    def match_with_score(
+        self,
+        template_path: str,
+        screen: str | np.ndarray,
+        threshold: Optional[float] = None,
+    ) -> TemplateMatchResult:
+        """在截图中查找模板，并返回匹配分数和命中坐标。"""
         template = self._load_grayscale(template_path, use_cache=True)
         if isinstance(screen, str):
             screen_image = self._load_grayscale(screen, use_cache=False)
@@ -60,10 +79,10 @@ class ImageRecognizer:
 
         if template is None:
             log.warning(f"模板图读取失败：{template_path}")
-            return None
+            return TemplateMatchResult(score=0.0, position=None)
         if screen_image is None:
             log.warning(f"截图读取失败：{screen_desc}")
-            return None
+            return TemplateMatchResult(score=0.0, position=None)
 
         # 模板尺寸异常时直接跳过，避免 OpenCV 在匹配阶段报错。
         if (
@@ -71,7 +90,7 @@ class ImageRecognizer:
             or template.shape[1] > screen_image.shape[1]
         ):
             log.warning(f"模板尺寸超过截图，跳过：{Path(template_path).name}")
-            return None
+            return TemplateMatchResult(score=0.0, position=None)
 
         result = cv2.matchTemplate(screen_image, template, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
@@ -83,10 +102,10 @@ class ImageRecognizer:
             log.debug(
                 f"匹配成功 [{max_val:.2f}] {Path(template_path).name} → ({cx}, {cy})"
             )
-            return cx, cy
+            return TemplateMatchResult(score=float(max_val), position=(cx, cy))
 
         log.debug(f"匹配失败 [{max_val:.2f}] {Path(template_path).name}")
-        return None
+        return TemplateMatchResult(score=float(max_val), position=None)
 
     def match_multi(
         self,
@@ -145,14 +164,19 @@ class ImageRecognizer:
 
     def is_skill_ready(
         self,
-        screen_path: str,
+        screen: str | np.ndarray,
         region: tuple[int, int, int, int],
         brightness_threshold: float = 80.0,
     ) -> bool:
-        """通过区域平均亮度粗略判断技能是否处于可点击状态。"""
-        img = cv2.imread(screen_path, cv2.IMREAD_GRAYSCALE)
+        """通过区域平均亮度粗略判断给定区域是否处于激活状态。"""
+        if isinstance(screen, str):
+            img = cv2.imread(screen, cv2.IMREAD_GRAYSCALE)
+            screen_desc = screen
+        else:
+            img = screen
+            screen_desc = "<memory>"
         if img is None:
-            log.warning(f"亮度检测：截图读取失败 {screen_path}")
+            log.warning(f"亮度检测：截图读取失败 {screen_desc}")
             return False
 
         x1, y1, x2, y2 = region
