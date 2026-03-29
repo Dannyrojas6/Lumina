@@ -205,6 +205,12 @@ cython_debug/
 .uv-cache/
 .uv_cache/
 
+# User local notes
+DevLog.md
+
+# Runtime screenshots and OCR debug outputs
+assets/screenshots/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
