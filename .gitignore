@@ -201,8 +201,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Runtime debug screenshots
-assets/screenshots/unknown/
+# Local tool caches
+.uv-cache/
+.uv_cache/
 
 # Marimo
 marimo/_static/

@@ -53,6 +53,9 @@ class StateDetector:
         best_match_state: Optional[GameState] = None
         best_score = 0.0
         best_template: Optional[str] = None
+        matched_state: Optional[GameState] = None
+        matched_score = 0.0
+        matched_template: Optional[str] = None
         missing_templates: list[str] = []
         for state, template_path in self.resources.state_templates.items():
             if not Path(template_path).exists():
@@ -64,18 +67,30 @@ class StateDetector:
                 best_match_state = state
                 best_score = match_result.score
                 best_template = template_path
-            if match_result.position:
-                elapsed = time.perf_counter() - started_at
-                log.debug(f"state detect matched {state.name} in {elapsed:.2f}s")
-                return StateDetectionResult(
-                    state=state,
-                    screen_path=screen_path,
-                    elapsed=elapsed,
-                    best_match_state=state,
-                    best_score=match_result.score,
-                    matched_template=template_path,
-                    missing_templates=missing_templates,
-                )
+
+            if match_result.position and match_result.score > matched_score:
+                matched_state = state
+                matched_score = match_result.score
+                matched_template = template_path
+
+        if matched_state is not None:
+            elapsed = time.perf_counter() - started_at
+            log.debug(
+                "state detect matched %s score=%.2f in %.2fs",
+                matched_state.name,
+                matched_score,
+                elapsed,
+            )
+            return StateDetectionResult(
+                state=matched_state,
+                screen_path=screen_path,
+                elapsed=elapsed,
+                best_match_state=matched_state,
+                best_score=matched_score,
+                matched_template=matched_template,
+                missing_templates=missing_templates,
+            )
+
         elapsed = time.perf_counter() - started_at
         log.debug(f"state detect returned UNKNOWN in {elapsed:.2f}s")
         return StateDetectionResult(
