@@ -107,9 +107,15 @@ class OcrEngine:
         self.save_debug_crops = save_debug_crops
         self.debug_dir = Path(debug_dir)
 
-    def read_number(self, image: np.ndarray, *, label: str) -> OcrReadResult:
+    def read_number(
+        self,
+        image: np.ndarray,
+        *,
+        label: str,
+        preset: str = "default",
+    ) -> OcrReadResult:
         """读取区域中的数字，低置信度或无法解析时视为失败。"""
-        prepared = self._prepare_image(image)
+        prepared = self._prepare_image(image, preset=preset)
         if self.save_debug_crops:
             self._save_debug_crop(prepared, label)
 
@@ -131,11 +137,21 @@ class OcrEngine:
             success=success,
         )
 
-    def _prepare_image(self, image: np.ndarray) -> np.ndarray:
+    def _prepare_image(self, image: np.ndarray, *, preset: str = "default") -> np.ndarray:
         if image.ndim == 3:
             grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
             grayscale = image.copy()
+
+        if preset == "skill_corner":
+            return self._prepare_skill_corner_image(grayscale)
+
+        if preset != "default":
+            raise ValueError(f"不支持的 OCR 预处理模式：{preset}")
+
+        # 小数字裁图在强二值化下容易直接丢字，这里优先保留灰度细节。
+        if grayscale.shape[0] <= 40:
+            return self._prepare_small_crop_image(grayscale)
 
         enlarged = cv2.resize(
             grayscale,
@@ -152,6 +168,43 @@ class OcrEngine:
             cv2.THRESH_BINARY + cv2.THRESH_OTSU,
         )
         return thresholded
+
+    def _prepare_small_crop_image(self, grayscale: np.ndarray) -> np.ndarray:
+        padded = cv2.copyMakeBorder(
+            grayscale,
+            12,
+            12,
+            12,
+            12,
+            cv2.BORDER_REPLICATE,
+        )
+        return cv2.resize(
+            padded,
+            None,
+            fx=8.0,
+            fy=8.0,
+            interpolation=cv2.INTER_CUBIC,
+        )
+
+    def _prepare_skill_corner_image(self, grayscale: np.ndarray) -> np.ndarray:
+        # 技能角落数字更小，先做对比度拉伸，再放大保留描边。
+        normalized = cv2.normalize(grayscale, None, 0, 255, cv2.NORM_MINMAX)
+        padded = cv2.copyMakeBorder(
+            normalized,
+            14,
+            14,
+            14,
+            14,
+            cv2.BORDER_REPLICATE,
+        )
+        enlarged = cv2.resize(
+            padded,
+            None,
+            fx=10.0,
+            fy=10.0,
+            interpolation=cv2.INTER_CUBIC,
+        )
+        return cv2.GaussianBlur(enlarged, (3, 3), 0)
 
     def _save_debug_crop(self, image: np.ndarray, label: str) -> None:
         self.debug_dir.mkdir(parents=True, exist_ok=True)
@@ -174,3 +227,4 @@ class OcrEngine:
         if normalized == "rapidocr":
             return RapidOcrBackend()
         raise ValueError(f"不支持的 OCR 后端：{backend_name}")
+

@@ -53,7 +53,7 @@ class BattleOcrReader:
         statuses: list[ServantNpStatus] = []
         for servant_index, region in GameCoordinates.NP_TEXT_REGIONS.items():
             crop = self._crop_region(screen, region)
-            result = self.ocr_engine.read_number(crop, label=f"np_{servant_index}")
+            result = self.read_number(crop, label=f"np_{servant_index}")
             np_value = result.value if result.success else None
             is_ready = bool(
                 result.success
@@ -72,9 +72,25 @@ class BattleOcrReader:
             )
         return statuses
 
-    def read_text(self, image: np.ndarray, *, label: str) -> tuple[str, float]:
+    def read_number(
+        self,
+        image: np.ndarray,
+        *,
+        label: str,
+        preset: str = "default",
+    ):
+        """读取区域中的数字。"""
+        return self.ocr_engine.read_number(image, label=label, preset=preset)
+
+    def read_text(
+        self,
+        image: np.ndarray,
+        *,
+        label: str,
+        preset: str = "default",
+    ) -> tuple[str, float]:
         """读取区域中的原始文本，保留 OCR 结果供更高层解析。"""
-        prepared = self.ocr_engine._prepare_image(image)
+        prepared = self.ocr_engine._prepare_image(image, preset=preset)
         if self.ocr_engine.save_debug_crops:
             self.ocr_engine._save_debug_crop(prepared, label)
 
@@ -86,6 +102,14 @@ class BattleOcrReader:
             confidence,
         )
         return text, confidence
+
+    def read_skill_corner_number(self, image: np.ndarray, *, label: str):
+        """读取技能右下角冷却数字。"""
+        return self.read_number(image, label=label, preset="skill_corner")
+
+    def read_skill_corner_text(self, image: np.ndarray, *, label: str) -> tuple[str, float]:
+        """读取技能左下角提示文本。"""
+        return self.read_text(image, label=label, preset="skill_corner")
 
     def read_np_values(self, image_path: str | Path) -> list[int]:
         """供离线批量检查调用，返回三位从者的 NP 数值。"""

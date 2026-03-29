@@ -3,6 +3,28 @@
 from typing import Final
 
 
+def _skill_body_region(region: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """返回技能按钮主体区域，避开底部冷却提示。"""
+    x1, y1, x2, y2 = region
+    return (x1 + 6, y1 + 4, x2 - 6, y2 - 29)
+
+
+def _skill_left_corner_region(
+    region: tuple[int, int, int, int],
+) -> tuple[int, int, int, int]:
+    """返回技能左下角提示区域。"""
+    x1, y1, x2, y2 = region
+    return (x1, y2 - 39, min(x1 + 52, x2), y2)
+
+
+def _skill_right_corner_region(
+    region: tuple[int, int, int, int],
+) -> tuple[int, int, int, int]:
+    """返回技能右下角数字区域。"""
+    x1, y1, x2, y2 = region
+    return (max(x2 - 42, x1), y2 - 39, x2, y2)
+
+
 class GameCoordinates:
     """统一收口所有点击坐标和矩形区域。"""
 
@@ -14,9 +36,10 @@ class GameCoordinates:
     SUPPORT_SCROLL_START: Final[tuple[int, int]] = (960, 450)
     SUPPORT_SCROLL_END: Final[tuple[int, int]] = (960, 50)
     BATTLE_INFO_REGION: Final[tuple[int, int, int, int]] = (1080, 0, 1910, 220)
-    BATTLE_WAVE_REGION: Final[tuple[int, int, int, int]] = (1304, 13, 1434, 63)
-    BATTLE_ENEMY_COUNT_REGION: Final[tuple[int, int, int, int]] = (1295, 67, 1474, 114)
-    BATTLE_TURN_REGION: Final[tuple[int, int, int, int]] = (1297, 121, 1463, 166)
+    BATTLE_WAVE_CURRENT_REGION: Final[tuple[int, int, int, int]] = (1285, 20, 1349, 56)
+    BATTLE_WAVE_TOTAL_REGION: Final[tuple[int, int, int, int]] = (1368, 20, 1434, 58)
+    BATTLE_ENEMY_COUNT_REGION: Final[tuple[int, int, int, int]] = (1396, 75, 1413, 108)
+    BATTLE_TURN_REGION: Final[tuple[int, int, int, int]] = (1334, 126, 1379, 159)
 
     SERVANT_SKILLS: Final[dict[int, tuple[int, int]]] = {
         1: (110, 880),
@@ -52,6 +75,39 @@ class GameCoordinates:
         8: SERVANT_SKILL_REGIONS["s3_2"],
         9: SERVANT_SKILL_REGIONS["s3_3"],
     }
+    BATTLE_SKILL_BODY_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: _skill_body_region(BATTLE_SKILL_REGIONS[1]),
+        2: _skill_body_region(BATTLE_SKILL_REGIONS[2]),
+        3: _skill_body_region(BATTLE_SKILL_REGIONS[3]),
+        4: _skill_body_region(BATTLE_SKILL_REGIONS[4]),
+        5: _skill_body_region(BATTLE_SKILL_REGIONS[5]),
+        6: _skill_body_region(BATTLE_SKILL_REGIONS[6]),
+        7: _skill_body_region(BATTLE_SKILL_REGIONS[7]),
+        8: _skill_body_region(BATTLE_SKILL_REGIONS[8]),
+        9: _skill_body_region(BATTLE_SKILL_REGIONS[9]),
+    }
+    BATTLE_SKILL_LEFT_CORNER_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: _skill_left_corner_region(BATTLE_SKILL_REGIONS[1]),
+        2: _skill_left_corner_region(BATTLE_SKILL_REGIONS[2]),
+        3: _skill_left_corner_region(BATTLE_SKILL_REGIONS[3]),
+        4: _skill_left_corner_region(BATTLE_SKILL_REGIONS[4]),
+        5: _skill_left_corner_region(BATTLE_SKILL_REGIONS[5]),
+        6: _skill_left_corner_region(BATTLE_SKILL_REGIONS[6]),
+        7: _skill_left_corner_region(BATTLE_SKILL_REGIONS[7]),
+        8: _skill_left_corner_region(BATTLE_SKILL_REGIONS[8]),
+        9: _skill_left_corner_region(BATTLE_SKILL_REGIONS[9]),
+    }
+    BATTLE_SKILL_RIGHT_CORNER_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: _skill_right_corner_region(BATTLE_SKILL_REGIONS[1]),
+        2: _skill_right_corner_region(BATTLE_SKILL_REGIONS[2]),
+        3: _skill_right_corner_region(BATTLE_SKILL_REGIONS[3]),
+        4: _skill_right_corner_region(BATTLE_SKILL_REGIONS[4]),
+        5: _skill_right_corner_region(BATTLE_SKILL_REGIONS[5]),
+        6: _skill_right_corner_region(BATTLE_SKILL_REGIONS[6]),
+        7: _skill_right_corner_region(BATTLE_SKILL_REGIONS[7]),
+        8: _skill_right_corner_region(BATTLE_SKILL_REGIONS[8]),
+        9: _skill_right_corner_region(BATTLE_SKILL_REGIONS[9]),
+    }
     BATTLE_ENEMY_FALLBACK_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
         1: (40, 40, 720, 420),
         2: (660, 40, 1330, 420),
@@ -86,19 +142,21 @@ class GameCoordinates:
         3: (1300, 300),
     }
     NP_TEXT_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
-        1: (346, 986, 436, 1020),
-        2: (817, 985, 913, 1020),
-        3: (1288, 984, 1391, 1021),
+        1: (346, 987, 405, 1015),
+        2: (822, 987, 880, 1015),
+        3: (1302, 987, 1356, 1015),
     }
-    SERVANT_HP_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
-        1: (334, 931, 442, 968),
-        2: (811, 930, 918, 968),
-        3: (1290, 930, 1394, 968),
+    SERVANT_HP_REGIONS: Final[dict[int, tuple[int, int, int, int] | None]] = {
+        # 待校准，当前版本暂不使用。
+        1: None,
+        2: None,
+        3: None,
     }
-    SERVANT_TRUE_NAME_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
-        1: (247, 1039, 455, 1075),
-        2: (722, 1040, 932, 1075),
-        3: (1200, 1038, 1405, 1074),
+    SERVANT_TRUE_NAME_REGIONS: Final[dict[int, tuple[int, int, int, int] | None]] = {
+        # 待校准，当前版本暂不使用。
+        1: None,
+        2: None,
+        3: None,
     }
     CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (290, 650),
@@ -113,3 +171,5 @@ class GameCoordinates:
         """返回矩形区域中心点。"""
         x1, y1, x2, y2 = region
         return (x1 + x2) // 2, (y1 + y2) // 2
+
+

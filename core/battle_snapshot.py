@@ -26,6 +26,7 @@ class SkillAvailability:
     slot_index: int
     available: bool
     score: float
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -48,12 +49,14 @@ class BattleSnapshotReader:
         *,
         wave_banner_template_path: Optional[str] = None,
         wave_match_threshold: float = 0.6,
-        skill_available_threshold: float = 0.34,
+        skill_available_threshold: float = 0.54,
+        skill_uncertain_threshold: float = 0.48,
         debug_dir: Optional[str] = None,
     ) -> None:
         self.battle_ocr = battle_ocr or BattleOcrReader(debug_dir=debug_dir)
         self.wave_match_threshold = wave_match_threshold
         self.skill_available_threshold = skill_available_threshold
+        self.skill_uncertain_threshold = skill_uncertain_threshold
 
     def read_snapshot(self, screen: np.ndarray) -> BattleSnapshot:
         """从当前战斗画面生成快照。"""
@@ -85,8 +88,8 @@ class BattleSnapshotReader:
         return self.read_snapshot(screen_rgb)
 
     def _read_wave_index(self, screen: np.ndarray) -> Optional[int]:
-        crop = self._crop_region(screen, GameCoordinates.BATTLE_WAVE_REGION)
-        text, confidence = self.battle_ocr.read_text(crop, label="battle_wave")
+        crop = self._crop_region(screen, GameCoordinates.BATTLE_WAVE_CURRENT_REGION)
+        text, confidence = self.battle_ocr.read_text(crop, label="battle_wave_current")
         wave_index = self._extract_single_count(text)
         log.debug(
             "wave 识别 confidence=%.2f text=%s wave_index=%s",
@@ -130,15 +133,82 @@ class BattleSnapshotReader:
         screen: np.ndarray,
     ) -> dict[int, SkillAvailability]:
         availability: dict[int, SkillAvailability] = {}
-        for slot_index, region in GameCoordinates.BATTLE_SKILL_REGIONS.items():
-            crop = self._crop_region(screen, region)
-            score = self._skill_score(crop)
-            availability[slot_index] = SkillAvailability(
-                slot_index=slot_index,
-                available=score >= self.skill_available_threshold,
-                score=score,
+        for slot_index in GameCoordinates.BATTLE_SKILL_REGIONS:
+            availability[slot_index] = self._read_single_skill_availability(
+                screen,
+                slot_index,
             )
         return availability
+
+    def _read_single_skill_availability(
+        self,
+        screen: np.ndarray,
+        slot_index: int,
+    ) -> SkillAvailability:
+        body_region = GameCoordinates.BATTLE_SKILL_BODY_REGIONS[slot_index]
+        body_crop = self._crop_region(screen, body_region)
+        body_score = self._skill_score(body_crop)
+
+        if body_score >= self.skill_available_threshold:
+            reason = "body_ready"
+            available = True
+            right_text = ""
+            right_value = None
+            right_success = False
+            left_text = ""
+            left_confidence = 0.0
+        else:
+            right_region = GameCoordinates.BATTLE_SKILL_RIGHT_CORNER_REGIONS[slot_index]
+            right_crop = self._crop_region(screen, right_region)
+            right_result = self.battle_ocr.read_skill_corner_number(
+                right_crop,
+                label=f"skill_{slot_index}_right",
+            )
+            right_text = right_result.text
+            right_value = right_result.value
+            right_success = right_result.success
+            left_text = ""
+            left_confidence = 0.0
+
+            if right_success and right_value is not None and right_value > 0:
+                reason = "cooldown_right"
+                available = False
+            else:
+                left_region = GameCoordinates.BATTLE_SKILL_LEFT_CORNER_REGIONS[slot_index]
+                left_crop = self._crop_region(screen, left_region)
+                left_text, left_confidence = self.battle_ocr.read_skill_corner_text(
+                    left_crop,
+                    label=f"skill_{slot_index}_left",
+                )
+                if self._looks_like_skill_cooldown_hint(left_text):
+                    reason = "cooldown_left"
+                    available = False
+                elif body_score >= self.skill_uncertain_threshold:
+                    reason = "body_uncertain"
+                    available = False
+                else:
+                    reason = "body_dark"
+                    available = False
+
+        log.debug(
+            "skill 识别 slot=%s available=%s reason=%s body_score=%.3f right_text=%s "
+            "right_value=%s right_success=%s left_text=%s left_confidence=%.2f",
+            slot_index,
+            available,
+            reason,
+            body_score,
+            right_text,
+            right_value,
+            right_success,
+            left_text,
+            left_confidence,
+        )
+        return SkillAvailability(
+            slot_index=slot_index,
+            available=available,
+            score=body_score,
+            reason=reason,
+        )
 
     def _fallback_enemy_count(self, screen: np.ndarray) -> Optional[int]:
         count = 0
@@ -183,6 +253,7 @@ class BattleSnapshotReader:
         x1, y1, x2, y2 = region
         return screen[y1:y2, x1:x2]
 
+
     def _to_gray(self, image: np.ndarray) -> np.ndarray:
         if image.ndim == 2:
             return image
@@ -205,3 +276,13 @@ class BattleSnapshotReader:
             return None
         value = int("".join(digits))
         return value if value > 0 else None
+
+    def _looks_like_skill_cooldown_hint(self, text: str) -> bool:
+        normalized = re.sub(r"\s+", "", text)
+        if not normalized:
+            return False
+        if "剩" in normalized or "余" in normalized:
+            return True
+        return any(int(item) > 0 for item in re.findall(r"\d+", normalized))
+
+
