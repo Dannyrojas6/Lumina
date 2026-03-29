@@ -13,9 +13,17 @@ log = logging.getLogger("core.battle_actions")
 class BattleAction:
     """提供技能、攻击和选卡等低层战斗动作。"""
 
-    def __init__(self, adb_ctl: AdbController, skill_interval: float = 1.5) -> None:
+    def __init__(
+        self,
+        adb_ctl: AdbController,
+        skill_interval: float = 1.5,
+        skill_pre_skip_delay: float = 0.5,
+        master_skill_open_delay: float = 0.4,
+    ) -> None:
         self.adb = adb_ctl
         self.skill_interval = skill_interval
+        self.skill_pre_skip_delay = skill_pre_skip_delay
+        self.master_skill_open_delay = master_skill_open_delay
 
     def use_servant_skill(self, skill_num: int, target: Optional[int] = None) -> None:
         """释放指定从者技能，可选带目标。"""
@@ -66,7 +74,7 @@ class BattleAction:
     def click_servant_skill(self, skill_num: int) -> None:
         """点击从者技能按钮，进入技能后续处理。"""
         self.adb.click(*GameCoordinates.SERVANT_SKILLS[skill_num])
-        time.sleep(0.5)
+        time.sleep(self.skill_pre_skip_delay)
 
     def select_servant_target(self, target: int) -> None:
         """在技能目标选择界面中选择目标从者。"""
@@ -89,9 +97,9 @@ class BattleAction:
     def click_master_skill(self, skill_num: int) -> None:
         """打开御主技能栏并点击指定技能。"""
         self.adb.click_region(GameCoordinates.MASTER_SKILL)
-        time.sleep(0.4)
+        time.sleep(self.master_skill_open_delay)
         self.adb.click(*GameCoordinates.MASTER_SKILL_POSITIONS[skill_num])
-        time.sleep(0.5)
+        time.sleep(self.skill_pre_skip_delay)
 
     def finish_master_skill(
         self,

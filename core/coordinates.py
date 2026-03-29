@@ -13,6 +13,10 @@ class GameCoordinates:
     }
     SUPPORT_SCROLL_START: Final[tuple[int, int]] = (960, 450)
     SUPPORT_SCROLL_END: Final[tuple[int, int]] = (960, 50)
+    BATTLE_INFO_REGION: Final[tuple[int, int, int, int]] = (1080, 0, 1910, 220)
+    BATTLE_WAVE_REGION: Final[tuple[int, int, int, int]] = (1304, 13, 1434, 63)
+    BATTLE_ENEMY_COUNT_REGION: Final[tuple[int, int, int, int]] = (1295, 67, 1474, 114)
+    BATTLE_TURN_REGION: Final[tuple[int, int, int, int]] = (1297, 121, 1463, 166)
 
     SERVANT_SKILLS: Final[dict[int, tuple[int, int]]] = {
         1: (110, 880),
@@ -37,6 +41,22 @@ class GameCoordinates:
         "s3_2": (1144, 812, 1249, 923),
         "s3_3": (1277, 812, 1382, 923),
     }
+    BATTLE_SKILL_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: SERVANT_SKILL_REGIONS["s1_1"],
+        2: SERVANT_SKILL_REGIONS["s1_2"],
+        3: SERVANT_SKILL_REGIONS["s1_3"],
+        4: SERVANT_SKILL_REGIONS["s2_1"],
+        5: SERVANT_SKILL_REGIONS["s2_2"],
+        6: SERVANT_SKILL_REGIONS["s2_3"],
+        7: SERVANT_SKILL_REGIONS["s3_1"],
+        8: SERVANT_SKILL_REGIONS["s3_2"],
+        9: SERVANT_SKILL_REGIONS["s3_3"],
+    }
+    BATTLE_ENEMY_FALLBACK_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (40, 40, 720, 420),
+        2: (660, 40, 1330, 420),
+        3: (1290, 120, 1880, 500),
+    }
 
     SKILL_SELECT_SERVANT: Final[tuple[int, int, int, int]] = (849, 262, 1077, 314)
     ATTACK_BUTTON: Final[tuple[int, int, int, int]] = (1600, 800, 1806, 1013)
@@ -51,9 +71,9 @@ class GameCoordinates:
         3: (1500, 600),
     }
     MASTER_SKILL_POSITIONS: Final[dict[int, tuple[int, int]]] = {
-        1: (1580, 460),
-        2: (1715, 460),
-        3: (1850, 460),
+        1: (1360, 460),
+        2: (1490, 460),
+        3: (1620, 460),
     }
     SUPPORT_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (200, 400),
@@ -65,10 +85,20 @@ class GameCoordinates:
         2: (950, 300),
         3: (1300, 300),
     }
-    NP_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
-        1: (195, 715, 390, 760),
-        2: (730, 715, 925, 760),
-        3: (1265, 715, 1460, 760),
+    NP_TEXT_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (346, 986, 436, 1020),
+        2: (817, 985, 913, 1020),
+        3: (1288, 984, 1391, 1021),
+    }
+    SERVANT_HP_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (334, 931, 442, 968),
+        2: (811, 930, 918, 968),
+        3: (1290, 930, 1394, 968),
+    }
+    SERVANT_TRUE_NAME_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (247, 1039, 455, 1075),
+        2: (722, 1040, 932, 1075),
+        3: (1200, 1038, 1405, 1074),
     }
     CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (290, 650),

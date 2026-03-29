@@ -2,8 +2,33 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 from core.game_state import GameState
+
+
+@dataclass(frozen=True)
+class ServantSkillManifest:
+    """描述从者单个技能的长期资料。"""
+
+    skill_index: int
+    effect_tags: list[str] = field(default_factory=list)
+    target_type: str = ""
+    priority_tags: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ServantManifest:
+    """描述从者资料文件的标准结构。"""
+
+    servant_name: str
+    display_name: str = ""
+    class_name: str = ""
+    role: str = ""
+    support_template: str = "support/portrait.png"
+    skills: list[ServantSkillManifest] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -13,6 +38,7 @@ class ResourceCatalog:
     assets_dir: str = "assets"
     legacy_ui_dir: str = "assets/ui"
     screen_path: str = "assets/screenshots/screen.png"
+    ocr_debug_dir: str = "assets/screenshots/ocr"
     state_templates: dict[GameState, str] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -77,6 +103,32 @@ class ResourceCatalog:
             Path(self.assets_dir) / "servants" / servant_name / purpose / filename
         )
 
+    def servant_manifest_path(self, servant_name: str) -> str:
+        """返回从者资料文件路径。"""
+        return str(Path(self.assets_dir) / "servants" / servant_name / "manifest.yaml")
+
+    def load_servant_manifest(self, servant_name: str) -> ServantManifest | None:
+        """加载单个从者资料。"""
+        manifest_path = Path(self.servant_manifest_path(servant_name))
+        if not manifest_path.exists():
+            return None
+        with manifest_path.open("r", encoding="utf-8") as file:
+            data = yaml.safe_load(file) or {}
+        if not isinstance(data, dict):
+            raise TypeError("servant manifest must be a mapping")
+        skills_data = data.get("skills", [])
+        if not isinstance(skills_data, list):
+            raise TypeError("servant manifest skills must be a list")
+        skills = [_parse_servant_skill(item) for item in skills_data]
+        return ServantManifest(
+            servant_name=str(data.get("servant_name", servant_name)),
+            display_name=str(data.get("display_name", "")),
+            class_name=str(data.get("class_name", "")),
+            role=str(data.get("role", "")),
+            support_template=str(data.get("support_template", "support/portrait.png")),
+            skills=skills,
+        )
+
     def _resolve_with_fallback(self, preferred: Path, legacy: Path) -> str:
         """在新旧目录间解析模板路径。"""
         if preferred.exists():
@@ -84,3 +136,28 @@ class ResourceCatalog:
         if legacy.exists():
             return str(legacy)
         return str(preferred)
+
+
+def _parse_servant_skill(data: Any) -> ServantSkillManifest:
+    """解析从者技能定义。"""
+    if not isinstance(data, dict):
+        raise TypeError("servant manifest skill must be a mapping")
+    for key in ("skill_index", "effect_tags", "target_type", "priority_tags"):
+        if key not in data:
+            raise ValueError(f"servant manifest skill requires {key}")
+    effect_tags = data.get("effect_tags", [])
+    priority_tags = data.get("priority_tags", [])
+    if isinstance(effect_tags, str):
+        effect_tags = [effect_tags]
+    if isinstance(priority_tags, str):
+        priority_tags = [priority_tags]
+    if not isinstance(effect_tags, list):
+        raise TypeError("servant manifest skill effect_tags must be a list")
+    if not isinstance(priority_tags, list):
+        raise TypeError("servant manifest skill priority_tags must be a list")
+    return ServantSkillManifest(
+        skill_index=int(data.get("skill_index")),
+        effect_tags=[str(tag) for tag in effect_tags],
+        target_type=str(data.get("target_type", "")),
+        priority_tags=[str(tag) for tag in priority_tags],
+    )

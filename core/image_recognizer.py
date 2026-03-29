@@ -1,4 +1,4 @@
-"""图像识别层，负责模板匹配和简单亮度判断。"""
+"""图像识别层，负责模板匹配。"""
 
 import logging
 import time
@@ -162,35 +162,3 @@ class ImageRecognizer:
         log.warning(f"等待超时 {timeout}s，模板均未出现：{template_paths}")
         return None
 
-    def is_skill_ready(
-        self,
-        screen: str | np.ndarray,
-        region: tuple[int, int, int, int],
-        brightness_threshold: float = 80.0,
-    ) -> bool:
-        """通过区域平均亮度粗略判断给定区域是否处于激活状态。"""
-        if isinstance(screen, str):
-            img = cv2.imread(screen, cv2.IMREAD_GRAYSCALE)
-            screen_desc = screen
-        else:
-            img = screen
-            screen_desc = "<memory>"
-        if img is None:
-            log.warning(f"亮度检测：截图读取失败 {screen_desc}")
-            return False
-
-        x1, y1, x2, y2 = region
-        roi = img[y1:y2, x1:x2]
-
-        if roi.size == 0:
-            log.warning(f"亮度检测：区域为空 {region}")
-            return False
-
-        mean_brightness = float(np.mean(roi))
-        is_ready = mean_brightness > brightness_threshold
-        log.debug(
-            f"技能亮度：{mean_brightness:.1f}  "
-            f"阈值：{brightness_threshold}  "
-            f"状态：{'可用' if is_ready else '冷却'}"
-        )
-        return is_ready

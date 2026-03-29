@@ -1,0 +1,25 @@
+servant_name: merlin
+display_name: Merlin
+class_name: caster
+role: support
+support_template: support/portrait.png
+skills:
+  - skill_index: 1
+    effect_tags:
+      - buff_attack_team
+    target_type: team
+    priority_tags:
+      - buff
+  - skill_index: 2
+    effect_tags:
+      - survival_team
+    target_type: team
+    priority_tags:
+      - survival
+  - skill_index: 3
+    effect_tags:
+      - buff_buster_single
+    target_type: ally_single
+    priority_tags:
+      - burst
+      - buff

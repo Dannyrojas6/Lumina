@@ -10,11 +10,15 @@ import numpy as np
 
 from core.adb_controller import AdbController
 from core.battle_actions import BattleAction
+from core.battle_ocr import BattleOcrReader, ServantNpStatus
+from core.battle_snapshot import BattleSnapshotReader
 from core.config import BattleConfig
 from core.coordinates import GameCoordinates
 from core.game_state import GameState
 from core.image_recognizer import ImageRecognizer
 from core.resources import ResourceCatalog
+from core.smart_battle import BattleSnapshot as SmartBattleSnapshot
+from core.smart_battle import SmartBattlePlanner
 from core.state_detector import StateDetectionResult, StateDetector
 
 log = logging.getLogger("core.workflow")
@@ -27,7 +31,7 @@ class DailyAction:
     SUPPORT_CLICK_DELAY = 2.0
     SUPPORT_REFRESH_WAIT = 3.0
     LOADING_POLL_INTERVAL = 4.0
-    NP_READY_THRESHOLD = 150.0
+    BATTLE_ANIMATION_WAIT = 20.0
 
     def __init__(
         self,
@@ -35,12 +39,28 @@ class DailyAction:
         recognizer: ImageRecognizer,
         config: BattleConfig,
         resources: ResourceCatalog,
+        battle_ocr: Optional[BattleOcrReader] = None,
+        battle_snapshot_reader: Optional[BattleSnapshotReader] = None,
+        smart_battle_planner: Optional[SmartBattlePlanner] = None,
     ) -> None:
         self.adb = adb_ctl
         self.recognizer = recognizer
-        self.battle = BattleAction(adb_ctl, skill_interval=config.skill_interval)
+        self.battle = BattleAction(
+            adb_ctl,
+            skill_interval=config.skill_interval,
+            skill_pre_skip_delay=config.skill_pre_skip_delay,
+            master_skill_open_delay=config.master_skill_open_delay,
+        )
         self.config = config
         self.resources = resources
+        self.battle_ocr = battle_ocr
+        self.battle_snapshot_reader = battle_snapshot_reader
+        self.smart_battle_planner = smart_battle_planner
+        self._smart_battle_enabled = bool(
+            config.smart_battle.enabled
+            and battle_snapshot_reader is not None
+            and smart_battle_planner is not None
+        )
         self.state = GameState.UNKNOWN
         self.state_detector = StateDetector(
             recognizer=recognizer,
@@ -62,8 +82,15 @@ class DailyAction:
         self._latest_screen_rgb: Optional[np.ndarray] = None
         self._loop_done = 0
         self._battle_actions_done = False
+        self._used_servant_skills: set[int] = set()
+        self._smart_wave_counter = 0
+        self._last_wave_index: Optional[int] = None
+        self._last_enemy_count: Optional[int] = None
+        self._last_current_turn: Optional[int] = None
+        self._last_processed_turn: Optional[int] = None
         self._unknown_snapshot_saved = False
         self._unknown_fallback_templates = [
+            ("close_upper_left.png", "未知状态兜底：已点击左上角关闭"),
             ("close.png", "未知状态兜底：已点击关闭"),
             ("next.png", "未知状态兜底：已点击下一步"),
             ("no.png", "未知状态兜底：已点击否"),
@@ -103,6 +130,12 @@ class DailyAction:
         if self._latest_screen_image is None:
             self._refresh_screen()
         return self._latest_screen_image
+
+    def _get_latest_screen_rgb(self) -> np.ndarray:
+        """返回最近一次刷新的 RGB 截图。"""
+        if self._latest_screen_rgb is None:
+            self._refresh_screen()
+        return self._latest_screen_rgb
 
     def _save_unknown_snapshot(self) -> Optional[str]:
         """将当前未识别截图落盘，便于排查识别失败原因。"""
@@ -162,7 +195,9 @@ class DailyAction:
 
         self._fallback_pick_support(pick_index)
 
-    def _search_and_pick_support(self, servant_name: str, max_scroll_pages: int) -> bool:
+    def _search_and_pick_support(
+        self, servant_name: str, max_scroll_pages: int
+    ) -> bool:
         """搜索目标助战，命中后直接点击。"""
         support_pos = self._find_support_on_current_page(servant_name)
         if support_pos:
@@ -229,7 +264,9 @@ class DailyAction:
                 return
         log.warning("助战页未识别到目标职阶按钮，将继续尝试默认选择")
 
-    def _find_support_on_current_page(self, servant_name: str) -> Optional[tuple[int, int]]:
+    def _find_support_on_current_page(
+        self, servant_name: str
+    ) -> Optional[tuple[int, int]]:
         """在当前页尝试识别目标助战头像模板。"""
         servant_template = self.resources.servant_template(servant_name)
         if not Path(servant_template).exists():
@@ -331,6 +368,11 @@ class DailyAction:
 
     def handle_battle_ready(self) -> None:
         """进入战斗可操作界面后执行一次技能序列并进入攻击流程。"""
+        if self._smart_battle_enabled:
+            self._run_smart_battle_turn()
+            self.battle.attack()
+            return
+
         if not self._battle_actions_done:
             actions = self.config.battle_actions()
             if actions:
@@ -345,15 +387,23 @@ class DailyAction:
 
     def handle_card_select(self) -> None:
         """进入选卡界面后优先选择可用宝具，再补普通指令卡。"""
-        noble_ready_states = self.detect_noble_ready_states()
-        card_plan = self.build_card_plan(noble_ready_states)
+        np_statuses = self._read_np_statuses_with_retry()
+        card_plan = self.build_card_plan(np_statuses)
         self.execute_card_plan(card_plan)
-        time.sleep(13.0)
+        if self._smart_battle_enabled and self._smart_wave_counter < 3:
+            self._smart_wave_counter += 1
+        time.sleep(self.BATTLE_ANIMATION_WAIT)
 
     def handle_battle_result(self) -> None:
         """处理结算界面，并按模板完成收尾点击。"""
         self._loop_done += 1
         self._battle_actions_done = False
+        self._used_servant_skills.clear()
+        self._smart_wave_counter = 0
+        self._last_wave_index = None
+        self._last_enemy_count = None
+        self._last_current_turn = None
+        self._last_processed_turn = None
         self._click_template(
             "please_click_game_interface.png", "已点击结算页第一次继续"
         )
@@ -451,32 +501,151 @@ class DailyAction:
             return
         self.battle.finish_servant_skill(skill_num)
 
-    def detect_noble_ready_states(self) -> dict[int, bool]:
-        """检测三位从者当前是否可以释放宝具。"""
-        screen = self._get_latest_screen_image()
-        states: dict[int, bool] = {}
-        for servant_index, region in GameCoordinates.NP_REGIONS.items():
-            is_ready = self.recognizer.is_skill_ready(
-                screen,
-                region,
-                brightness_threshold=self.NP_READY_THRESHOLD,
-            )
-            states[servant_index] = is_ready
-            log.debug(
-                "宝具可用性 servant=%s ready=%s region=%s threshold=%.1f",
-                servant_index,
-                is_ready,
-                region,
-                self.NP_READY_THRESHOLD,
-            )
-        return states
+    def _read_np_statuses_with_retry(self) -> list[ServantNpStatus]:
+        """读取 NP 状态，必要时额外刷新一次重读。"""
+        statuses = self._read_np_statuses()
+        if self.config.ocr.retry_once_on_low_confidence and any(
+            not status.success for status in statuses
+        ):
+            log.info("检测到 NP OCR 结果不稳定，已刷新一次重读")
+            self._refresh_screen()
+            statuses = self._read_np_statuses()
+        return statuses
 
-    def build_card_plan(self, noble_ready_states: dict[int, bool]) -> list[dict[str, int]]:
+    def _run_smart_battle_turn(self) -> None:
+        """读取当前战斗快照，并按智能战斗规则执行本回合技能。"""
+        if self.battle_snapshot_reader is None or self.smart_battle_planner is None:
+            log.warning("智能战斗未完整初始化，已保守继续")
+            return
+
+        try:
+            if self._smart_wave_counter <= 0:
+                self._smart_wave_counter = 1
+            raw_snapshot = self.battle_snapshot_reader.read_snapshot(
+                self._get_latest_screen_rgb()
+            )
+            snapshot = self._build_smart_snapshot(raw_snapshot)
+            decision = self.smart_battle_planner.decide(snapshot)
+        except Exception as exc:
+            log.warning("智能战斗识别失败，已保守继续：%s", exc)
+            return
+
+        log.info(
+            "智能战斗 wave=%s turn=%s enemy=%s reason=%s fallback=%s",
+            snapshot.wave_index,
+            snapshot.current_turn,
+            snapshot.enemy_count,
+            decision.reason,
+            decision.fallback_used,
+        )
+        if (
+            snapshot.turn_known
+            and self._last_processed_turn is not None
+            and snapshot.current_turn == self._last_processed_turn
+        ):
+            log.info("当前回合=%s 已执行过智能判断，本次跳过重复释放", snapshot.current_turn)
+            return
+        for action in decision.actions:
+            self._use_action_with_optional_target(
+                {
+                    "type": action.action_type,
+                    "skill": action.global_skill,
+                    "target": action.target,
+                }
+            )
+            self._used_servant_skills.add(action.global_skill)
+        if snapshot.turn_known:
+            self._last_processed_turn = snapshot.current_turn
+
+    def _build_smart_snapshot(self, raw_snapshot) -> SmartBattleSnapshot:
+        """将识别层快照转换成判断层需要的最小结构。"""
+        wave_index = raw_snapshot.wave_index
+        enemy_count = raw_snapshot.enemy_count
+        current_turn = raw_snapshot.current_turn
+        attacker_slot = next(
+            (
+                slot.slot
+                for slot in self.config.smart_battle.frontline
+                if slot.role == "attacker"
+            ),
+            None,
+        )
+        attacker_np_status = next(
+            (
+                status
+                for status in raw_snapshot.frontline_np
+                if status.servant_index == attacker_slot
+            ),
+            None,
+        )
+        attacker_np_known = bool(attacker_np_status and attacker_np_status.success)
+
+        wave_known = False
+        inferred_wave = self._smart_wave_counter if self._smart_wave_counter > 0 else None
+        if inferred_wave is not None:
+            if wave_index is not None and wave_index != inferred_wave:
+                log.warning(
+                    "波次 OCR=%s 与当前回合=%s 不一致，已沿用当前回合",
+                    wave_index,
+                    inferred_wave,
+                )
+            wave_index = inferred_wave
+            wave_known = True
+            self._last_wave_index = wave_index
+        elif wave_index is not None:
+            wave_known = True
+            self._last_wave_index = wave_index
+
+        if enemy_count is not None:
+            self._last_enemy_count = enemy_count
+        if current_turn is not None:
+            self._last_current_turn = current_turn
+
+        return SmartBattleSnapshot(
+            wave_index=self._last_wave_index or 1,
+            enemy_count=self._last_enemy_count or 3,
+            current_turn=self._last_current_turn or 1,
+            frontline_np={
+                status.servant_index: (status.np_value or 0)
+                for status in raw_snapshot.frontline_np
+            },
+            skill_availability={
+                slot_index: item.available
+                for slot_index, item in raw_snapshot.skill_availability.items()
+            },
+            used_skills=set(self._used_servant_skills),
+            attacker_np_known=attacker_np_known,
+            wave_known=wave_known,
+            enemy_count_known=enemy_count is not None,
+            turn_known=current_turn is not None,
+        )
+
+    def _read_np_statuses(self) -> list[ServantNpStatus]:
+        """从当前战斗截图中读取三位从者的 NP。"""
+        if self.battle_ocr is None:
+            raise RuntimeError("BattleOcrReader 未初始化，无法读取 NP。")
+
+        statuses = self.battle_ocr.read_np_statuses(self._get_latest_screen_rgb())
+        for status in statuses:
+            log.debug(
+                "NP OCR servant=%s text=%s value=%s confidence=%.2f ready=%s success=%s",
+                status.servant_index,
+                status.raw_text,
+                status.np_value,
+                status.confidence,
+                status.is_ready,
+                status.success,
+            )
+        return statuses
+
+    def build_card_plan(
+        self, np_statuses: list[ServantNpStatus]
+    ) -> list[dict[str, int]]:
         """构建本回合的出卡计划，优先宝具，其次固定普通指令卡。"""
         plan: list[dict[str, int]] = []
-        for servant_index in (1, 2, 3):
-            if noble_ready_states.get(servant_index):
-                plan.append({"type": "noble", "index": servant_index})
+        for status in np_statuses:
+            if status.is_ready:
+                plan.append({"type": "noble", "index": status.servant_index})
 
         for card_index in (1, 2, 3, 4, 5):
             if len(plan) >= 3:

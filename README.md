@@ -71,11 +71,19 @@ python main.py
 - `loop_count`：完整战斗完成次数，若只想打一场可设为 `1`
 - `match_threshold`：模板匹配阈值
 - `log_level`：排查识别问题时建议使用 `DEBUG`
-- `skill_interval`：技能释放后的额外等待时间
+- `skill_pre_skip_delay`：点击技能后到点击加速跳过前的等待时间
+- `master_skill_open_delay`：点击御主技能栏后到点具体技能前的等待时间
+- `skill_interval`：点击加速跳过后的额外等待时间
 - `quest_slot`：主菜单关卡入口序号
 - `support`：助战筛选、目标从者与默认回退位配置
-- `skill_sequence`：首个可操作战斗阶段要释放的技能顺序
+- `ocr`：宝具 NP 的 OCR 识别设置
+- `smart_battle`：智能战斗 v1 的前排、波次动作计划与保守降级模式
+- `skill_sequence`：仅在 `smart_battle.enabled: false` 时生效的固定技能顺序
 - `save_debug_screenshots`：是否在每次刷新时把截图保存到磁盘
+
+从者长期资料放在 `assets/servants/<servant_name>/manifest.yaml`，助战头像仍使用 `assets/servants/<servant_name>/support/portrait.png`。
+
+智能战斗 v1 当前只覆盖先发三人，按波次、敌人数、当前回合、主打手 NP 和技能可用性做判断。普通指令卡仍保持现有补位规则，所有可释放宝具都会优先加入出卡计划。
 
 ## 项目结构
 
@@ -89,8 +97,10 @@ python main.py
 
 - 将 `log_level` 调成 `DEBUG`，查看更详细的识别日志
 - 当流程落入 `UNKNOWN` 时，检查 [assets/screenshots/unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)
+- NP 识别异常时，如已开启 `ocr.save_ocr_crops`，检查 `assets/screenshots/ocr`
 - 若某个稳定界面突然识别不到，优先检查 [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui) 中对应模板是否需要重截
 
 ## 开发说明
 
 面向开发者或下一个 Agent 的接手文档已移动到 [DevGuide.md](/D:/VSCodeRepository/Lumina/DevGuide.md)。
+
