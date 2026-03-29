@@ -83,7 +83,6 @@ class DailyAction:
         self._loop_done = 0
         self._battle_actions_done = False
         self._used_servant_skills: set[int] = set()
-        self._smart_wave_counter = 0
         self._last_wave_index: Optional[int] = None
         self._last_enemy_count: Optional[int] = None
         self._last_current_turn: Optional[int] = None
@@ -390,8 +389,6 @@ class DailyAction:
         np_statuses = self._read_np_statuses_with_retry()
         card_plan = self.build_card_plan(np_statuses)
         self.execute_card_plan(card_plan)
-        if self._smart_battle_enabled and self._smart_wave_counter < 3:
-            self._smart_wave_counter += 1
         time.sleep(self.BATTLE_ANIMATION_WAIT)
 
     def handle_battle_result(self) -> None:
@@ -399,7 +396,6 @@ class DailyAction:
         self._loop_done += 1
         self._battle_actions_done = False
         self._used_servant_skills.clear()
-        self._smart_wave_counter = 0
         self._last_wave_index = None
         self._last_enemy_count = None
         self._last_current_turn = None
@@ -519,8 +515,6 @@ class DailyAction:
             return
 
         try:
-            if self._smart_wave_counter <= 0:
-                self._smart_wave_counter = 1
             raw_snapshot = self.battle_snapshot_reader.read_snapshot(
                 self._get_latest_screen_rgb()
             )
@@ -581,20 +575,12 @@ class DailyAction:
         attacker_np_known = bool(attacker_np_status and attacker_np_status.success)
 
         wave_known = False
-        inferred_wave = self._smart_wave_counter if self._smart_wave_counter > 0 else None
-        if inferred_wave is not None:
-            if wave_index is not None and wave_index != inferred_wave:
-                log.warning(
-                    "波次 OCR=%s 与当前回合=%s 不一致，已沿用当前回合",
-                    wave_index,
-                    inferred_wave,
-                )
-            wave_index = inferred_wave
+        if wave_index is not None:
             wave_known = True
             self._last_wave_index = wave_index
-        elif wave_index is not None:
-            wave_known = True
-            self._last_wave_index = wave_index
+        elif self._last_wave_index is not None:
+            wave_index = self._last_wave_index
+            log.warning("波次 OCR 缺失，已沿用上次确认波次=%s", wave_index)
 
         if enemy_count is not None:
             self._last_enemy_count = enemy_count
