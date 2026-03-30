@@ -16,6 +16,18 @@ class SkillAction(TypedDict):
 
 
 @dataclass
+class SupportRecognitionConfig:
+    """描述助战头像识别的阈值与调试配置。"""
+
+    backend: str = "template"
+    min_slot_score: float = 0.78
+    min_slot_margin: float = 0.004
+    confirm_delay: float = 0.25
+    save_debug_mismatches: bool = True
+    max_debug_images: int = 12
+
+
+@dataclass
 class SupportConfig:
     """描述助战选择阶段的基础配置。"""
 
@@ -23,6 +35,9 @@ class SupportConfig:
     servant: str = ""
     pick_index: int = 1
     max_scroll_pages: int = 3
+    recognition: SupportRecognitionConfig = field(
+        default_factory=SupportRecognitionConfig
+    )
 
 
 @dataclass
@@ -122,6 +137,9 @@ class BattleConfig:
                 servant=str(support_data.get("servant", "")),
                 pick_index=int(support_data.get("pick_index", 1)),
                 max_scroll_pages=int(support_data.get("max_scroll_pages", 3)),
+                recognition=_parse_support_recognition(
+                    support_data.get("recognition", {})
+                ),
             )
         ocr_data = data.get("ocr", {})
         if isinstance(ocr_data, BattleOcrConfig):
@@ -154,6 +172,7 @@ class BattleConfig:
                 servant="",
                 pick_index=1,
                 max_scroll_pages=3,
+                recognition=SupportRecognitionConfig(),
             ),
             ocr=BattleOcrConfig(),
             smart_battle=SmartBattleConfig(),
@@ -333,3 +352,20 @@ def _parse_fail_mode(value: Any) -> Literal["conservative"]:
     if mode != "conservative":
         raise ValueError("smart_battle.fail_mode only supports conservative")
     return "conservative"
+
+
+def _parse_support_recognition(data: Any) -> SupportRecognitionConfig:
+    """解析助战头像识别配置。"""
+    if isinstance(data, SupportRecognitionConfig):
+        return data
+    raw = data or {}
+    if not isinstance(raw, dict):
+        raise TypeError("support.recognition must be a mapping")
+    return SupportRecognitionConfig(
+        backend=str(raw.get("backend", "template")),
+        min_slot_score=float(raw.get("min_slot_score", 0.78)),
+        min_slot_margin=float(raw.get("min_slot_margin", 0.004)),
+        confirm_delay=float(raw.get("confirm_delay", 0.25)),
+        save_debug_mismatches=bool(raw.get("save_debug_mismatches", True)),
+        max_debug_images=int(raw.get("max_debug_images", 12)),
+    )

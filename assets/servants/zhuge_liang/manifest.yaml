@@ -3,6 +3,10 @@ display_name: Zhuge Liang
 class_name: caster
 role: support
 support_template: support/portrait.png
+support_recognition:
+  source_dir: support/source
+  source_glob: "f_*.png"
+  generated_dir: support/generated
 skills:
   - skill_index: 1
     effect_tags:

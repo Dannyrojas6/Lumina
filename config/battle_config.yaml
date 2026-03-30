@@ -14,6 +14,13 @@ support:
   servant: "morgan" # 目标助战从者英文目录名，例如 morgan；留空则沿用默认位选择
   pick_index: 1 # 当前页助战位序号，1/2/3
   max_scroll_pages: 10 # 最多向下搜索的页数，超出后回退到默认位
+  recognition:
+    backend: embedding # 助战人物头像核验方式：embedding/template
+    min_slot_score: 0.0 # 0 表示使用向量库默认阈值
+    min_slot_margin: 0.0 # 0 表示使用向量库默认分差
+    confirm_delay: 0.25 # 二次确认前等待时间（秒）
+    save_debug_mismatches: true # 低分或歧义时保留少量调试图
+    max_debug_images: 12 # 调试图最多保留数量
 
 ocr:
   backend: rapidocr # 当前 OCR 后端，首版默认 rapidocr

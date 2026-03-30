@@ -3,6 +3,12 @@ display_name: Morgan
 class_name: berserker
 role: attacker
 support_template: support/portrait.png
+support_recognition:
+  source_dir: support/source
+  source_glob: "f_*.png"
+  generated_dir: support/generated
+  reference_bank: support/generated/reference_bank.npz
+  reference_meta: support/generated/reference_meta.json
 skills:
   - skill_index: 1
     effect_tags:

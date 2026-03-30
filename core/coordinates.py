@@ -132,9 +132,15 @@ class GameCoordinates:
         3: (1620, 460),
     }
     SUPPORT_POSITIONS: Final[dict[int, tuple[int, int]]] = {
-        1: (200, 400),
-        2: (200, 700),
-        3: (200, 1000),
+        1: (195, 426),
+        2: (197, 727),
+        3: (196, 978),
+    }
+    SUPPORT_PORTRAIT_STRIP: Final[tuple[int, int, int, int]] = (68, 248, 324, 1079)
+    SUPPORT_PORTRAIT_SLOT_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (74, 294, 317, 559),
+        2: (74, 593, 320, 861),
+        3: (70, 894, 322, 1063),
     }
     NOBLE_CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (600, 300),

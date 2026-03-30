@@ -2,19 +2,22 @@
 
 当前 `assets/servants/<servant_name>/` 主要承担两类内容：
 
-- 助战头像模板：`support/portrait.png`
+- 助战头像原图：`support/source/f_*.png`
+- 离线参考库：`support/generated/reference_bank.npz`、`support/generated/reference_meta.json`
 - 从者资料：`manifest.yaml`
 
-最小目录结构示例：
+以 Morgan 为例：
 
-`assets/servants/morgan/support/portrait.png`
+- `assets/servants/morgan/support/source/f_7040000.png`
+- `assets/servants/morgan/support/generated/reference_bank.npz`
+- `assets/servants/morgan/support/generated/reference_meta.json`
 
-`manifest.yaml` 当前主要描述：
+`support/generated/` 现在只保留离线参考库文件，不再生成旧的 `support/generated/<source_name>/` 分组模板。
 
-- 技能序号
-- 效果标签
-- 目标类型
-- 优先标签
+`manifest.yaml` 现在记录：
 
-当前战斗内九个技能位的可用性判断，不依赖这里的战斗技能模板。
-也就是说，后续如果要继续稳住技能判断，优先补真实战斗截图和识别逻辑，不要先给每个从者手工准备战斗技能图。
+- 助战原图目录
+- 离线参考库文件路径
+- 从者技能资料
+
+后续如果要补其它从者，先放原图，再生成对应的 `reference_bank.npz` 和 `reference_meta.json`。

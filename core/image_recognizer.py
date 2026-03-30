@@ -70,16 +70,34 @@ class ImageRecognizer:
     ) -> TemplateMatchResult:
         """在截图中查找模板，并返回匹配分数和命中坐标。"""
         template = self._load_grayscale(template_path, use_cache=True)
-        if isinstance(screen, str):
-            screen_image = self._load_grayscale(screen, use_cache=False)
-            screen_desc = screen
-        else:
-            screen_image = screen
-            screen_desc = "<memory>"
+        screen_image, screen_desc = self._load_screen(screen)
 
         if template is None:
             log.warning(f"模板图读取失败：{template_path}")
             return TemplateMatchResult(score=0.0, position=None)
+        if screen_image is None:
+            log.warning(f"截图读取失败：{screen_desc}")
+            return TemplateMatchResult(score=0.0, position=None)
+
+        return self.match_array_with_score(
+            template=template,
+            screen=screen_image,
+            threshold=threshold,
+            label=Path(template_path).name,
+        )
+
+    def match_array_with_score(
+        self,
+        template: np.ndarray,
+        screen: str | np.ndarray,
+        threshold: Optional[float] = None,
+        *,
+        mask: Optional[np.ndarray] = None,
+        label: str = "<array>",
+        log_debug: bool = True,
+    ) -> TemplateMatchResult:
+        """在截图中查找内存模板，并返回匹配分数和命中坐标。"""
+        screen_image, screen_desc = self._load_screen(screen)
         if screen_image is None:
             log.warning(f"截图读取失败：{screen_desc}")
             return TemplateMatchResult(score=0.0, position=None)
@@ -89,23 +107,34 @@ class ImageRecognizer:
             template.shape[0] > screen_image.shape[0]
             or template.shape[1] > screen_image.shape[1]
         ):
-            log.warning(f"模板尺寸超过截图，跳过：{Path(template_path).name}")
+            log.warning(f"模板尺寸超过截图，跳过：{label}")
             return TemplateMatchResult(score=0.0, position=None)
 
-        result = cv2.matchTemplate(screen_image, template, cv2.TM_CCOEFF_NORMED)
+        method = cv2.TM_CCORR_NORMED if mask is not None else cv2.TM_CCOEFF_NORMED
+        if mask is not None:
+            result = cv2.matchTemplate(screen_image, template, method, mask=mask)
+        else:
+            result = cv2.matchTemplate(screen_image, template, method)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
         thr = threshold if threshold is not None else self.threshold
         if max_val >= thr:
             h, w = template.shape
             cx, cy = max_loc[0] + w // 2, max_loc[1] + h // 2
-            log.debug(
-                f"匹配成功 [{max_val:.2f}] {Path(template_path).name} → ({cx}, {cy})"
-            )
+            if log_debug:
+                log.debug(f"匹配成功 [{max_val:.2f}] {label} → ({cx}, {cy})")
             return TemplateMatchResult(score=float(max_val), position=(cx, cy))
 
-        log.debug(f"匹配失败 [{max_val:.2f}] {Path(template_path).name}")
+        if log_debug:
+            log.debug(f"匹配失败 [{max_val:.2f}] {label}")
         return TemplateMatchResult(score=float(max_val), position=None)
+
+    def _load_screen(
+        self, screen: str | np.ndarray
+    ) -> tuple[Optional[np.ndarray], str]:
+        if isinstance(screen, str):
+            return self._load_grayscale(screen, use_cache=False), screen
+        return screen, "<memory>"
 
     def match_multi(
         self,
