@@ -17,11 +17,11 @@ from core.coordinates import GameCoordinates
 from core.game_state import GameState
 from core.image_recognizer import ImageRecognizer
 from core.resources import ResourceCatalog
-from core.support_portrait_recognition import SupportPortraitMatcher
-from core.support_portrait_verification import SupportPortraitVerifier
 from core.smart_battle import BattleSnapshot as SmartBattleSnapshot
 from core.smart_battle import SmartBattlePlanner
 from core.state_detector import StateDetectionResult, StateDetector
+from core.support_portrait_recognition import SupportPortraitMatcher
+from core.support_portrait_verification import SupportPortraitVerifier
 
 log = logging.getLogger("core.workflow")
 
@@ -379,7 +379,7 @@ class DailyAction:
             GameCoordinates.SUPPORT_SCROLL_START[1],
             GameCoordinates.SUPPORT_SCROLL_END[0],
             GameCoordinates.SUPPORT_SCROLL_END[1],
-            duration=0.3,
+            duration=0.2,
         )
         time.sleep(self.SUPPORT_CLICK_DELAY)
         self._refresh_screen()
@@ -617,7 +617,9 @@ class DailyAction:
             and self._last_processed_turn is not None
             and snapshot.current_turn == self._last_processed_turn
         ):
-            log.info("当前回合=%s 已执行过智能判断，本次跳过重复释放", snapshot.current_turn)
+            log.info(
+                "当前回合=%s 已执行过智能判断，本次跳过重复释放", snapshot.current_turn
+            )
             return
         for action in decision.actions:
             self._use_action_with_optional_target(

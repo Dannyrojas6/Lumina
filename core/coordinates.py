@@ -33,7 +33,7 @@ class GameCoordinates:
         2: (1400, 550),
         3: (1400, 800),
     }
-    SUPPORT_SCROLL_START: Final[tuple[int, int]] = (960, 450)
+    SUPPORT_SCROLL_START: Final[tuple[int, int]] = (960, 350)
     SUPPORT_SCROLL_END: Final[tuple[int, int]] = (960, 50)
     BATTLE_INFO_REGION: Final[tuple[int, int, int, int]] = (1080, 0, 1910, 220)
     BATTLE_WAVE_CURRENT_REGION: Final[tuple[int, int, int, int]] = (1285, 20, 1349, 56)
@@ -177,5 +177,3 @@ class GameCoordinates:
         """返回矩形区域中心点。"""
         x1, y1, x2, y2 = region
         return (x1 + x2) // 2, (y1 + y2) // 2
-
-

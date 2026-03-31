@@ -1,0 +1,191 @@
+[
+  {
+    "asset_type": "charaGraph",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/CharaGraph/704000/704000a@1.png",
+    "save_path": "atlas\\charaGraph\\ascension\\1.png"
+  },
+  {
+    "asset_type": "charaGraph",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/CharaGraph/704000/704000a@2.png",
+    "save_path": "atlas\\charaGraph\\ascension\\2.png"
+  },
+  {
+    "asset_type": "charaGraph",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/CharaGraph/704000/704000b@1.png",
+    "save_path": "atlas\\charaGraph\\ascension\\3.png"
+  },
+  {
+    "asset_type": "charaGraph",
+    "group_type": "ascension",
+    "key": "4",
+    "url": "https://static.atlasacademy.io/CN/CharaGraph/704000/704000b@2.png",
+    "save_path": "atlas\\charaGraph\\ascension\\4.png"
+  },
+  {
+    "asset_type": "charaGraph",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/CharaGraph/704030/704030a.png",
+    "save_path": "atlas\\charaGraph\\costume\\704030.png"
+  },
+  {
+    "asset_type": "faces",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/Faces/f_7040000.png",
+    "save_path": "atlas\\faces\\ascension\\1.png"
+  },
+  {
+    "asset_type": "faces",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/Faces/f_7040001.png",
+    "save_path": "atlas\\faces\\ascension\\2.png"
+  },
+  {
+    "asset_type": "faces",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/Faces/f_7040002.png",
+    "save_path": "atlas\\faces\\ascension\\3.png"
+  },
+  {
+    "asset_type": "faces",
+    "group_type": "ascension",
+    "key": "4",
+    "url": "https://static.atlasacademy.io/CN/Faces/f_7040003.png",
+    "save_path": "atlas\\faces\\ascension\\4.png"
+  },
+  {
+    "asset_type": "faces",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/Faces/f_7040300.png",
+    "save_path": "atlas\\faces\\costume\\704030.png"
+  },
+  {
+    "asset_type": "narrowFigure",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/NarrowFigure/704000/704000@0.png",
+    "save_path": "atlas\\narrowFigure\\ascension\\1.png"
+  },
+  {
+    "asset_type": "narrowFigure",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/NarrowFigure/704000/704000@1.png",
+    "save_path": "atlas\\narrowFigure\\ascension\\2.png"
+  },
+  {
+    "asset_type": "narrowFigure",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/NarrowFigure/704000/704000@2.png",
+    "save_path": "atlas\\narrowFigure\\ascension\\3.png"
+  },
+  {
+    "asset_type": "narrowFigure",
+    "group_type": "ascension",
+    "key": "4",
+    "url": "https://static.atlasacademy.io/CN/NarrowFigure/704000/704000_2@0.png",
+    "save_path": "atlas\\narrowFigure\\ascension\\4.png"
+  },
+  {
+    "asset_type": "narrowFigure",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/NarrowFigure/704030/704030@0.png",
+    "save_path": "atlas\\narrowFigure\\costume\\704030.png"
+  },
+  {
+    "asset_type": "charaFigure",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/CharaFigure/7040000/7040000_merged.png",
+    "save_path": "atlas\\charaFigure\\ascension\\1.png"
+  },
+  {
+    "asset_type": "charaFigure",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/CharaFigure/7040001/7040001_merged.png",
+    "save_path": "atlas\\charaFigure\\ascension\\2.png"
+  },
+  {
+    "asset_type": "charaFigure",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/CharaFigure/7040002/7040002_merged.png",
+    "save_path": "atlas\\charaFigure\\ascension\\3.png"
+  },
+  {
+    "asset_type": "charaFigure",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/CharaFigure/7040300/7040300_merged.png",
+    "save_path": "atlas\\charaFigure\\costume\\704030.png"
+  },
+  {
+    "asset_type": "commands",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/Servants/Commands/704000/card_servant_1.png",
+    "save_path": "atlas\\commands\\ascension\\1.png"
+  },
+  {
+    "asset_type": "commands",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/Servants/Commands/704000/card_servant_2.png",
+    "save_path": "atlas\\commands\\ascension\\2.png"
+  },
+  {
+    "asset_type": "commands",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/Servants/Commands/704000/card_servant_3.png",
+    "save_path": "atlas\\commands\\ascension\\3.png"
+  },
+  {
+    "asset_type": "commands",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/Servants/Commands/704000/card_servant_11.png",
+    "save_path": "atlas\\commands\\costume\\704030.png"
+  },
+  {
+    "asset_type": "status",
+    "group_type": "ascension",
+    "key": "1",
+    "url": "https://static.atlasacademy.io/CN/Servants/Status/704000/status_servant_1.png",
+    "save_path": "atlas\\status\\ascension\\1.png"
+  },
+  {
+    "asset_type": "status",
+    "group_type": "ascension",
+    "key": "2",
+    "url": "https://static.atlasacademy.io/CN/Servants/Status/704000/status_servant_2.png",
+    "save_path": "atlas\\status\\ascension\\2.png"
+  },
+  {
+    "asset_type": "status",
+    "group_type": "ascension",
+    "key": "3",
+    "url": "https://static.atlasacademy.io/CN/Servants/Status/704000/status_servant_3.png",
+    "save_path": "atlas\\status\\ascension\\3.png"
+  },
+  {
+    "asset_type": "status",
+    "group_type": "costume",
+    "key": "704030",
+    "url": "https://static.atlasacademy.io/CN/Servants/Status/704000/status_servant_11.png",
+    "save_path": "atlas\\status\\costume\\704030.png"
+  }
+]
