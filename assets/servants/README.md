@@ -19,7 +19,7 @@
 
 公共下载脚本第一版按单个从者 ID 工作：
 
-`python assets/servants/_meta/scripts/download_servant_assets.py --id 704000`
+`uv run python assets/servants/_meta/scripts/download_servant_assets.py --id 704000`
 
 单个从者目录当前分为三块：
 

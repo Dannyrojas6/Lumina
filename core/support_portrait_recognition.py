@@ -91,7 +91,9 @@ class SupportPortraitGenerator:
     def build_for_servant(self, servant_name: str, *, clean: bool = True) -> list[Path]:
         manifest = self._require_manifest(servant_name)
         source_dir = Path(self.resources.support_source_dir(servant_name, manifest))
-        generated_dir = Path(self.resources.support_generated_dir(servant_name, manifest))
+        generated_dir = _template_generated_dir(
+            Path(self.resources.support_generated_dir(servant_name, manifest))
+        )
         source_paths = sorted(source_dir.glob(manifest.support_recognition.source_glob))
         if not source_paths:
             raise FileNotFoundError(f"未找到助战头像原图：{source_dir}")
@@ -263,7 +265,9 @@ class SupportPortraitMatcher:
         manifest = resources.load_servant_manifest(servant_name)
         if manifest is None:
             raise FileNotFoundError(f"未找到从者资料：{servant_name}")
-        generated_dir = Path(resources.support_generated_dir(servant_name, manifest))
+        generated_dir = _template_generated_dir(
+            Path(resources.support_generated_dir(servant_name, manifest))
+        )
         templates = _load_generated_variants(generated_dir)
         if not templates:
             legacy_path = Path(resources.servant_template(servant_name))
@@ -554,6 +558,10 @@ def _load_generated_variants(generated_dir: Path) -> list[SupportTemplateVariant
                 )
             )
     return templates
+
+
+def _template_generated_dir(generated_root: Path) -> Path:
+    return generated_root / "template_matcher"
 
 
 def _prepare_screen_gray(screen_rgb: np.ndarray) -> np.ndarray:

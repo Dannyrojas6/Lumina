@@ -1,19 +1,34 @@
 # Lumina DevGuide
 
-这份文档只写当前真实状态，方便继续接手，不写未来愿景。
+这份文档只写当前真实开发状态、接手时必须知道的事实，以及接下来更值得投入的方向。
 
-## 1. 项目定位
+## 1. 当前定位
 
-- 主环境固定为 `MuMu + 1920x1080`
-- 当前目标是把固定环境下的刷本主链路做稳
-- 现在不是通用框架，也不是多设备方案
+- Lumina 只服务 `FGO`
+- 当前唯一主目标环境是 `MuMu + 1920x1080`
+- 当前阶段目标不是通用化，而是把固定环境下的刷本主链路做稳
 
-## 2. 当前主链路
+## 2. 当前状态一览
+
+| 项目 | 状态 | 说明 |
+| --- | --- | --- |
+| 主菜单进本、编队确认、结算继续 | 已完成 | 主链路已能贯通 |
+| 战斗内波次、敌人数量、回合数读取 | 已完成 | 当前依赖固定区域 `OCR` |
+| 前排三位 `NP` 读取 | 已完成 | 当前依赖固定区域 `OCR` |
+| 前排九个技能位可用性判断 | 已完成 | 使用按钮主体和角落信息混合判断 |
+| 助战头像识别 | 进行中 | 已接入轻量人物头像向量核验，仍在持续校准 |
+| 界面状态识别 | 进行中 | 仍依赖模板匹配，稳定性继续补 |
+| 智能战斗 v1 | 进行中 | 已能按配置执行，但仍以保守策略为主 |
+| 多设备适配 | 未开始 | 当前不做 |
+| 后排、换人、御主技能智能判断 | 未开始 | 当前不做 |
+| 普通卡完整智能化 | 未开始 | 当前不做 |
+
+## 3. 当前主链路
 
 当前流程已经覆盖：
 
 1. 主菜单点击固定关卡入口
-2. 助战筛选、搜索目标从者、失败回退
+2. 助战筛选与目标助战查找
 3. 编队确认并开始任务
 4. 加载等待
 5. 战斗内释放技能、进入攻击、选卡
@@ -21,102 +36,167 @@
 
 后续改动默认以“不破坏这条链路”为前提。
 
-## 3. 战斗识别现状
+## 4. 当前识别现状
 
-### 3.1 已稳定接入
+### 4.1 界面状态识别
 
-- 当前波次：固定区域 `OCR`
-- 敌方剩余数量：固定区域 `OCR`
-- 当前回合数：固定区域 `OCR`
-- 前排三位从者 `NP`：固定区域 `OCR`
-- 前排九个技能位可用性：主体区域 + 角落小区域混合判断
+- 仍然主要依赖模板匹配
+- 这部分仍是当前项目里最脆弱的识别链之一
+- 继续补稳时，优先考虑固定环境下的准确率，不优先考虑通用化
 
-### 3.2 仍未使用
+### 4.2 战斗文字读取
 
-在 [core/coordinates.py](/D:/VSCodeRepository/Lumina/core/coordinates.py) 里：
+当前这些内容已经接入固定区域 `OCR`：
 
-- 从者生命值区域当前保留空位，不参与任何逻辑
-- 从者真名区域当前保留空位，不参与任何逻辑
-- 总波次区域已留坐标，但当前主判断仍只实际依赖当前波次
+- 当前波次
+- 敌方剩余数量
+- 当前回合数
+- 前排三位从者 `NP`
 
-### 3.3 技能可用性现状
+当前方向不是推翻 `OCR`，而是继续补真实样本和裁图校准。
+
+### 4.3 技能可用性判断
 
 当前技能判断不再是单一亮度判断。
 
 现在的规则是：
 
 - 先看技能按钮主体
-- 主体明显正常时，直接视为可点
+- 主体明显正常时直接放行
 - 主体偏暗或不稳时，再读左下和右下角的小区域
-- 读到冷却信息时，视为不能点
+- 读到冷却信息时，判定为不能点
 - 读不稳时，默认按不能点处理
 
-这套逻辑只服务前排九个固定技能位，不依赖每个从者单独做战斗技能模板。
+这套逻辑目前只服务前排九个固定技能位。
 
-## 4. 智能战斗 v1
+### 4.4 助战头像识别
 
-当前智能战斗 v1：
+当前助战识别已经不再走旧的黑白模板硬匹配。
 
-- 只处理先发三人
-- 前排身份由配置指定，不自动识别
-- 读取当前波次、敌方剩余、当前回合、主打手 `NP`、九个技能位可用性
-- 按 `smart_battle.frontline` 和 `wave_plan` 生成本回合动作
-- 已记录本战已用技能，避免重复点同一技能
-- 当前回合未变化时，不会重复执行同一轮智能判断
+现在的主链路是：
 
-## 5. 资源结构
+- 固定助战头像区域
+- 固定三个位候选
+- 对候选头像裁图
+- 用轻量人物头像向量模型做核验
+- 与目标从者正反例向量库比较
+- 分数和分差同时满足条件时才点击
+
+当前这套方法不是“只看像不像目标从者”，而是同时看两件事：
+
+- 它像不像目标从者正例库
+- 它像不像已知误判对象反例库
+
+当前向量库分为两部分：
+
+- 正例库：目标从者的 `atlas/faces` 原图，以及已确认命中的真实截图裁块
+- 反例库：正例截图里其他助战位的人物头像，以及已知误判截图里的高相似非目标头像
+
+当前最终分数的思路不是单看目标相似度，而是：
+
+- 正例相似度越高越好
+- 反例相似度越高扣分越多
+- 只有最终分数和第一名领先差值同时达线，才允许点击
+
+所以当前助战识别的主要调优方式，不是只改阈值，还包括：
+
+- 补目标从者正例
+- 补高相似非目标反例
+- 调整裁图范围
+- 重新生成向量库和默认阈值
+
+当前这条链已经能用，但仍处于校准阶段。
+近期开发的第一优先级就是继续把这条识别链补稳。
+
+## 5. 当前资源结构
 
 ### 5.1 `assets/ui`
 
-- 用于界面状态和常见按钮模板
-- 当前状态识别仍然高度依赖这一层
+- 用于界面状态和通用按钮模板
+- 当前界面状态识别仍高度依赖这里的资源
 
 ### 5.2 `assets/servants`
 
-- 当前只承担助战头像模板和从者资料
-- `manifest.yaml` 主要描述技能序号、目标类型、效果标签
-- 当前战斗内九个技能位的可用性判断，不依赖每个从者的战斗技能模板
+当前已经改成两层结构：
 
-## 6. 关键文件
+- 公共资料：`assets/servants/_meta/`
+- 单个从者：`assets/servants/<className>/<slug>/`
 
-- [core/workflow.py](/D:/VSCodeRepository/Lumina/core/workflow.py)
-  主流程状态机
-- [core/state_detector.py](/D:/VSCodeRepository/Lumina/core/state_detector.py)
-  界面状态识别
-- [core/image_recognizer.py](/D:/VSCodeRepository/Lumina/core/image_recognizer.py)
-  模板匹配
-- [core/battle_ocr.py](/D:/VSCodeRepository/Lumina/core/battle_ocr.py)
-  战斗 `OCR` 入口
-- [core/battle_snapshot.py](/D:/VSCodeRepository/Lumina/core/battle_snapshot.py)
-  战斗快照，负责波次、敌人、回合、`NP`、技能位判断
-- [core/smart_battle.py](/D:/VSCodeRepository/Lumina/core/smart_battle.py)
-  智能战斗决策
-- [core/coordinates.py](/D:/VSCodeRepository/Lumina/core/coordinates.py)
-  当前版本的固定坐标
-- [scripts/coordinate_picker.py](/D:/VSCodeRepository/Lumina/scripts/coordinate_picker.py)
-  坐标获取工具
+单个从者目录当前分为三块：
 
-## 7. 调试入口
+- `_meta/`：该从者自己的原始 JSON 和下载清单
+- `atlas/`：从 Atlas Academy 下载的原始图片库，也是唯一原始图片来源
+- `support/`：助战识别运行结果，例如 `support/generated/`
 
-- `DEBUG` 日志
-- [assets/screenshots/unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)
-- [assets/screenshots/ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)
-- [scripts/ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)
+助战识别原图现在直接从 `atlas/faces/` 读取，不再保留 `support/source/` 这种重复资源层。
 
-## 8. 当前明确限制
+## 6. 当前关键文件
 
-- 只按 `MuMu + 1920x1080` 调整
+- [workflow.py](/D:/VSCodeRepository/Lumina/core/workflow.py)：主流程状态机
+- [state_detector.py](/D:/VSCodeRepository/Lumina/core/state_detector.py)：界面状态识别
+- [image_recognizer.py](/D:/VSCodeRepository/Lumina/core/image_recognizer.py)：模板匹配基础能力
+- [battle_ocr.py](/D:/VSCodeRepository/Lumina/core/battle_ocr.py)：战斗 `OCR` 入口
+- [battle_snapshot.py](/D:/VSCodeRepository/Lumina/core/battle_snapshot.py)：战斗快照
+- [smart_battle.py](/D:/VSCodeRepository/Lumina/core/smart_battle.py)：智能战斗决策
+- [support_portrait_verification.py](/D:/VSCodeRepository/Lumina/core/support_portrait_verification.py)：助战人物头像核验
+- [portrait_embedding.py](/D:/VSCodeRepository/Lumina/core/portrait_embedding.py)：人物头像向量编码与向量库读写
+- [resources.py](/D:/VSCodeRepository/Lumina/core/resources.py)：资源定位
+- [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml)：运行配置
+
+## 7. 近期优先级
+
+### 7.1 第一优先级：助战识别
+
+当前最值得投入的是继续补稳助战识别，而不是往外扩功能。
+
+近期更值得做的事：
+
+1. 继续补正例和反例截图
+2. 调整助战裁图与阈值
+3. 压低误判，优先保证“不误点”
+4. 提高翻页、刷新、回退场景下的稳定性
+
+### 7.2 第二优先级：界面状态识别与 `OCR` 校准
+
+助战识别之后，更值得投入的是：
+
+1. 补状态识别截图样本
+2. 继续校准战斗文字裁图
+3. 继续减少 `UNKNOWN` 和低置信度场景
+
+### 7.3 第三优先级：智能战斗继续补稳
+
+当前智能战斗不是没有价值，而是优先级低于前两项。
+
+当前更合适的方向是：
+
+1. 继续稳住已有前排三人逻辑
+2. 继续减少读取不稳导致的保守降级
+3. 不急着扩到更复杂的战斗策略
+
+## 8. 中期路线图
+
+当前更合理的中期方向是：
+
+1. 继续把助战识别补稳，必要时扩大正反例库
+2. 继续优化状态识别和战斗 `OCR`
+3. 在主链路更稳后，再考虑更完整的战斗策略
+4. 如果轻量头像向量方案后续仍压不住误判，再视情况评估更强的人物识别模型
+
+当前不把 `YOLO` 或更重的整页检测模型作为默认下一步。
+
+## 9. 当前明确不做的事
+
 - 不做多设备适配
-- 不做御主技能智能判断
 - 不做后排和换人逻辑
+- 不做御主技能智能判断
 - 不做普通卡完整智能化
-- `tests/` 当前不维护
-- 不要改 [DevLog.md](/D:/VSCodeRepository/Lumina/DevLog.md) 和 [DevRecord.md](/D:/VSCodeRepository/Lumina/DevRecord.md)
+- 不主动扩展 `tests/`
+- 不改 [DevLog.md](/D:/VSCodeRepository/Lumina/DevLog.md) 和 [DevRecord.md](/D:/VSCodeRepository/Lumina/DevRecord.md)
 
-## 9. 下一步更值得投入的方向
+## 10. 接手时的判断原则
 
-按现在的代码形态，下一步更值得做的是：
-
-1. 优化或重构模板匹配方法，先处理状态识别和助战识别的脆弱点
-2. 继续补真实截图样本，校准战斗文字 `OCR`
-3. 在主链路稳定后，再考虑更完整的战斗策略
+- 优先稳主链路，不优先扩功能
+- 优先修识别误判，不优先追求更复杂策略
+- 先看当前真实资源和截图，再决定是否改代码
+- 文档优先写当前真实状态，不写过期规划

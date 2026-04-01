@@ -127,7 +127,6 @@ def ensure_manifest(servant_dir: Path, *, slug: str, display_name: str, class_na
 
 
 def ensure_support_dirs(servant_dir: Path) -> None:
-    (servant_dir / "support" / "source").mkdir(parents=True, exist_ok=True)
     (servant_dir / "support" / "generated").mkdir(parents=True, exist_ok=True)
 
 

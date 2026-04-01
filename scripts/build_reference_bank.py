@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
@@ -41,6 +40,9 @@ DEFAULT_POSITIVE_IMAGES = [
 DEFAULT_NEGATIVE_IMAGES = [
     "test_image/失败测试图片2.png",
     "test_image/失败测试图片3.png",
+    "test_image/失败测试图片4.png",
+    "test_image/失败测试图片5.png",
+    "test_image/失败测试图片6.png",
 ]
 SOURCE_FACE_CROP = (0, 0, 128, 96)
 
@@ -134,7 +136,7 @@ def main() -> int:
         expected_slot=args.expected_slot,
     )
 
-    _clear_generated_dir(generated_dir)
+    _clear_reference_outputs(generated_dir)
     save_reference_bank(generated_dir / "reference_bank.npz", bank)
     calibrated_meta.to_json(generated_dir / "reference_meta.json")
     if args.keep_preview:
@@ -332,12 +334,15 @@ def _safe_crop(
     return image_rgb[top:bottom, left:right]
 
 
-def _clear_generated_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
+def _clear_reference_outputs(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
-
-
+    for name in (
+        "reference_bank.npz",
+        "reference_meta.json",
+        "positive_preview.png",
+        "negative_preview.png",
+    ):
+        (path / name).unlink(missing_ok=True)
 def _write_preview(path: Path, vectors: np.ndarray) -> None:
     if vectors.size == 0:
         return
