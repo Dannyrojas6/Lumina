@@ -30,7 +30,7 @@ class DailyAction:
     """管理一次自动刷本流程的高层状态机。"""
 
     DEFAULT_CLICK_DELAY = 0.5
-    SUPPORT_CLICK_DELAY = 2.0
+    SUPPORT_CLICK_DELAY = 3.0
     SUPPORT_REFRESH_WAIT = 3.0
     LOADING_POLL_INTERVAL = 4.0
     BATTLE_ANIMATION_WAIT = 20.0
