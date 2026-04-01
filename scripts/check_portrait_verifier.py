@@ -18,7 +18,7 @@ from core.support_portrait_verification import SupportPortraitVerifier
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="离线检查人物头像向量核验结果")
-    parser.add_argument("--servant", required=True, help="从者目录名")
+    parser.add_argument("--servant", required=True, help="从者 slug")
     parser.add_argument(
         "--positive-images",
         nargs="+",

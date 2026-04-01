@@ -1,0 +1,31 @@
+servant_name: morgan
+display_name: Morgan
+class_name: berserker
+role: attacker
+support_template: support/portrait.png
+support_recognition:
+  source_dir: atlas/faces
+  source_glob: '**/*.png'
+  generated_dir: support/generated
+  reference_bank: support/generated/reference_bank.npz
+  reference_meta: support/generated/reference_meta.json
+skills:
+- skill_index: 1
+  effect_tags:
+  - buff_damage_team
+  target_type: team
+  priority_tags:
+  - burst
+  - buff
+- skill_index: 2
+  effect_tags:
+  - np_charge_single
+  target_type: ally_single
+  priority_tags:
+  - charge
+- skill_index: 3
+  effect_tags:
+  - survival_self
+  target_type: self
+  priority_tags:
+  - survival

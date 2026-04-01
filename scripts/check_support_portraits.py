@@ -17,7 +17,7 @@ from core.support_portrait_recognition import SupportPortraitMatcher
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="离线检查助战头像识别结果")
-    parser.add_argument("--servant", required=True, help="从者目录名")
+    parser.add_argument("--servant", required=True, help="从者 slug")
     parser.add_argument(
         "--images",
         nargs="+",

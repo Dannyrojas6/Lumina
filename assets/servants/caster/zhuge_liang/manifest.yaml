@@ -4,8 +4,8 @@ class_name: caster
 role: support
 support_template: support/portrait.png
 support_recognition:
-  source_dir: support/source
-  source_glob: "f_*.png"
+  source_dir: atlas/faces
+  source_glob: "**/*.png"
   generated_dir: support/generated
 skills:
   - skill_index: 1

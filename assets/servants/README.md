@@ -3,7 +3,7 @@
 当前 `assets/servants/` 分为两层：
 
 - 全局资料区：`assets/servants/_meta/`
-- 单个从者目录：`assets/servants/<servant_name>/`
+- 单个从者目录：`assets/servants/<className>/<slug>/`
 
 全局资料区当前按用途拆分：
 
@@ -14,13 +14,18 @@
 例如：
 
 - `assets/servants/_meta/scripts/build_servants_cn_en_min.py`
+- `assets/servants/_meta/scripts/download_servant_assets.py`
 - `assets/servants/_meta/indexes/servants_cn_en_min.json`
+
+公共下载脚本第一版按单个从者 ID 工作：
+
+`python assets/servants/_meta/scripts/download_servant_assets.py --id 704000`
 
 单个从者目录当前分为三块：
 
-- `_meta/`：该从者自己的原始 JSON、本地下载脚本和下载清单
-- `atlas/`：该从者从 Atlas Academy 直接下载的原始图片库
-- `support/`：助战头像识别用的本地资源。`support/source/` 放真正进入助战识别链的原图，`support/generated/` 放生成结果
+- `_meta/`：该从者自己的原始 JSON 和下载清单
+- `atlas/`：该从者从 Atlas Academy 直接下载的原始图片库，也是唯一原始图片来源
+- `support/`：助战头像识别用的本地资源。这里只保留运行结果，例如 `support/generated/`
 
 从者目录里的 `atlas/` 当前只收六类图片：
 
@@ -38,18 +43,17 @@
 
 因此单张图片的路径形式统一为：
 
-`assets/servants/<servant_name>/atlas/<type>/<group>/<key>.png`
+`assets/servants/<className>/<slug>/atlas/<type>/<group>/<key>.png`
 
 例如 Morgan：
 
-- `assets/servants/morgan/_meta/704000.json`
-- `assets/servants/morgan/_meta/download_assets.py`
-- `assets/servants/morgan/_meta/download_manifest.json`
-- `assets/servants/morgan/atlas/faces/ascension/1.png`
-- `assets/servants/morgan/atlas/faces/costume/704030.png`
-- `assets/servants/morgan/support/source/f_7040000.png`
-- `assets/servants/morgan/support/generated/reference_bank.npz`
+- `assets/servants/berserker/morgan/manifest.yaml`
+- `assets/servants/berserker/morgan/_meta/704000.json`
+- `assets/servants/berserker/morgan/_meta/download_manifest.json`
+- `assets/servants/berserker/morgan/atlas/faces/ascension/1.png`
+- `assets/servants/berserker/morgan/atlas/faces/costume/704030.png`
+- `assets/servants/berserker/morgan/support/generated/reference_bank.npz`
 
-`assets/servants/_meta/indexes/servants_cn_en_min.json` 是长期保留的公共从者索引，不是临时文件。
+`assets/servants/_meta/indexes/servants_cn_en_min.json` 是长期保留的公共从者索引，不是运行目录。
 
-从者目录里的 `atlas/` 是原始图片库，后续如果识别链需要其中某一类图，应当从 `atlas/` 挑选到专门的业务目录里使用，不直接把 `atlas/` 当运行目录。
+助战识别需要的原图也直接从 `atlas/faces/` 读取，不再额外复制一份到 `support/source/`。

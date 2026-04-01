@@ -16,7 +16,7 @@ from core.support_portrait_recognition import SupportPortraitGenerator
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成助战头像匹配模板")
-    parser.add_argument("--servant", help="指定单个从者目录名")
+    parser.add_argument("--servant", help="指定单个从者 slug")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -26,14 +26,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def iter_servants(resources: ResourceCatalog) -> list[str]:
-    servant_root = Path(resources.assets_dir) / "servants"
-    result: list[str] = []
-    for item in sorted(servant_root.iterdir()):
-        if not item.is_dir():
-            continue
-        if (item / "manifest.yaml").exists():
-            result.append(item.name)
-    return result
+    return resources.iter_servant_names()
 
 
 def main() -> int:

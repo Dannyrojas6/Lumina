@@ -1,6 +1,7 @@
 """统一管理截图输出路径和模板资源路径。"""
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -107,6 +108,37 @@ class ResourceCatalog:
         filename = class_templates.get(class_name, class_templates["all"])
         return self.template(filename, category="support_select")
 
+    @cached_property
+    def _servant_dirs(self) -> dict[str, Path]:
+        """缓存从 slug 到实际目录的映射。"""
+        servant_root = Path(self.assets_dir) / "servants"
+        directories: dict[str, Path] = {}
+        if not servant_root.exists():
+            return directories
+        for class_dir in sorted(servant_root.iterdir()):
+            if not class_dir.is_dir() or class_dir.name.startswith("_"):
+                continue
+            for servant_dir in sorted(class_dir.iterdir()):
+                manifest_path = servant_dir / "manifest.yaml"
+                if not servant_dir.is_dir() or not manifest_path.exists():
+                    continue
+                slug = servant_dir.name
+                if slug in directories:
+                    raise ValueError(f"duplicate servant slug detected: {slug}")
+                directories[slug] = servant_dir
+        return directories
+
+    def servant_dir(self, servant_name: str) -> Path:
+        """返回从者真实目录。"""
+        return self._servant_dirs.get(
+            servant_name,
+            Path(self.assets_dir) / "servants" / servant_name,
+        )
+
+    def iter_servant_names(self) -> list[str]:
+        """返回全部从者 slug 列表。"""
+        return sorted(self._servant_dirs.keys())
+
     def servant_template(
         self,
         servant_name: str,
@@ -114,9 +146,7 @@ class ResourceCatalog:
         filename: str = "portrait.png",
     ) -> str:
         """返回从者资料模板路径。"""
-        return str(
-            Path(self.assets_dir) / "servants" / servant_name / purpose / filename
-        )
+        return str(self.servant_dir(servant_name) / purpose / filename)
 
     def support_source_dir(
         self,
@@ -125,7 +155,7 @@ class ResourceCatalog:
     ) -> str:
         """返回助战头像原图目录。"""
         support = manifest.support_recognition if manifest else SupportRecognitionManifest()
-        return str(Path(self.assets_dir) / "servants" / servant_name / support.source_dir)
+        return str(self.servant_dir(servant_name) / support.source_dir)
 
     def support_generated_dir(
         self,
@@ -134,13 +164,11 @@ class ResourceCatalog:
     ) -> str:
         """返回助战头像生成模板目录。"""
         support = manifest.support_recognition if manifest else SupportRecognitionManifest()
-        return str(
-            Path(self.assets_dir) / "servants" / servant_name / support.generated_dir
-        )
+        return str(self.servant_dir(servant_name) / support.generated_dir)
 
     def servant_manifest_path(self, servant_name: str) -> str:
         """返回从者资料文件路径。"""
-        return str(Path(self.assets_dir) / "servants" / servant_name / "manifest.yaml")
+        return str(self.servant_dir(servant_name) / "manifest.yaml")
 
     def portrait_encoder_model(self) -> str:
         """返回人物头像编码模型路径。"""
@@ -153,7 +181,7 @@ class ResourceCatalog:
     ) -> str:
         """返回助战头像向量库路径。"""
         support = manifest.support_recognition if manifest else SupportRecognitionManifest()
-        return str(Path(self.assets_dir) / "servants" / servant_name / support.reference_bank)
+        return str(self.servant_dir(servant_name) / support.reference_bank)
 
     def support_reference_meta_path(
         self,
@@ -162,7 +190,7 @@ class ResourceCatalog:
     ) -> str:
         """返回助战头像向量库元数据路径。"""
         support = manifest.support_recognition if manifest else SupportRecognitionManifest()
-        return str(Path(self.assets_dir) / "servants" / servant_name / support.reference_meta)
+        return str(self.servant_dir(servant_name) / support.reference_meta)
 
     def load_servant_manifest(self, servant_name: str) -> ServantManifest | None:
         """加载单个从者资料。"""

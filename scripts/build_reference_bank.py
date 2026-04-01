@@ -47,7 +47,7 @@ SOURCE_FACE_CROP = (0, 0, 128, 96)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成人物头像向量库")
-    parser.add_argument("--servant", required=True, help="从者目录名")
+    parser.add_argument("--servant", required=True, help="从者 slug")
     parser.add_argument(
         "--positive-images",
         nargs="+",
@@ -172,7 +172,7 @@ def _build_reference_bank(
         image_rgb = rgba_to_rgb_on_black(image_rgba)
         square_positive_images.append(image_rgb)
         face_positive_images.append(_safe_crop(image_rgb, *SOURCE_FACE_CROP))
-        source_names.append(f"source:{source_path.name}")
+        source_names.append(f"source:{source_path.relative_to(source_dir)}")
 
     for image_path in positive_images:
         screen_rgb = load_rgb_image(image_path)
