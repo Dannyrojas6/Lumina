@@ -204,6 +204,7 @@ cython_debug/
 # Local tool caches
 .uv-cache/
 .uv_cache/
+local_data/
 
 # User local notes
 DevLog.md
