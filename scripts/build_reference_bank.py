@@ -20,6 +20,7 @@ from core.portrait_embedding import (
     PortraitEncoder,
     PortraitReferenceBank,
     PortraitReferenceMeta,
+    build_masked_portrait_views,
     ensure_portrait_encoder_model,
     load_rgba_image,
     load_rgb_image,
@@ -44,23 +45,33 @@ DEFAULT_NEGATIVE_IMAGES = [
     "test_image/失败测试图片5.png",
     "test_image/失败测试图片6.png",
 ]
-SOURCE_FACE_CROP = (0, 0, 128, 96)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成人物头像向量库")
-    parser.add_argument("--servant", required=True, help="从者 slug")
+    parser.add_argument("--servant", required=True, help="从者标识，例如 berserker/morgan")
     parser.add_argument(
         "--positive-images",
         nargs="+",
         default=[],
-        help="正例截图路径，留空时 Morgan 使用仓库内默认样本",
+        help="正例截图路径，留空时 berserker/morgan 使用仓库内默认样本",
     )
     parser.add_argument(
         "--negative-images",
         nargs="+",
         default=[],
-        help="反例截图路径，留空时 Morgan 使用仓库内默认样本",
+        help="反例截图路径，留空时 berserker/morgan 使用仓库内默认样本",
+    )
+    parser.add_argument(
+        "--negative-atlas-servants",
+        nargs="+",
+        default=[],
+        help="额外作为反例 atlas 的从者标识列表，例如 berserker/xiang_yu",
+    )
+    parser.add_argument(
+        "--negative-atlas-class-peers",
+        action="store_true",
+        help="将目标从者同职阶的其他本地从者 atlas 全部加入反例",
     )
     parser.add_argument(
         "--expected-slot",
@@ -80,8 +91,6 @@ def main() -> int:
     args = parse_args()
     resources = ResourceCatalog(str(REPO_ROOT / "assets"))
     manifest = resources.load_servant_manifest(args.servant)
-    if manifest is None:
-        raise FileNotFoundError(f"未找到从者资料：{args.servant}")
 
     positive_images = _resolve_sample_paths(
         args.positive_images,
@@ -93,6 +102,12 @@ def main() -> int:
         DEFAULT_NEGATIVE_IMAGES,
         args.servant,
     )
+    negative_atlas_servants = _resolve_negative_atlas_servants(
+        servant_name=args.servant,
+        resources=resources,
+        explicit_servants=args.negative_atlas_servants,
+        use_class_peers=args.negative_atlas_class_peers,
+    )
     generated_dir = Path(resources.support_generated_dir(args.servant, manifest))
 
     model_path = ensure_portrait_encoder_model(resources.portrait_encoder_model())
@@ -103,7 +118,8 @@ def main() -> int:
         image_size=24,
         embedding_dim=128,
         positive_samples=[path.name for path in positive_images],
-        negative_samples=[path.name for path in negative_images],
+        negative_samples=[path.name for path in negative_images]
+        + [f"atlas:{name}" for name in negative_atlas_servants],
     )
     bank = _build_reference_bank(
         servant_name=args.servant,
@@ -113,6 +129,7 @@ def main() -> int:
         meta=meta,
         positive_images=positive_images,
         negative_images=negative_images,
+        negative_atlas_servants=negative_atlas_servants,
         expected_slot=args.expected_slot,
     )
     verifier = SupportPortraitVerifier(
@@ -140,11 +157,22 @@ def main() -> int:
     save_reference_bank(generated_dir / "reference_bank.npz", bank)
     calibrated_meta.to_json(generated_dir / "reference_meta.json")
     if args.keep_preview:
-        _write_preview(generated_dir / "positive_preview.png", bank.square_positive)
-        _write_preview(generated_dir / "negative_preview.png", bank.square_negative)
+        _write_preview(
+            generated_dir / "positive_preview.png",
+            bank.masked_full_positive
+            if bank.masked_full_positive is not None
+            else bank.square_positive,
+        )
+        _write_preview(
+            generated_dir / "negative_preview.png",
+            bank.masked_full_negative
+            if bank.masked_full_negative is not None
+            else bank.square_negative,
+        )
 
     print(
         f"{args.servant}: positive={len(positive_images)} negative={len(negative_images)} "
+        f"negative_atlas={len(negative_atlas_servants)} "
         f"min_score={calibrated_meta.min_score:.3f} min_margin={calibrated_meta.min_margin:.3f}"
     )
     return 0
@@ -159,6 +187,7 @@ def _build_reference_bank(
     meta: PortraitReferenceMeta,
     positive_images: list[Path],
     negative_images: list[Path],
+    negative_atlas_servants: list[str],
     expected_slot: int,
 ) -> PortraitReferenceBank:
     source_dir = Path(resources.support_source_dir(servant_name, manifest))
@@ -166,52 +195,90 @@ def _build_reference_bank(
     if not source_paths:
         raise FileNotFoundError(f"未找到 atlas 原图：{source_dir}")
 
-    square_positive_images: list[np.ndarray] = []
-    face_positive_images: list[np.ndarray] = []
+    masked_full_positive_images: list[np.ndarray] = []
+    masked_face_positive_images: list[np.ndarray] = []
     source_names: list[str] = []
     for source_path in source_paths:
         image_rgba = load_rgba_image(source_path)
         image_rgb = rgba_to_rgb_on_black(image_rgba)
-        square_positive_images.append(image_rgb)
-        face_positive_images.append(_safe_crop(image_rgb, *SOURCE_FACE_CROP))
+        masked_full, masked_face = build_masked_portrait_views(
+            image_rgb,
+            base_size=meta.base_size,
+            ignore_regions=meta.ignore_regions,
+            masked_face_crop=meta.masked_face_crop,
+        )
+        masked_full_positive_images.append(masked_full)
+        masked_face_positive_images.append(masked_face)
         source_names.append(f"source:{source_path.relative_to(source_dir)}")
 
     for image_path in positive_images:
         screen_rgb = load_rgb_image(image_path)
         expected_region = GameCoordinates.SUPPORT_PORTRAIT_SLOT_REGIONS[expected_slot]
-        square_crop, face_crop = _slot_views(screen_rgb, expected_region, meta)
-        square_positive_images.append(square_crop)
-        face_positive_images.append(face_crop)
+        masked_full_crop, masked_face_crop = _slot_views(screen_rgb, expected_region, meta)
+        masked_full_positive_images.append(masked_full_crop)
+        masked_face_positive_images.append(masked_face_crop)
         source_names.append(f"positive:{image_path.name}")
 
-    square_negative_images: list[np.ndarray] = []
-    face_negative_images: list[np.ndarray] = []
+    masked_full_negative_images: list[np.ndarray] = []
+    masked_face_negative_images: list[np.ndarray] = []
     negative_names: list[str] = []
+    for negative_servant in negative_atlas_servants:
+        negative_manifest = resources.load_servant_manifest(negative_servant)
+        negative_source_dir = Path(
+            resources.support_source_dir(negative_servant, negative_manifest)
+        )
+        negative_source_paths = sorted(
+            negative_source_dir.glob(negative_manifest.support_recognition.source_glob)
+        )
+        if not negative_source_paths:
+            raise FileNotFoundError(f"未找到 atlas 反例原图：{negative_source_dir}")
+        for negative_source_path in negative_source_paths:
+            image_rgba = load_rgba_image(negative_source_path)
+            image_rgb = rgba_to_rgb_on_black(image_rgba)
+            masked_full, masked_face = build_masked_portrait_views(
+                image_rgb,
+                base_size=meta.base_size,
+                ignore_regions=meta.ignore_regions,
+                masked_face_crop=meta.masked_face_crop,
+            )
+            masked_full_negative_images.append(masked_full)
+            masked_face_negative_images.append(masked_face)
+            negative_names.append(
+                f"atlas:{negative_servant}:{negative_source_path.relative_to(negative_source_dir)}"
+            )
     for image_path in positive_images:
         screen_rgb = load_rgb_image(image_path)
         for slot_index, region in GameCoordinates.SUPPORT_PORTRAIT_SLOT_REGIONS.items():
             if slot_index == expected_slot:
                 continue
-            square_crop, face_crop = _slot_views(screen_rgb, region, meta)
-            square_negative_images.append(square_crop)
-            face_negative_images.append(face_crop)
+            masked_full_crop, masked_face_crop = _slot_views(screen_rgb, region, meta)
+            masked_full_negative_images.append(masked_full_crop)
+            masked_face_negative_images.append(masked_face_crop)
             negative_names.append(f"positive_other:{image_path.name}:slot{slot_index}")
     for image_path in negative_images:
         screen_rgb = load_rgb_image(image_path)
         for slot_index, region in GameCoordinates.SUPPORT_PORTRAIT_SLOT_REGIONS.items():
-            square_crop, face_crop = _slot_views(screen_rgb, region, meta)
-            square_negative_images.append(square_crop)
-            face_negative_images.append(face_crop)
+            masked_full_crop, masked_face_crop = _slot_views(screen_rgb, region, meta)
+            masked_full_negative_images.append(masked_full_crop)
+            masked_face_negative_images.append(masked_face_crop)
             negative_names.append(f"negative:{image_path.name}:slot{slot_index}")
 
+    encoded_masked_full_positive = encoder.encode_batch(masked_full_positive_images)
+    encoded_masked_face_positive = encoder.encode_batch(masked_face_positive_images)
+    encoded_masked_full_negative = encoder.encode_batch(masked_full_negative_images)
+    encoded_masked_face_negative = encoder.encode_batch(masked_face_negative_images)
     return PortraitReferenceBank(
         servant_name=servant_name,
-        square_positive=encoder.encode_batch(square_positive_images),
-        face_positive=encoder.encode_batch(face_positive_images),
-        square_negative=encoder.encode_batch(square_negative_images),
-        face_negative=encoder.encode_batch(face_negative_images),
+        square_positive=encoded_masked_full_positive,
+        face_positive=encoded_masked_face_positive,
+        square_negative=encoded_masked_full_negative,
+        face_negative=encoded_masked_face_negative,
         source_names=source_names,
         negative_names=negative_names,
+        masked_full_positive=encoded_masked_full_positive,
+        masked_face_positive=encoded_masked_face_positive,
+        masked_full_negative=encoded_masked_full_negative,
+        masked_face_negative=encoded_masked_face_negative,
     )
 
 
@@ -274,6 +341,9 @@ def _calibrate_meta(
         min_margin=float(min_margin),
         portrait_crop=base_meta.portrait_crop,
         face_crop=base_meta.face_crop,
+        base_size=base_meta.base_size,
+        ignore_regions=base_meta.ignore_regions,
+        masked_face_crop=base_meta.masked_face_crop,
         positive_samples=base_meta.positive_samples,
         negative_samples=base_meta.negative_samples,
     )
@@ -284,7 +354,7 @@ def _resolve_sample_paths(
     defaults: list[str],
     servant_name: str,
 ) -> list[Path]:
-    raw_paths = provided or (defaults if servant_name == "morgan" else [])
+    raw_paths = provided or (defaults if servant_name == "berserker/morgan" else [])
     if not raw_paths:
         return []
     paths = [REPO_ROOT / item for item in raw_paths]
@@ -294,27 +364,42 @@ def _resolve_sample_paths(
     return paths
 
 
+def _resolve_negative_atlas_servants(
+    *,
+    servant_name: str,
+    resources: ResourceCatalog,
+    explicit_servants: list[str],
+    use_class_peers: bool,
+) -> list[str]:
+    normalized_target = servant_name.replace("\\", "/").strip().strip("/")
+    resolved: set[str] = {
+        item.replace("\\", "/").strip().strip("/")
+        for item in explicit_servants
+        if item.strip()
+    }
+    if use_class_peers and "/" in normalized_target:
+        target_class = normalized_target.split("/", 1)[0]
+        for candidate in resources.iter_servant_names():
+            if candidate == normalized_target:
+                continue
+            if candidate.split("/", 1)[0] != target_class:
+                continue
+            resolved.add(candidate)
+    return sorted(resolved)
+
+
 def _slot_views(
     screen_rgb: np.ndarray,
     region: tuple[int, int, int, int],
     meta: PortraitReferenceMeta,
 ) -> tuple[np.ndarray, np.ndarray]:
-    x1, y1, _, _ = region
-    square_crop = _safe_crop(
-        screen_rgb,
-        x1 + meta.portrait_crop[0],
-        y1 + meta.portrait_crop[1],
-        x1 + meta.portrait_crop[2],
-        y1 + meta.portrait_crop[3],
+    slot_crop = _safe_crop(screen_rgb, *region)
+    return build_masked_portrait_views(
+        slot_crop,
+        base_size=meta.base_size,
+        ignore_regions=meta.ignore_regions,
+        masked_face_crop=meta.masked_face_crop,
     )
-    face_crop = _safe_crop(
-        screen_rgb,
-        x1 + meta.face_crop[0],
-        y1 + meta.face_crop[1],
-        x1 + meta.face_crop[2],
-        y1 + meta.face_crop[3],
-    )
-    return square_crop, face_crop
 
 
 def _safe_crop(

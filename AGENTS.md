@@ -28,8 +28,16 @@
 ## 资源与目录规则
 
 - Python 依赖只用 `uv` 管理；不用 `pip`，除非用户明确要求。
-- 公共从者资料固定在 `assets/servants/_meta/`。
-- 单个从者目录固定在 `assets/servants/<className>/<slug>/`。
+- Python 环境与依赖操作默认只用项目根目录的 `.venv`；当前仓库已有 `.venv` 时，必须直接复用，不切到系统 Python、全局环境或其他虚拟环境。
+- 当前仓库以 [pyproject.toml](/D:/VSCodeRepository/Lumina/pyproject.toml) 为准；同步依赖只用 `uv sync`。
+- 默认 Python 版本按 `3.12` 处理，除非项目文件已明确要求别的版本。
+- 整个任务期间只使用同一个已选中的 Python 环境，不混用项目 `.venv` 和外部环境。
+- 运行 Python 脚本、测试和验证时，默认直接使用项目 `.venv\Scripts\python.exe`；除非用户明确要求，不使用 `uv run` 作为执行入口。
+- 不隐式安装依赖；需要变更依赖时，明确用 `uv` 执行。
+- 不在项目目录外创建额外虚拟环境。
+- 不在仓库内创建 `.uv-cache/`、`.uv_cache/` 等临时缓存目录；如任务中误产生，必须清理干净。
+- 仓库内公共从者资料固定在 `assets/servants/_meta/`。
+- 本地从者资源目录固定在 `local_data/servants/<className>/<slug>/`。
 - 从者原始图片只认 `atlas/`；`atlas/` 是唯一原始图片来源。
 - `support/` 只保留运行和生成结果；原始图不放进 `support/`。
 - 不允许再造 `support/source` 这类重复资源层。

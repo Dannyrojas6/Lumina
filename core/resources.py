@@ -14,8 +14,8 @@ from core.game_state import GameState
 class SupportRecognitionManifest:
     """描述助战头像识别资源布局。"""
 
-    source_dir: str = "support/source"
-    source_glob: str = "f_*.png"
+    source_dir: str = "atlas/faces"
+    source_glob: str = "**/*.png"
     generated_dir: str = "support/generated"
     reference_bank: str = "support/generated/reference_bank.npz"
     reference_meta: str = "support/generated/reference_meta.json"
@@ -51,6 +51,7 @@ class ResourceCatalog:
     """集中维护当前项目使用的图片资源位置。"""
 
     assets_dir: str = "assets"
+    servants_dir: str = "local_data/servants"
     legacy_ui_dir: str = "assets/ui"
     screen_path: str = "assets/screenshots/screen.png"
     ocr_debug_dir: str = "assets/screenshots/ocr"
@@ -110,8 +111,8 @@ class ResourceCatalog:
 
     @cached_property
     def _servant_dirs(self) -> dict[str, Path]:
-        """缓存从 slug 到实际目录的映射。"""
-        servant_root = Path(self.assets_dir) / "servants"
+        """缓存从完整从者标识到实际目录的映射。"""
+        servant_root = Path(self.servants_dir)
         directories: dict[str, Path] = {}
         if not servant_root.exists():
             return directories
@@ -122,22 +123,24 @@ class ResourceCatalog:
                 manifest_path = servant_dir / "manifest.yaml"
                 if not servant_dir.is_dir() or not manifest_path.exists():
                     continue
-                slug = servant_dir.name
-                if slug in directories:
-                    raise ValueError(f"duplicate servant slug detected: {slug}")
-                directories[slug] = servant_dir
+                servant_key = f"{class_dir.name}/{servant_dir.name}"
+                directories[servant_key] = servant_dir
         return directories
 
     def servant_dir(self, servant_name: str) -> Path:
         """返回从者真实目录。"""
-        return self._servant_dirs.get(
-            servant_name,
-            Path(self.assets_dir) / "servants" / servant_name,
-        )
+        normalized_name = self._normalize_servant_name(servant_name)
+        servant_dir = self._servant_dirs.get(normalized_name)
+        if servant_dir is not None:
+            return servant_dir
+        raise FileNotFoundError(self._missing_servant_message(normalized_name))
 
     def iter_servant_names(self) -> list[str]:
-        """返回全部从者 slug 列表。"""
-        return sorted(self._servant_dirs.keys())
+        """返回全部完整从者标识列表。"""
+        servant_names = sorted(self._servant_dirs.keys())
+        if servant_names:
+            return servant_names
+        raise FileNotFoundError(self._missing_servant_message())
 
     def servant_template(
         self,
@@ -192,11 +195,9 @@ class ResourceCatalog:
         support = manifest.support_recognition if manifest else SupportRecognitionManifest()
         return str(self.servant_dir(servant_name) / support.reference_meta)
 
-    def load_servant_manifest(self, servant_name: str) -> ServantManifest | None:
+    def load_servant_manifest(self, servant_name: str) -> ServantManifest:
         """加载单个从者资料。"""
         manifest_path = Path(self.servant_manifest_path(servant_name))
-        if not manifest_path.exists():
-            return None
         with manifest_path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
         if not isinstance(data, dict):
@@ -210,10 +211,12 @@ class ResourceCatalog:
         else:
             support_recognition = _parse_support_recognition(support_data)
         skills = [_parse_servant_skill(item) for item in skills_data]
+        servant_dir = manifest_path.parent
+        default_class_name = servant_dir.parent.name
         return ServantManifest(
-            servant_name=str(data.get("servant_name", servant_name)),
+            servant_name=self._normalize_servant_name(servant_name),
             display_name=str(data.get("display_name", "")),
-            class_name=str(data.get("class_name", "")),
+            class_name=str(data.get("class_name", default_class_name)),
             role=str(data.get("role", "")),
             support_template=str(data.get("support_template", "support/portrait.png")),
             support_recognition=support_recognition,
@@ -227,6 +230,44 @@ class ResourceCatalog:
         if legacy.exists():
             return str(legacy)
         return str(preferred)
+
+    def _normalize_servant_name(self, servant_name: str) -> str:
+        return str(servant_name).replace("\\", "/").strip().strip("/")
+
+    def _matching_servant_names(self, servant_name: str) -> list[str]:
+        normalized_name = self._normalize_servant_name(servant_name)
+        return [
+            name
+            for name in sorted(self._servant_dirs.keys())
+            if name.endswith(f"/{normalized_name}")
+        ]
+
+    def _missing_servant_message(self, servant_name: str | None = None) -> str:
+        servant_root = Path(self.servants_dir)
+        download_hint = (
+            "请先运行 "
+            "`uv run python assets/servants/_meta/scripts/download_servant_assets.py` "
+            "把需要的从者资源下载到本地。"
+        )
+        if servant_name:
+            examples = self._matching_servant_names(servant_name)
+            format_hint = "从者标识必须写成 `className/slug`，例如 `berserker/morgan`。"
+            if examples:
+                example_text = "、".join(f"`{name}`" for name in examples[:5])
+                extra_hint = f"可用写法：{example_text}。"
+            else:
+                extra_hint = ""
+            return (
+                f"未找到从者本地资源：{servant_name}。"
+                f"当前只认 `{servant_root}`。"
+                f"{format_hint}"
+                f"{extra_hint}"
+                f"{download_hint}"
+            )
+        return (
+            f"未找到本地从者资源目录，或目录为空：`{servant_root}`。"
+            f"{download_hint}"
+        )
 
 
 def _parse_servant_skill(data: Any) -> ServantSkillManifest:
@@ -261,8 +302,8 @@ def _parse_support_recognition(data: Any) -> SupportRecognitionManifest:
     if not isinstance(data, dict):
         raise TypeError("support_recognition must be a mapping")
     return SupportRecognitionManifest(
-        source_dir=str(data.get("source_dir", "support/source")),
-        source_glob=str(data.get("source_glob", "f_*.png")),
+        source_dir=str(data.get("source_dir", "atlas/faces")),
+        source_glob=str(data.get("source_glob", "**/*.png")),
         generated_dir=str(data.get("generated_dir", "support/generated")),
         reference_bank=str(
             data.get("reference_bank", "support/generated/reference_bank.npz")

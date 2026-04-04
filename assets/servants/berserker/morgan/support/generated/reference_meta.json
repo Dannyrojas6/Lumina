@@ -1,13 +1,13 @@
 {
-  "servant_name": "morgan",
+  "servant_name": "berserker/morgan",
   "model_path": "models\\portrait_encoder.onnx",
   "image_size": 24,
   "embedding_dim": 128,
   "square_weight": 0.4,
   "face_weight": 0.6,
   "negative_penalty": 0.85,
-  "min_score": 0.3723698437213898,
-  "min_margin": 0.3723698437213898,
+  "min_score": 0.4151060289144517,
+  "min_margin": 0.4151060289144517,
   "portrait_crop": [
     24,
     18,
@@ -20,12 +20,54 @@
     150,
     128
   ],
+  "base_size": [
+    240,
+    260
+  ],
+  "ignore_regions": [
+    [
+      0,
+      190,
+      240,
+      260
+    ],
+    [
+      0,
+      0,
+      68,
+      66
+    ],
+    [
+      77,
+      13,
+      223,
+      43
+    ],
+    [
+      113,
+      148,
+      230,
+      186
+    ],
+    [
+      197,
+      113,
+      231,
+      146
+    ]
+  ],
+  "masked_face_crop": [
+    57,
+    45,
+    195,
+    149
+  ],
   "positive_samples": [
     "助战选择界面摩根1.png",
     "助战选择界面摩根2.png",
     "助战选择界面摩根3.png",
-    "助战选择界面摩根5.png",
-    "失败测试图片.png"
+    "助战选择界面摩根3_1.png",
+    "助战选择界面摩根5.png"
   ],
   "negative_samples": [
     "失败测试图片2.png",

@@ -17,6 +17,7 @@ from core.portrait_embedding import (
     PortraitEncoder,
     PortraitReferenceBank,
     PortraitReferenceMeta,
+    build_masked_portrait_views,
     cosine_similarity,
     load_reference_bank,
     write_png,
@@ -41,12 +42,28 @@ class SupportPortraitSlotScore:
     click_position: tuple[int, int]
     positive_score: float
     negative_score: float
-    square_positive: float
-    face_positive: float
-    square_negative: float
-    face_negative: float
+    masked_full_positive: float
+    masked_face_positive: float
+    masked_full_negative: float
+    masked_face_negative: float
     best_positive_name: str = ""
     best_negative_name: str = ""
+
+    @property
+    def square_positive(self) -> float:
+        return self.masked_full_positive
+
+    @property
+    def face_positive(self) -> float:
+        return self.masked_face_positive
+
+    @property
+    def square_negative(self) -> float:
+        return self.masked_full_negative
+
+    @property
+    def face_negative(self) -> float:
+        return self.masked_face_negative
 
 
 @dataclass(frozen=True)
@@ -223,6 +240,13 @@ class SupportPortraitVerifier:
         write_png(save_path, annotated)
         self._prune_debug_dir(debug_dir)
 
+    def build_annotated_image(
+        self,
+        screen_rgb: np.ndarray,
+        analysis: SupportPortraitVerification,
+    ) -> np.ndarray:
+        return _annotate_support_screen(screen_rgb, analysis)
+
     def _score_offset(
         self,
         screen_rgb: np.ndarray,
@@ -244,16 +268,21 @@ class SupportPortraitVerifier:
                         click_position=click_position,
                         positive_score=0.0,
                         negative_score=0.0,
-                        square_positive=0.0,
-                        face_positive=0.0,
-                        square_negative=0.0,
-                        face_negative=0.0,
+                        masked_full_positive=0.0,
+                        masked_face_positive=0.0,
+                        masked_full_negative=0.0,
+                        masked_face_negative=0.0,
                     )
                 )
                 continue
-            portrait_crop = _crop_relative(screen_rgb, region, self.meta.portrait_crop)
-            face_crop = _crop_relative(screen_rgb, region, self.meta.face_crop)
-            if portrait_crop.size == 0 or face_crop.size == 0:
+            slot_crop = _safe_crop(screen_rgb, *region)
+            masked_full_crop, masked_face_crop = build_masked_portrait_views(
+                slot_crop,
+                base_size=self.meta.base_size,
+                ignore_regions=self.meta.ignore_regions,
+                masked_face_crop=self.meta.masked_face_crop,
+            )
+            if masked_full_crop.size == 0 or masked_face_crop.size == 0:
                 slot_scores.append(
                     SupportPortraitSlotScore(
                         slot_index=slot_index,
@@ -262,29 +291,33 @@ class SupportPortraitVerifier:
                         click_position=click_position,
                         positive_score=0.0,
                         negative_score=0.0,
-                        square_positive=0.0,
-                        face_positive=0.0,
-                        square_negative=0.0,
-                        face_negative=0.0,
+                        masked_full_positive=0.0,
+                        masked_face_positive=0.0,
+                        masked_full_negative=0.0,
+                        masked_face_negative=0.0,
                     )
                 )
                 continue
             pending.append((slot_index, region, click_position))
-            images.extend((portrait_crop, face_crop))
+            images.extend((masked_full_crop, masked_face_crop))
 
-        embeddings = self.encoder.encode_batch(images) if images else np.empty((0, 128), dtype=np.float32)
+        embeddings = (
+            self.encoder.encode_batch(images)
+            if images
+            else np.empty((0, self.meta.embedding_dim), dtype=np.float32)
+        )
         pending_index = 0
         complete_scores = {item.slot_index: item for item in slot_scores}
         for slot_index, region, click_position in pending:
-            square_vector = embeddings[pending_index]
-            face_vector = embeddings[pending_index + 1]
+            masked_full_vector = embeddings[pending_index]
+            masked_face_vector = embeddings[pending_index + 1]
             pending_index += 2
             complete_scores[slot_index] = self._score_slot(
                 slot_index=slot_index,
                 region=region,
                 click_position=click_position,
-                square_vector=square_vector,
-                face_vector=face_vector,
+                masked_full_vector=masked_full_vector,
+                masked_face_vector=masked_face_vector,
             )
         return [complete_scores[index] for index in sorted(complete_scores)]
 
@@ -294,36 +327,56 @@ class SupportPortraitVerifier:
         slot_index: int,
         region: tuple[int, int, int, int],
         click_position: tuple[int, int],
-        square_vector: np.ndarray,
-        face_vector: np.ndarray,
+        masked_full_vector: np.ndarray,
+        masked_face_vector: np.ndarray,
     ) -> SupportPortraitSlotScore:
-        square_positive_scores = cosine_similarity(square_vector, self.bank.square_positive)
-        face_positive_scores = cosine_similarity(face_vector, self.bank.face_positive)
-        square_negative_scores = cosine_similarity(square_vector, self.bank.square_negative)
-        face_negative_scores = cosine_similarity(face_vector, self.bank.face_negative)
+        masked_full_positive_scores = cosine_similarity(
+            masked_full_vector,
+            self.bank.masked_full_positive
+            if self.bank.masked_full_positive is not None
+            else self.bank.square_positive,
+        )
+        masked_face_positive_scores = cosine_similarity(
+            masked_face_vector,
+            self.bank.masked_face_positive
+            if self.bank.masked_face_positive is not None
+            else self.bank.face_positive,
+        )
+        masked_full_negative_scores = cosine_similarity(
+            masked_full_vector,
+            self.bank.masked_full_negative
+            if self.bank.masked_full_negative is not None
+            else self.bank.square_negative,
+        )
+        masked_face_negative_scores = cosine_similarity(
+            masked_face_vector,
+            self.bank.masked_face_negative
+            if self.bank.masked_face_negative is not None
+            else self.bank.face_negative,
+        )
 
-        square_positive = float(square_positive_scores.max(initial=0.0))
-        face_positive = float(face_positive_scores.max(initial=0.0))
-        square_negative = float(square_negative_scores.max(initial=0.0))
-        face_negative = float(face_negative_scores.max(initial=0.0))
+        masked_full_positive = float(masked_full_positive_scores.max(initial=0.0))
+        masked_face_positive = float(masked_face_positive_scores.max(initial=0.0))
+        masked_full_negative = float(masked_full_negative_scores.max(initial=0.0))
+        masked_face_negative = float(masked_face_negative_scores.max(initial=0.0))
         positive_score = (
-            self.meta.square_weight * square_positive
-            + self.meta.face_weight * face_positive
+            self.meta.square_weight * masked_full_positive
+            + self.meta.face_weight * masked_face_positive
         )
         negative_score = (
-            self.meta.square_weight * square_negative
-            + self.meta.face_weight * face_negative
+            self.meta.square_weight * masked_full_negative
+            + self.meta.face_weight * masked_face_negative
         )
         final_score = positive_score - (self.meta.negative_penalty * negative_score)
         best_positive_name = _best_name(
             self.bank.source_names,
-            square_positive_scores,
-            face_positive_scores,
+            masked_full_positive_scores,
+            masked_face_positive_scores,
         )
         best_negative_name = _best_name(
             self.bank.negative_names,
-            square_negative_scores,
-            face_negative_scores,
+            masked_full_negative_scores,
+            masked_face_negative_scores,
         )
         return SupportPortraitSlotScore(
             slot_index=slot_index,
@@ -332,10 +385,10 @@ class SupportPortraitVerifier:
             click_position=click_position,
             positive_score=float(positive_score),
             negative_score=float(negative_score),
-            square_positive=square_positive,
-            face_positive=face_positive,
-            square_negative=square_negative,
-            face_negative=face_negative,
+            masked_full_positive=masked_full_positive,
+            masked_face_positive=masked_face_positive,
+            masked_full_negative=masked_full_negative,
+            masked_face_negative=masked_face_negative,
             best_positive_name=best_positive_name,
             best_negative_name=best_negative_name,
         )

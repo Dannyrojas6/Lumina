@@ -59,7 +59,7 @@ uv run .\main.py
 
 - 界面状态：模板匹配
 - 战斗文字：固定区域 `OCR`
-- 助战头像：固定区域 + 人物头像向量核验
+- 助战头像：固定三个位区域 + 遮挡排除 + 双路人物头像向量核验
 - 技能可用性：按钮主体和角落信息的混合判断
 
 ## 从者资源
@@ -89,6 +89,7 @@ uv run .\main.py
 - [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
 - [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
 - [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
+- [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证
 
 ## 相关文档
 
