@@ -33,6 +33,8 @@ class DailyAction:
     SUPPORT_REFRESH_WAIT = 3.0
     LOADING_POLL_INTERVAL = 4.0
     BATTLE_ANIMATION_WAIT = 20.0
+    POST_CARD_MIN_WAIT = 3.0
+    POST_CARD_POLL_INTERVAL = 1.0
 
     def __init__(
         self,
@@ -125,6 +127,11 @@ class DailyAction:
             self._latest_screen_rgb, cv2.COLOR_RGB2GRAY
         )
         return self.resources.screen_path
+
+    def _sleep_with_log(self, seconds: float, message: str) -> None:
+        """对较长等待补一条明确日志，避免误判为卡死。"""
+        log.info("%s，等待 %.1f 秒", message, seconds)
+        time.sleep(seconds)
 
     def _get_latest_screen_image(self) -> np.ndarray:
         """返回最近一次刷新的灰度截图。"""
@@ -404,7 +411,19 @@ class DailyAction:
         np_statuses = self._read_np_statuses_with_retry()
         card_plan = self.build_card_plan(np_statuses)
         self.execute_card_plan(card_plan)
-        time.sleep(self.BATTLE_ANIMATION_WAIT)
+        self._wait_after_card_plan()
+
+    def _wait_after_card_plan(self) -> None:
+        """出卡后先给动画最短缓冲，再等待画面离开选卡界面。"""
+        self._sleep_with_log(self.POST_CARD_MIN_WAIT, "已完成出卡，等待战斗动画起步")
+        deadline = time.time() + max(0.0, self.BATTLE_ANIMATION_WAIT - self.POST_CARD_MIN_WAIT)
+        while time.time() < deadline:
+            detection = self.state_detector.detect()
+            if detection.state not in (GameState.CARD_SELECT, GameState.UNKNOWN):
+                log.info("战斗动画结束，当前已切换到 %s", detection.state.name)
+                return
+            time.sleep(self.POST_CARD_POLL_INTERVAL)
+        log.warning("战斗动画等待超时，继续后续流程")
 
     def handle_battle_result(self) -> None:
         """处理结算界面，并按模板完成收尾点击。"""

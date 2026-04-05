@@ -208,6 +208,7 @@ local_data/
 
 # User local notes
 DevLog.md
+DevRecord.md
 
 # Runtime screenshots and OCR debug outputs
 assets/screenshots/

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from adbutils import AdbDevice, adb
+from adbutils.errors import AdbError
 from PIL import Image
 
 log = logging.getLogger("core.adb_controller")
@@ -53,10 +54,13 @@ class AdbController:
     BASE_H: int = 1080
     DEVICE_DISCOVERY_TIMEOUT: float = 8.0
     DEVICE_DISCOVERY_INTERVAL: float = 0.5
+    OPERATION_RETRY_COUNT: int = 3
+    OPERATION_RETRY_DELAY: float = 0.5
 
     def __init__(self, serial: Optional[str] = None) -> None:
         start_adb_server()
         self.device: AdbDevice = self._connect(serial)
+        self._device_serial: str = self.device.serial
         self._scale_x, self._scale_y = self._calc_scale()
 
     def _connect(self, serial: Optional[str]) -> AdbDevice:
@@ -100,7 +104,7 @@ class AdbController:
 
     def _read_resolution(self) -> tuple[int, int]:
         """尽量从稳定来源读取设备分辨率。"""
-        wm_size = self.device.shell("wm size")
+        wm_size = self._run_with_retry("read_resolution", lambda: self.device.shell("wm size"))
         matched = re.search(r"(\d+)x(\d+)", wm_size)
         if matched:
             return int(matched.group(1)), int(matched.group(2))
@@ -120,6 +124,52 @@ class AdbController:
 
         raise RuntimeError(f"failed to read device resolution from adb: {info}")
 
+    def _is_retryable_error(self, exc: Exception) -> bool:
+        """判断当前异常是否适合尝试重新连接设备。"""
+        if isinstance(exc, (AdbError, BrokenPipeError, ConnectionResetError, TimeoutError, OSError)):
+            return True
+        return "closed" in str(exc).lower()
+
+    def _reconnect_device(self) -> None:
+        """按上一次的序列号重新获取设备对象。"""
+        start_adb_server()
+        deadline = time.time() + self.DEVICE_DISCOVERY_TIMEOUT
+        last_serials: list[str] = []
+        while time.time() < deadline:
+            devices = adb.device_list()
+            last_serials = [device.serial for device in devices]
+            if self._device_serial in last_serials:
+                self.device = adb.device(serial=self._device_serial)
+                return
+            time.sleep(self.DEVICE_DISCOVERY_INTERVAL)
+        raise RuntimeError(
+            "adb reconnect timed out for "
+            f"serial={self._device_serial}; current_devices={last_serials}"
+        )
+
+    def _run_with_retry(self, action_name: str, operation):
+        """对偶发 adb 断连做最小重试。"""
+        last_exc: Exception | None = None
+        for attempt in range(1, self.OPERATION_RETRY_COUNT + 1):
+            try:
+                return operation()
+            except Exception as exc:  # pragma: no cover - 依赖真实 adb 环境
+                last_exc = exc
+                if not self._is_retryable_error(exc) or attempt >= self.OPERATION_RETRY_COUNT:
+                    raise
+                log.warning(
+                    "%s failed once, retrying adb connection serial=%s (%s/%s): %s",
+                    action_name,
+                    self._device_serial,
+                    attempt,
+                    self.OPERATION_RETRY_COUNT,
+                    exc,
+                )
+                time.sleep(self.OPERATION_RETRY_DELAY)
+                self._reconnect_device()
+        if last_exc is not None:
+            raise last_exc
+
     def _scale(self, x: int, y: int) -> tuple[int, int]:
         """将基准分辨率坐标转换为当前设备的真实坐标。"""
         return int(x * self._scale_x), int(y * self._scale_y)
@@ -128,12 +178,10 @@ class AdbController:
         """按基准分辨率坐标点击。"""
         sx, sy = self._scale(x, y)
         self.device.click(sx, sy)
-        log.debug(f"click ({x},{y}) -> scaled ({sx},{sy})")
 
     def click_raw(self, x: int, y: int) -> None:
         """按设备真实坐标点击，通常用于模板匹配返回的位置。"""
         self.device.click(x, y)
-        log.debug(f"click_raw ({x},{y})")
 
     def click_region(self, region: tuple[int, int, int, int]) -> None:
         """点击矩形区域的中心点。"""
@@ -144,22 +192,20 @@ class AdbController:
     def screenshot(self, save_path: str) -> str:
         """截图并归一化到基准分辨率后保存，返回保存后的路径。"""
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-        image: Image.Image = self.device.screenshot()
+        image: Image.Image = self._run_with_retry("screenshot", lambda: self.device.screenshot())
         if image.size != (self.BASE_W, self.BASE_H):
             image = image.resize((self.BASE_W, self.BASE_H))
         image.save(save_path)
-        log.debug(f"screenshot: {save_path}")
         return save_path
 
     def screenshot_array(self, save_path: Optional[str] = None) -> "Image.Image":
         """截图并归一化到基准分辨率；可选保存到磁盘。"""
-        image: Image.Image = self.device.screenshot()
+        image: Image.Image = self._run_with_retry("screenshot", lambda: self.device.screenshot())
         if image.size != (self.BASE_W, self.BASE_H):
             image = image.resize((self.BASE_W, self.BASE_H))
         if save_path is not None:
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
             image.save(save_path)
-            log.debug(f"screenshot: {save_path}")
         return image
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: float = 0.3) -> None:
@@ -167,7 +213,6 @@ class AdbController:
         sx1, sy1 = self._scale(x1, y1)
         sx2, sy2 = self._scale(x2, y2)
         self.device.swipe(sx1, sy1, sx2, sy2, duration)
-        log.debug(f"swipe ({x1},{y1}->{x2},{y2})")
 
     @property
     def resolution(self) -> tuple[int, int]:

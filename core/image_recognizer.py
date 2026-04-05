@@ -57,9 +57,16 @@ class ImageRecognizer:
         template_path: str,
         screen: str | np.ndarray,
         threshold: Optional[float] = None,
+        *,
+        log_debug: bool = False,
     ) -> Optional[tuple[int, int]]:
         """在截图中查找模板，命中时返回模板中心点。"""
-        result = self.match_with_score(template_path, screen, threshold)
+        result = self.match_with_score(
+            template_path,
+            screen,
+            threshold,
+            log_debug=log_debug,
+        )
         return result.position
 
     def match_with_score(
@@ -67,6 +74,8 @@ class ImageRecognizer:
         template_path: str,
         screen: str | np.ndarray,
         threshold: Optional[float] = None,
+        *,
+        log_debug: bool = False,
     ) -> TemplateMatchResult:
         """在截图中查找模板，并返回匹配分数和命中坐标。"""
         template = self._load_grayscale(template_path, use_cache=True)
@@ -84,6 +93,7 @@ class ImageRecognizer:
             screen=screen_image,
             threshold=threshold,
             label=Path(template_path).name,
+            log_debug=log_debug,
         )
 
     def match_array_with_score(
@@ -94,7 +104,7 @@ class ImageRecognizer:
         *,
         mask: Optional[np.ndarray] = None,
         label: str = "<array>",
-        log_debug: bool = True,
+        log_debug: bool = False,
     ) -> TemplateMatchResult:
         """在截图中查找内存模板，并返回匹配分数和命中坐标。"""
         screen_image, screen_desc = self._load_screen(screen)

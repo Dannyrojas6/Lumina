@@ -76,9 +76,10 @@ class StateDetector:
         if matched_state is not None:
             elapsed = time.perf_counter() - started_at
             log.debug(
-                "state detect matched %s score=%.2f in %.2fs",
+                "state detect matched %s score=%.2f template=%s in %.2fs",
                 matched_state.name,
                 matched_score,
+                matched_template,
                 elapsed,
             )
             return StateDetectionResult(
@@ -92,7 +93,16 @@ class StateDetector:
             )
 
         elapsed = time.perf_counter() - started_at
-        log.debug(f"state detect returned UNKNOWN in {elapsed:.2f}s")
+        if best_match_state is not None:
+            log.debug(
+                "state detect returned UNKNOWN best=%s score=%.2f template=%s in %.2fs",
+                best_match_state.name,
+                best_score,
+                best_template,
+                elapsed,
+            )
+        else:
+            log.debug(f"state detect returned UNKNOWN in {elapsed:.2f}s")
         return StateDetectionResult(
             state=GameState.UNKNOWN,
             screen_path=screen_path,
