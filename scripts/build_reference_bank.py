@@ -137,7 +137,6 @@ def main() -> int:
         bank=bank,
         meta=meta,
         config=SupportRecognitionConfig(
-            backend="embedding",
             min_slot_score=0.0,
             min_slot_margin=0.0,
             save_debug_mismatches=False,

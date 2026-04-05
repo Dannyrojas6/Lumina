@@ -5,6 +5,7 @@ import platform
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -50,6 +51,8 @@ class AdbController:
 
     BASE_W: int = 1920
     BASE_H: int = 1080
+    DEVICE_DISCOVERY_TIMEOUT: float = 8.0
+    DEVICE_DISCOVERY_INTERVAL: float = 0.5
 
     def __init__(self, serial: Optional[str] = None) -> None:
         start_adb_server()
@@ -65,8 +68,14 @@ class AdbController:
 
     def _select_device(self) -> AdbDevice:
         """从已连接设备中选择一台进行后续操作。"""
-        devices = adb.device_list()
-        serials = [device.serial for device in devices]
+        deadline = time.time() + self.DEVICE_DISCOVERY_TIMEOUT
+        serials: list[str] = []
+        while time.time() < deadline:
+            devices = adb.device_list()
+            serials = [device.serial for device in devices]
+            if serials:
+                break
+            time.sleep(self.DEVICE_DISCOVERY_INTERVAL)
         if not serials:
             raise RuntimeError("can't find adb device!please try again.")
         if len(serials) == 1:

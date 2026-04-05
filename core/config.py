@@ -19,7 +19,6 @@ class SkillAction(TypedDict):
 class SupportRecognitionConfig:
     """描述助战头像识别的阈值与调试配置。"""
 
-    backend: str = "template"
     min_slot_score: float = 0.78
     min_slot_margin: float = 0.004
     confirm_delay: float = 0.25
@@ -362,7 +361,6 @@ def _parse_support_recognition(data: Any) -> SupportRecognitionConfig:
     if not isinstance(raw, dict):
         raise TypeError("support.recognition must be a mapping")
     return SupportRecognitionConfig(
-        backend=str(raw.get("backend", "template")),
         min_slot_score=float(raw.get("min_slot_score", 0.78)),
         min_slot_margin=float(raw.get("min_slot_margin", 0.004)),
         confirm_delay=float(raw.get("confirm_delay", 0.25)),

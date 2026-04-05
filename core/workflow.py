@@ -20,7 +20,6 @@ from core.resources import ResourceCatalog
 from core.smart_battle import BattleSnapshot as SmartBattleSnapshot
 from core.smart_battle import SmartBattlePlanner
 from core.state_detector import StateDetectionResult, StateDetector
-from core.support_portrait_recognition import SupportPortraitMatcher
 from core.support_portrait_verification import SupportPortraitVerifier
 
 log = logging.getLogger("core.workflow")
@@ -90,7 +89,6 @@ class DailyAction:
         self._last_current_turn: Optional[int] = None
         self._last_processed_turn: Optional[int] = None
         self._unknown_snapshot_saved = False
-        self._support_matchers: dict[str, SupportPortraitMatcher] = {}
         self._support_verifiers: dict[str, SupportPortraitVerifier] = {}
         self._unknown_fallback_templates = [
             ("close_upper_left.png", "未知状态兜底：已点击左上角关闭"),
@@ -270,89 +268,26 @@ class DailyAction:
     def _find_support_on_current_page(
         self, servant_name: str
     ) -> Optional[tuple[int, int]]:
-        """在当前页尝试识别目标助战头像模板。"""
-        if self.config.support.recognition.backend.strip().lower() == "embedding":
-            verifier = self._get_support_verifier(servant_name)
-            if verifier is None:
-                return None
-            initial_screen = self._get_latest_screen_rgb()
-            time.sleep(self.config.support.recognition.confirm_delay)
-            self._refresh_screen()
-            confirmed_screen = self._get_latest_screen_rgb()
-            match_result = verifier.confirm_match(initial_screen, confirmed_screen)
-            if match_result:
-                log.debug(
-                    "助战模板命中 servant=%s slot=%s score=%.3f confirm=%.3f margin=%.3f",
-                    servant_name,
-                    match_result.slot_index,
-                    match_result.score,
-                    match_result.confirm_score,
-                    match_result.margin,
-                )
-                return match_result.click_position
+        """在当前页尝试识别目标助战人物头像。"""
+        verifier = self._get_support_verifier(servant_name)
+        if verifier is None:
             return None
-        matcher = self._get_support_matcher(servant_name)
-        if matcher is not None:
-            initial_screen = self._get_latest_screen_rgb()
-            time.sleep(self.config.support.recognition.confirm_delay)
-            self._refresh_screen()
-            confirmed_screen = self._get_latest_screen_rgb()
-            match_result = matcher.confirm_match(initial_screen, confirmed_screen)
-            if match_result:
-                log.debug(
-                    "助战模板命中 servant=%s slot=%s score=%.3f confirm=%.3f margin=%.3f",
-                    servant_name,
-                    match_result.slot_index,
-                    match_result.score,
-                    match_result.confirm_score,
-                    match_result.margin,
-                )
-                return match_result.click_position
-            return None
-
-        servant_template = self.resources.servant_template(servant_name)
-        if not Path(servant_template).exists():
-            log.warning("目标助战模板缺失：%s", servant_template)
-            return None
-
-        legacy_result = self.recognizer.match_with_score(
-            servant_template,
-            self._get_latest_screen_image(),
-        )
-        if legacy_result.position:
+        initial_screen = self._get_latest_screen_rgb()
+        time.sleep(self.config.support.recognition.confirm_delay)
+        self._refresh_screen()
+        confirmed_screen = self._get_latest_screen_rgb()
+        match_result = verifier.confirm_match(initial_screen, confirmed_screen)
+        if match_result:
             log.debug(
-                "助战模板命中 servant=%s score=%.2f pos=%s",
+                "助战头像命中 servant=%s slot=%s score=%.3f confirm=%.3f margin=%.3f",
                 servant_name,
-                legacy_result.score,
-                legacy_result.position,
+                match_result.slot_index,
+                match_result.score,
+                match_result.confirm_score,
+                match_result.margin,
             )
-            return legacy_result.position
-
-        log.debug(
-            "助战模板未命中 servant=%s score=%.2f",
-            servant_name,
-            legacy_result.score,
-        )
+            return match_result.click_position
         return None
-
-    def _get_support_matcher(
-        self, servant_name: str
-    ) -> Optional[SupportPortraitMatcher]:
-        """按需加载目标从者的助战头像匹配器。"""
-        if servant_name in self._support_matchers:
-            return self._support_matchers[servant_name]
-        try:
-            matcher = SupportPortraitMatcher.from_servant(
-                servant_name=servant_name,
-                resources=self.resources,
-                config=self.config.support.recognition,
-                recognizer=self.recognizer,
-            )
-        except (FileNotFoundError, ValueError) as exc:
-            log.warning("助战头像匹配器未启用 servant=%s reason=%s", servant_name, exc)
-            return None
-        self._support_matchers[servant_name] = matcher
-        return matcher
 
     def _get_support_verifier(
         self, servant_name: str
