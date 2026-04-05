@@ -19,7 +19,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - 不做后排、换人、替补上场
 - 不做御主技能智能判断
 - 不做普通卡完整智能化
-- `tests/` 当前不维护
+- `tests/` 当前不是主验证入口
 
 ## 环境要求
 
@@ -39,7 +39,7 @@ uv sync
 ## 运行
 
 ```bash
-.\.venv\Scripts\python.exe .\main.py
+uv run .\main.py
 ```
 
 ## 配置入口

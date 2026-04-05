@@ -191,7 +191,7 @@
 - 不做后排和换人逻辑
 - 不做御主技能智能判断
 - 不做普通卡完整智能化
-- 不主动扩展 `tests/`
+- `tests/` 当前不是主验证入口；优先使用现有脚本、日志和调试截图验证
 - 不改 [DevLog.md](/D:/VSCodeRepository/Lumina/DevLog.md) 和 [DevRecord.md](/D:/VSCodeRepository/Lumina/DevRecord.md)
 
 ## 10. 接手时的判断原则
