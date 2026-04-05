@@ -22,7 +22,6 @@ support:
     max_debug_images: 12 # 调试图最多保留数量
 
 ocr:
-  backend: rapidocr # 当前 OCR 后端，首版默认 rapidocr
   min_confidence: 0.8 # 低于该置信度时视为识别失败
   np_ready_value: 100 # NP 达到该值时视为可释放宝具
   retry_once_on_low_confidence: true # 低置信度时额外刷新一次重读

@@ -9,6 +9,7 @@
 - 当前波次
 - 敌方剩余数量
 - 当前回合数
+- 敌方三个位 `HP`
 - 前排三位从者 `NP`
 - 技能冷却判断里的角落小数字
 
@@ -16,9 +17,9 @@
 
 ## 离线检查入口
 
-- 样本清单：[test_image/ocr_np_samples.jsonl](/D:/VSCodeRepository/Lumina/test_image/ocr_np_samples.jsonl)
 - 批量脚本：[scripts/ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)
 - 主读取入口：[core/battle_ocr.py](/D:/VSCodeRepository/Lumina/core/battle_ocr.py)
+- 通用区域检查：[scripts/ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)
 
 ## 当前约定
 
@@ -26,18 +27,10 @@
 - 返回固定三项，对应前排三位从者
 - 单项读取失败时返回 `-1`
 
-## 样本清单格式
-
-每一行是一个 JSON 对象：
-
-- `image`：仓库内相对路径
-- `expected_np`：三位从者 `NP` 期望值
-- `note`：可选备注
-
-`expected_np` 里允许出现 `null`，表示该样本暂时未补完整标注。
+`ocr_np_batch_check.py` 现在不再绑定仓库内默认样本清单，离线批量校验时需要手动传入 `--manifest`。
 
 ## 调试建议
 
 - `NP` 识别不稳时，先看 [assets/screenshots/ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)
-- 战斗文字或技能角落识别不稳时，优先补真实战斗截图，不要先拿网页素材代替
-- 当前更适合继续扩充真实截图样本，而不是把更多精力花在离线假样本上
+- 其他战斗文字识别不稳时，优先用 [scripts/ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py) 直接看裁图和处理后图片
+- 当前更适合继续扩充真实战斗截图样本，而不是把更多精力花在离线假样本上

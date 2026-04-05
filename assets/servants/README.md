@@ -1,59 +1,72 @@
 # Servant Assets
 
-当前 `assets/servants/` 分为两层：
+这份说明只描述当前仓库里真正保留的从者资源规则。
 
-- 全局资料区：`assets/servants/_meta/`
-- 单个从者目录：`assets/servants/<className>/<slug>/`
+## 当前结构
 
-全局资料区当前按用途拆分：
+当前从者资源分成两块：
 
-- `scripts/`：全局下载、整理、合并脚本
-- `indexes/`：长期保留的公共索引 JSON
-- `sources/`：预留给后续可能需要保留的全局原始导出
+- 公共资料：`assets/servants/_meta/`
+- 本地从者资源：`local_data/servants/<className>/<slug>/`
+
+`assets/servants/` 本身现在只保留公共资料，不再保存单个从者的运行资源。
+
+## `assets/servants/_meta/`
+
+当前长期保留的内容：
+
+- `scripts/`：公共下载和整理脚本
+- `indexes/`：公共索引 JSON
+- `sources/`：少量公共原始导出
 
 例如：
 
-- `assets/servants/_meta/scripts/build_servants_cn_en_min.py`
 - `assets/servants/_meta/scripts/download_servant_assets.py`
 - `assets/servants/_meta/indexes/servants_cn_en_min.json`
 
-公共下载脚本第一版按单个从者 ID 工作：
+## 本地从者资源目录
 
-`uv run python assets/servants/_meta/scripts/download_servant_assets.py --id 704000`
+单个从者资源固定放在：
 
-单个从者目录当前分为三块：
+`local_data/servants/<className>/<slug>/`
+
+目录当前分为三块：
 
 - `_meta/`：该从者自己的原始 JSON 和下载清单
-- `atlas/`：该从者从 Atlas Academy 直接下载的原始图片库，也是唯一原始图片来源
-- `support/`：助战头像识别用的本地资源。这里只保留运行结果，例如 `support/generated/`
+- `atlas/`：原始图片库，也是唯一原始图片来源
+- `support/`：助战识别运行结果，例如 `support/generated/`
 
-从者目录里的 `atlas/` 当前只收六类图片：
+## `atlas/` 规则
 
-- `charaGraph`
-- `faces`
-- `narrowFigure`
-- `charaFigure`
-- `commands`
-- `status`
+原始图片只认 `atlas/`。
 
-每一类目录内固定两层：
+当前实际使用最直接的是：
+
+- `atlas/faces/`
+
+目录形式统一为：
 
 - `ascension/<stage>.png`
 - `costume/<costume_id>.png`
 
-因此单张图片的路径形式统一为：
+例如：
 
-`assets/servants/<className>/<slug>/atlas/<type>/<group>/<key>.png`
+- `local_data/servants/berserker/morgan/atlas/faces/ascension/1.png`
+- `local_data/servants/berserker/morgan/atlas/faces/costume/704030.png`
 
-例如 Morgan：
+## `support/` 规则
 
-- `assets/servants/berserker/morgan/manifest.yaml`
-- `assets/servants/berserker/morgan/_meta/704000.json`
-- `assets/servants/berserker/morgan/_meta/download_manifest.json`
-- `assets/servants/berserker/morgan/atlas/faces/ascension/1.png`
-- `assets/servants/berserker/morgan/atlas/faces/costume/704030.png`
-- `assets/servants/berserker/morgan/support/generated/reference_bank.npz`
+`support/` 只保留运行结果和生成物，不放原始图。
 
-`assets/servants/_meta/indexes/servants_cn_en_min.json` 是长期保留的公共从者索引，不是运行目录。
+例如：
 
-助战识别需要的原图也直接从 `atlas/faces/` 读取，不再额外复制一份到 `support/source/`。
+- `local_data/servants/berserker/morgan/support/generated/reference_bank.npz`
+- `local_data/servants/berserker/morgan/support/generated/reference_meta.json`
+
+## 下载入口
+
+公共下载脚本入口：
+
+`.\\.venv\\Scripts\\python.exe .\\assets\\servants\\_meta\\scripts\\download_servant_assets.py`
+
+当前项目运行时不会从 `assets/servants/<className>/<slug>/` 读取单个从者资源，只认 `local_data/servants/`。

@@ -11,7 +11,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from core.battle_ocr import BattleOcrReader, ServantNpStatus
+from core.battle_ocr import BattleOcrReader, EnemyHpStatus, ServantNpStatus
 from core.coordinates import GameCoordinates
 
 log = logging.getLogger("core.battle_snapshot")
@@ -35,6 +35,7 @@ class BattleSnapshot:
 
     wave_index: Optional[int]
     enemy_count: Optional[int]
+    enemy_hp: list[EnemyHpStatus]
     current_turn: Optional[int]
     frontline_np: list[ServantNpStatus]
     skill_availability: dict[int, SkillAvailability]
@@ -64,11 +65,14 @@ class BattleSnapshotReader:
         frontline_np = self.battle_ocr.read_np_statuses(normalized)
         wave_index = self._read_wave_index(normalized)
         enemy_count = self._read_enemy_count(normalized)
+        enemy_hp = self.battle_ocr.read_enemy_hp_statuses(normalized)
         current_turn = self._read_current_turn(normalized)
         skill_availability = self._read_skill_availability(normalized)
+        self._log_enemy_hp(enemy_hp)
         return BattleSnapshot(
             wave_index=wave_index,
             enemy_count=enemy_count,
+            enemy_hp=enemy_hp,
             current_turn=current_turn,
             frontline_np=frontline_np,
             skill_availability=skill_availability,
@@ -127,6 +131,17 @@ class BattleSnapshotReader:
             current_turn,
         )
         return current_turn
+
+    def _log_enemy_hp(self, statuses: list[EnemyHpStatus]) -> None:
+        for status in statuses:
+            log.debug(
+                "enemy hp 识别 enemy=%s text=%s value=%s confidence=%.2f success=%s",
+                status.enemy_index,
+                status.raw_text,
+                status.hp_value,
+                status.confidence,
+                status.success,
+            )
 
     def _read_skill_availability(
         self,

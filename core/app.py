@@ -42,7 +42,6 @@ def run() -> None:
     adb_ctl = AdbController()
     recognizer = ImageRecognizer(threshold=config.match_threshold)
     ocr_engine = OcrEngine(
-        backend_name=config.ocr.backend,
         min_confidence=config.ocr.min_confidence,
         save_debug_crops=config.ocr.save_ocr_crops,
         debug_dir=resources.ocr_debug_dir,

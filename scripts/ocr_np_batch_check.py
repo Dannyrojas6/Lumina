@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MANIFEST = REPO_ROOT / "test_image" / "ocr_np_samples.jsonl"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -144,7 +143,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--manifest",
-        default=str(DEFAULT_MANIFEST),
+        required=True,
         help="Path to the JSONL sample manifest.",
     )
     return parser

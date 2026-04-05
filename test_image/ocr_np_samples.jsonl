@@ -1,4 +1,0 @@
-{"image":"test_image/战斗结果.png","expected_np":[null,null,null],"note":"placeholder sample pending NP labels"}
-{"image":"test_image/指令卡选择界面.png","expected_np":[null,null,null],"note":"placeholder sample pending NP labels"}
-{"image":"test_image/国服宝具指令卡选择界面.png","expected_np":[100,100,143],"note":"validated NP sample for OCR smoke check"}
-

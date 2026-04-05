@@ -43,7 +43,6 @@ class SupportConfig:
 class BattleOcrConfig:
     """描述 OCR 识别层的基础配置。"""
 
-    backend: str = "rapidocr"
     min_confidence: float = 0.8
     np_ready_value: int = 100
     retry_once_on_low_confidence: bool = True
@@ -145,7 +144,6 @@ class BattleConfig:
             ocr = ocr_data
         else:
             ocr = BattleOcrConfig(
-                backend=str(ocr_data.get("backend", "rapidocr")),
                 min_confidence=float(ocr_data.get("min_confidence", 0.8)),
                 np_ready_value=int(ocr_data.get("np_ready_value", 100)),
                 retry_once_on_low_confidence=bool(

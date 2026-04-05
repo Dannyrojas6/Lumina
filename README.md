@@ -9,6 +9,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - 助战按目标从者查找，找不到时回退默认位
 - 战斗内读取当前波次、敌方剩余数量、当前回合数
 - `OCR` 读取前排三位从者 `NP`
+- `OCR` 读取敌方三个位的 `HP`
 - 判断前排九个技能位当前是否可点
 - 按 `smart_battle` 配置决定本回合技能动作
 
@@ -38,7 +39,7 @@ uv sync
 ## 运行
 
 ```bash
-uv run .\main.py
+.\.venv\Scripts\python.exe .\main.py
 ```
 
 ## 配置入口
@@ -58,18 +59,18 @@ uv run .\main.py
 ## 识别方式
 
 - 界面状态：模板匹配
-- 战斗文字：固定区域 `OCR`
+- 战斗文字：固定区域 `PaddleOCR`
 - 助战头像：固定三个位区域 + 遮挡排除 + 双路人物头像向量核验
 - 技能可用性：按钮主体和角落信息的混合判断
 
 ## 从者资源
 
-从者资源现在按职阶分层：
+当前从者资源分成两块：
 
 - 公共资料：`assets/servants/_meta/`
-- 单个从者：`assets/servants/<className>/<slug>/`
+- 本地从者资源：`local_data/servants/<className>/<slug>/`
 
-原始从者图片只放在 `atlas/`，`support/` 只保留运行和生成结果。
+原始从者图片只放在本地从者目录里的 `atlas/`，`support/` 只保留运行和生成结果。
 更细的目录说明见 [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)。
 
 ## 目录入口
@@ -87,6 +88,7 @@ uv run .\main.py
 - [unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)：未识别界面截图
 - [ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)：`OCR` 裁图与调试图
 - [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
+- [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
 - [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
 - [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
 - [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证

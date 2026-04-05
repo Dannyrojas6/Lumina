@@ -1,5 +1,5 @@
 from core.app import run
-from core.battle_ocr import BattleOcrReader, ServantNpStatus
+from core.battle_ocr import BattleOcrReader, EnemyHpStatus, ServantNpStatus
 from core.battle_actions import BattleAction
 from core.config import BattleConfig, BattleOcrConfig, load_battle_config
 from core.coordinates import GameCoordinates
@@ -15,6 +15,7 @@ __all__ = [
     "BattleAction",
     "BattleConfig",
     "DailyAction",
+    "EnemyHpStatus",
     "GameCoordinates",
     "GameState",
     "OcrEngine",

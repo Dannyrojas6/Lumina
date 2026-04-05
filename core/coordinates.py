@@ -113,6 +113,11 @@ class GameCoordinates:
         2: (660, 40, 1330, 420),
         3: (1290, 120, 1880, 500),
     }
+    ENEMY_HP_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (171, 63, 327, 94),
+        2: (537, 64, 702, 93),
+        3: (930, 65, 1077, 94),
+    }
 
     SKILL_SELECT_SERVANT: Final[tuple[int, int, int, int]] = (849, 262, 1077, 314)
     ATTACK_BUTTON: Final[tuple[int, int, int, int]] = (1600, 800, 1806, 1013)
