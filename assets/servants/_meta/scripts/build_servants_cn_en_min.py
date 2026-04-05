@@ -20,7 +20,6 @@ def main():
     cn_data = fetch_json(CN_URL)
     jp_en_data = fetch_json(JP_EN_URL)
 
-    # 用 collectionNo 做映射更稳
     jp_name_map = {}
     for row in jp_en_data:
         collection_no = row.get("collectionNo")
@@ -33,10 +32,6 @@ def main():
     for row in cn_data:
         servant_id = row.get("id")
         collection_no = row.get("collectionNo")
-        name_cn = row.get("name", "")
-        name_en = jp_name_map.get(collection_no, "")
-        class_name = row.get("className", "")
-
         if servant_id is None or collection_no is None:
             continue
 
@@ -47,21 +42,21 @@ def main():
 
         result.append(
             {
-                "name_cn": name_cn,
-                "name_en": name_en,
+                "name_cn": row.get("name", ""),
+                "name_en": jp_name_map.get(collection_no, ""),
                 "id": servant_id,
                 "collectionNo": collection_no,
-                "className": class_name,
+                "className": row.get("className", ""),
+                "rarity": row.get("rarity"),
             }
         )
 
-    result.sort(key=lambda x: x["collectionNo"])
-
+    result.sort(key=lambda item: item["collectionNo"])
     OUT_FILE.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(result, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
-
-    print(f"已输出 {len(result)} 条到 {OUT_FILE}")
+    print(f"wrote {len(result)} servants to {OUT_FILE}")
 
 
 if __name__ == "__main__":

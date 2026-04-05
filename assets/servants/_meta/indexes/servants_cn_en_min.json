@@ -4,3058 +4,3495 @@
     "name_en": "Mash Kyrielight",
     "id": 800100,
     "collectionNo": 1,
-    "className": "shielder"
+    "className": "shielder",
+    "rarity": 3
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡",
     "name_en": "Altria Pendragon",
     "id": 100100,
     "collectionNo": 2,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡〔Alter〕",
     "name_en": "Altria Pendragon (Alter)",
     "id": 100200,
     "collectionNo": 3,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡〔Lily〕",
     "name_en": "Altria Pendragon (Lily)",
     "id": 100300,
     "collectionNo": 4,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "尼禄·克劳狄乌斯",
     "name_en": "Nero Claudius",
     "id": 100500,
     "collectionNo": 5,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "齐格飞",
     "name_en": "Siegfried",
     "id": 100800,
     "collectionNo": 6,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "盖乌斯·尤利乌斯·恺撒",
     "name_en": "Gaius Julius Caesar",
     "id": 101300,
     "collectionNo": 7,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 3
   },
   {
     "name_cn": "阿蒂拉",
     "name_en": "Altera",
     "id": 101800,
     "collectionNo": 8,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "吉尔·德·雷",
     "name_en": "Gilles de Rais",
     "id": 102200,
     "collectionNo": 9,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 3
   },
   {
     "name_cn": "骑士迪昂",
     "name_en": "Chevalier d'Eon",
     "id": 102600,
     "collectionNo": 10,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "卫宫",
     "name_en": "Emiya",
     "id": 200100,
     "collectionNo": 11,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "吉尔伽美什",
     "name_en": "Gilgamesh",
     "id": 200200,
     "collectionNo": 12,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "罗宾汉",
     "name_en": "Robin Hood",
     "id": 200300,
     "collectionNo": 13,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "阿塔兰忒",
     "name_en": "Atalante",
     "id": 200500,
     "collectionNo": 14,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "尤瑞艾莉",
     "name_en": "Euryale",
     "id": 201200,
     "collectionNo": 15,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "阿拉什",
     "name_en": "Arash",
     "id": 201300,
     "collectionNo": 16,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 1
   },
   {
     "name_cn": "库·丘林",
     "name_en": "Cú Chulainn",
     "id": 300100,
     "collectionNo": 17,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "伊丽莎白·巴托里",
     "name_en": "Elisabeth Báthory",
     "id": 300500,
     "collectionNo": 18,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "武藏坊弁庆",
     "name_en": "Musashibou Benkei",
     "id": 300600,
     "collectionNo": 19,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 2
   },
   {
     "name_cn": "库·丘林〔Prototype〕",
     "name_en": "Cú Chulainn (Prototype)",
     "id": 300700,
     "collectionNo": 20,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "列奥尼达一世",
     "name_en": "Leonidas I",
     "id": 300900,
     "collectionNo": 21,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 2
   },
   {
     "name_cn": "罗穆路斯",
     "name_en": "Romulus",
     "id": 301000,
     "collectionNo": 22,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "歌果",
     "name_en": "Medusa",
     "id": 400100,
     "collectionNo": 23,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "乔尔乔斯",
     "name_en": "Georgios",
     "id": 400600,
     "collectionNo": 24,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 2
   },
   {
     "name_cn": "爱迪·萨奇",
     "name_en": "Edward Teach",
     "id": 400800,
     "collectionNo": 25,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 2
   },
   {
     "name_cn": "布狄卡",
     "name_en": "Boudica",
     "id": 401100,
     "collectionNo": 26,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "牛若丸",
     "name_en": "Ushiwakamaru",
     "id": 401400,
     "collectionNo": 27,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "亚历山大",
     "name_en": "Alexander",
     "id": 401500,
     "collectionNo": 28,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "玛丽·安托瓦内特",
     "name_en": "Marie Antoinette",
     "id": 401700,
     "collectionNo": 29,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "玛尔达",
     "name_en": "Martha",
     "id": 401900,
     "collectionNo": 30,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "美狄亚",
     "name_en": "Medea",
     "id": 500100,
     "collectionNo": 31,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "吉尔·德·雷",
     "name_en": "Gilles de Rais",
     "id": 500200,
     "collectionNo": 32,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "汉斯·克里斯蒂安·安徒生",
     "name_en": "Hans Christian Andersen",
     "id": 500500,
     "collectionNo": 33,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 2
   },
   {
     "name_cn": "威廉·莎士比亚",
     "name_en": "William Shakespeare",
     "id": 500700,
     "collectionNo": 34,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 2
   },
   {
     "name_cn": "梅菲斯托费勒斯",
     "name_en": "Mephistopheles",
     "id": 501400,
     "collectionNo": 35,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "沃尔夫冈·阿马德乌斯·莫扎特",
     "name_en": "Wolfgang Amadeus Mozart",
     "id": 501500,
     "collectionNo": 36,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 1
   },
   {
     "name_cn": "诸葛孔明〔埃尔梅罗Ⅱ世〕",
     "name_en": "Zhuge Liang (Lord El-Melloi II)",
     "id": 501900,
     "collectionNo": 37,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "库·丘林",
     "name_en": "Cú Chulainn",
     "id": 502100,
     "collectionNo": 38,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "佐佐木小次郎",
     "name_en": "Sasaki Kojirou",
     "id": 600100,
     "collectionNo": 39,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 1
   },
   {
     "name_cn": "咒腕哈桑",
     "name_en": "Hassan of the Cursed Arm",
     "id": 600200,
     "collectionNo": 40,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 2
   },
   {
     "name_cn": "斯忒诺",
     "name_en": "Stheno",
     "id": 601000,
     "collectionNo": 41,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "匕见",
     "name_en": "Jing Ke",
     "id": 601100,
     "collectionNo": 42,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "夏尔·亨利·桑松",
     "name_en": "Charles-Henri Sanson",
     "id": 601200,
     "collectionNo": 43,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 2
   },
   {
     "name_cn": "剧院魅影",
     "name_en": "Phantom of the Opera",
     "id": 601300,
     "collectionNo": 44,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 2
   },
   {
     "name_cn": "玛塔·哈丽",
     "name_en": "Mata Hari",
     "id": 601400,
     "collectionNo": 45,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 1
   },
   {
     "name_cn": "卡米拉",
     "name_en": "Carmilla",
     "id": 601700,
     "collectionNo": 46,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "赫拉克勒斯",
     "name_en": "Heracles",
     "id": 700100,
     "collectionNo": 47,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "兰斯洛特",
     "name_en": "Lancelot",
     "id": 700200,
     "collectionNo": 48,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "虎狼",
     "name_en": "Lu Bu Fengxian",
     "id": 700300,
     "collectionNo": 49,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 3
   },
   {
     "name_cn": "斯巴达克斯",
     "name_en": "Spartacus",
     "id": 700500,
     "collectionNo": 50,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 1
   },
   {
     "name_cn": "坂田金时",
     "name_en": "Sakata Kintoki",
     "id": 700600,
     "collectionNo": 51,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "弗拉德三世",
     "name_en": "Vlad III",
     "id": 700700,
     "collectionNo": 52,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "阿斯忒里俄斯",
     "name_en": "Asterios",
     "id": 700900,
     "collectionNo": 53,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 1
   },
   {
     "name_cn": "卡利古拉",
     "name_en": "Caligula",
     "id": 701000,
     "collectionNo": 54,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 2
   },
   {
     "name_cn": "大流士三世",
     "name_en": "Darius III",
     "id": 701100,
     "collectionNo": 55,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 3
   },
   {
     "name_cn": "清姬",
     "name_en": "Kiyohime",
     "id": 701300,
     "collectionNo": 56,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 3
   },
   {
     "name_cn": "血斧埃里克",
     "name_en": "Eric Bloodaxe",
     "id": 701500,
     "collectionNo": 57,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 2
   },
   {
     "name_cn": "玉藻猫",
     "name_en": "Tamamo Cat",
     "id": 701600,
     "collectionNo": 58,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "贞德",
     "name_en": "Jeanne d'Arc",
     "id": 900100,
     "collectionNo": 59,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "俄里翁",
     "name_en": "Orion",
     "id": 200900,
     "collectionNo": 60,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "伊丽莎白·巴托里〔万圣节〕",
     "name_en": "Elisabeth Báthory (Halloween)",
     "id": 502600,
     "collectionNo": 61,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "玉藻前",
     "name_en": "Tamamo-no-Mae",
     "id": 500300,
     "collectionNo": 62,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "大卫",
     "name_en": "David",
     "id": 200600,
     "collectionNo": 63,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "赫克托耳",
     "name_en": "Hektor",
     "id": 301600,
     "collectionNo": 64,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "弗朗西斯·德雷克",
     "name_en": "Francis Drake",
     "id": 400300,
     "collectionNo": 65,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "安妮·伯妮＆玛莉·瑞德",
     "name_en": "Anne Bonny & Mary Read",
     "id": 400900,
     "collectionNo": 66,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "美狄亚〔Lily〕",
     "name_en": "Medea (Lily)",
     "id": 501700,
     "collectionNo": 67,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "冲田总司",
     "name_en": "Okita Souji",
     "id": 102700,
     "collectionNo": 68,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "织田信长",
     "name_en": "Oda Nobunaga",
     "id": 202400,
     "collectionNo": 69,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "斯卡哈",
     "name_en": "Scáthach",
     "id": 301300,
     "collectionNo": 70,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "迪尔姆德·奥迪那",
     "name_en": "Diarmuid Ua Duibhne",
     "id": 300200,
     "collectionNo": 71,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "弗格斯·马克·罗伊",
     "name_en": "Fergus mac Róich",
     "id": 101400,
     "collectionNo": 72,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 3
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡〔圣诞Alter〕",
     "name_en": "Altria Pendragon (Santa Alter)",
     "id": 402200,
     "collectionNo": 73,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "童谣",
     "name_en": "Nursery Rhyme",
     "id": 500400,
     "collectionNo": 74,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "雾都弃子",
     "name_en": "Jack the Ripper",
     "id": 600500,
     "collectionNo": 75,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "莫德雷德",
     "name_en": "Mordred",
     "id": 100900,
     "collectionNo": 76,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "尼古拉·特斯拉",
     "name_en": "Nikola Tesla",
     "id": 201100,
     "collectionNo": 77,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡〔Alter〕",
     "name_en": "Altria Pendragon (Alter)",
     "id": 301900,
     "collectionNo": 78,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "冯·霍恩海姆·帕拉塞尔苏斯",
     "name_en": "Paracelsus von Hohenheim",
     "id": 501000,
     "collectionNo": 79,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "查尔斯·巴贝奇",
     "name_en": "Charles Babbage",
     "id": 501100,
     "collectionNo": 80,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "亨利·杰基尔＆海德",
     "name_en": "Henry Jekyll & Hyde",
     "id": 600700,
     "collectionNo": 81,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "弗兰肯斯坦",
     "name_en": "Frankenstein",
     "id": 700400,
     "collectionNo": 82,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "所罗门",
     "name_en": "Solomon",
     "id": 1700100,
     "collectionNo": 83,
-    "className": "loreGrandCaster"
+    "className": "loreGrandCaster",
+    "rarity": 5
   },
   {
     "name_cn": "阿周那",
     "name_en": "Arjuna",
     "id": 201500,
     "collectionNo": 84,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "迦尔纳",
     "name_en": "Karna",
     "id": 300400,
     "collectionNo": 85,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "谜之女主角X",
     "name_en": "Mysterious Heroine X",
     "id": 601800,
     "collectionNo": 86,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "芬恩·麦克库尔",
     "name_en": "Fionn mac Cumhaill",
     "id": 301100,
     "collectionNo": 87,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "布伦希尔德",
     "name_en": "Brynhild",
     "id": 301200,
     "collectionNo": 88,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "贝奥武夫",
     "name_en": "Beowulf",
     "id": 700800,
     "collectionNo": 89,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "尼禄·克劳狄乌斯〔新娘〕",
     "name_en": "Nero Claudius (Bride)",
     "id": 100600,
     "collectionNo": 90,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "两仪式",
     "name_en": "Ryougi Shiki",
     "id": 102800,
     "collectionNo": 91,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "两仪式",
     "name_en": "Ryougi Shiki",
     "id": 602300,
     "collectionNo": 92,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "天草四郎",
     "name_en": "Amakusa Shirou",
     "id": 900200,
     "collectionNo": 93,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "阿斯托尔福",
     "name_en": "Astolfo",
     "id": 400400,
     "collectionNo": 94,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "幼吉尔",
     "name_en": "Gilgamesh (Child)",
     "id": 201800,
     "collectionNo": 95,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "岩窟王",
     "name_en": "Edmond Dantès",
     "id": 1100200,
     "collectionNo": 96,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "南丁格尔",
     "name_en": "Florence Nightingale",
     "id": 701400,
     "collectionNo": 97,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "库·丘林〔Alter〕",
     "name_en": "Cú Chulainn (Alter)",
     "id": 702000,
     "collectionNo": 98,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "女王梅芙",
     "name_en": "Queen Medb",
     "id": 401300,
     "collectionNo": 99,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "海伦娜·布拉瓦茨基",
     "name_en": "Helena Blavatsky",
     "id": 502300,
     "collectionNo": 100,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "罗摩",
     "name_en": "Rama",
     "id": 101900,
     "collectionNo": 101,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "李书文",
     "name_en": "Li Shuwen",
     "id": 301700,
     "collectionNo": 102,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "托马斯·爱迪生",
     "name_en": "Thomas Edison",
     "id": 502500,
     "collectionNo": 103,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "杰罗尼莫",
     "name_en": "Geronimo",
     "id": 501600,
     "collectionNo": 104,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "比利小子",
     "name_en": "Billy the Kid",
     "id": 201000,
     "collectionNo": 105,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "贞德〔Alter〕",
     "name_en": "Jeanne d'Arc (Alter)",
     "id": 1100300,
     "collectionNo": 106,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "安哥拉曼纽",
     "name_en": "Aŋra Mainiiu",
     "id": 1100100,
     "collectionNo": 107,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 0
   },
   {
     "name_cn": "伊斯坎达尔",
     "name_en": "Iskandar",
     "id": 400200,
     "collectionNo": 108,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "卫宫〔Assassin〕",
     "name_en": "Emiya (Assassin)",
     "id": 601500,
     "collectionNo": 109,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "百貌哈桑",
     "name_en": "Hassan of the Hundred Personas",
     "id": 600300,
     "collectionNo": 110,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "爱丽丝菲尔〔天之衣〕",
     "name_en": "Irisviel (Holy Grail)",
     "id": 502000,
     "collectionNo": 111,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "酒吞童子",
     "name_en": "Shuten-Douji",
     "id": 602100,
     "collectionNo": 112,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "西行者",
     "name_en": "Xuanzang Sanzang",
     "id": 502200,
     "collectionNo": 113,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "源赖光",
     "name_en": "Minamoto-no-Raikou",
     "id": 702300,
     "collectionNo": 114,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "坂田金时",
     "name_en": "Sakata Kintoki",
     "id": 402300,
     "collectionNo": 115,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "茨木童子",
     "name_en": "Ibaraki-Douji",
     "id": 702200,
     "collectionNo": 116,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "风魔小太郎",
     "name_en": "Fuuma \"Evil-wind\" Kotarou",
     "id": 601900,
     "collectionNo": 117,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "奥斯曼狄斯",
     "name_en": "Ozymandias",
     "id": 401200,
     "collectionNo": 118,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡",
     "name_en": "Altria Pendragon",
     "id": 302000,
     "collectionNo": 119,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "尼托克丽丝",
     "name_en": "Nitocris",
     "id": 501200,
     "collectionNo": 120,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "兰斯洛特",
     "name_en": "Lancelot",
     "id": 102000,
     "collectionNo": 121,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "崔斯坦",
     "name_en": "Tristan",
     "id": 200800,
     "collectionNo": 122,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "高文",
     "name_en": "Gawain",
     "id": 100700,
     "collectionNo": 123,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "静谧哈桑",
     "name_en": "Hassan of the Serenity",
     "id": 600900,
     "collectionNo": 124,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "俵藤太",
     "name_en": "Tawara Touta",
     "id": 201400,
     "collectionNo": 125,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "贝德维尔",
     "name_en": "Bedivere",
     "id": 101200,
     "collectionNo": 126,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 3
   },
   {
     "name_cn": "莱昂纳多·达·芬奇",
     "name_en": "Leonardo da Vinci",
     "id": 500900,
     "collectionNo": 127,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "玉藻前",
     "name_en": "Tamamo-no-Mae",
     "id": 302400,
     "collectionNo": 128,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡",
     "name_en": "Altria Pendragon",
     "id": 202600,
     "collectionNo": 129,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "玛丽·安托瓦内特",
     "name_en": "Marie Antoinette",
     "id": 502700,
     "collectionNo": 130,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "安妮·伯妮＆玛莉·瑞德",
     "name_en": "Anne Bonny & Mary Read",
     "id": 202500,
     "collectionNo": 131,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "莫德雷德",
     "name_en": "Mordred",
     "id": 402400,
     "collectionNo": 132,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "斯卡哈",
     "name_en": "Scáthach",
     "id": 602400,
     "collectionNo": 133,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "清姬",
     "name_en": "Kiyohime",
     "id": 302500,
     "collectionNo": 134,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "玛尔达",
     "name_en": "Martha",
     "id": 900400,
     "collectionNo": 135,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 4
   },
   {
     "name_cn": "伊莉雅丝菲尔·冯·爱因兹贝伦",
     "name_en": "Illyasviel von Einzbern",
     "id": 502800,
     "collectionNo": 136,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "克洛伊·冯·爱因兹贝伦",
     "name_en": "Chloe von Einzbern",
     "id": 202700,
     "collectionNo": 137,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "伊丽莎白·巴托里〔勇者〕",
     "name_en": "Elisabeth Báthory (Brave)",
     "id": 101000,
     "collectionNo": 138,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "克娄巴特拉",
     "name_en": "Cleopatra",
     "id": 600800,
     "collectionNo": 139,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "弗拉德三世〔EXTRA〕",
     "name_en": "Vlad III (EXTRA)",
     "id": 300300,
     "collectionNo": 140,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "贞德·Alter·Santa·Lily",
     "name_en": "Jeanne d'Arc Alter Santa Lily",
     "id": 302600,
     "collectionNo": 141,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "伊什塔尔",
     "name_en": "Ishtar",
     "id": 202000,
     "collectionNo": 142,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "恩奇都",
     "name_en": "Enkidu",
     "id": 300800,
     "collectionNo": 143,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "魁札尔·科亚特尔",
     "name_en": "Quetzalcoatl",
     "id": 401800,
     "collectionNo": 144,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "吉尔伽美什",
     "name_en": "Gilgamesh",
     "id": 501800,
     "collectionNo": 145,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "美杜莎",
     "name_en": "Medusa",
     "id": 302700,
     "collectionNo": 146,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "戈耳工",
     "name_en": "Gorgon",
     "id": 1100400,
     "collectionNo": 147,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "豹人",
     "name_en": "Jaguar Warrior",
     "id": 302800,
     "collectionNo": 148,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "提亚马特",
     "name_en": "Tiamat",
     "id": 9935400,
     "collectionNo": 149,
-    "className": "beastII"
+    "className": "beastII",
+    "rarity": 5
   },
   {
     "name_cn": "梅林",
     "name_en": "Merlin",
     "id": 500800,
     "collectionNo": 150,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "盖提亚",
     "name_en": "Goetia",
     "id": 9935500,
     "collectionNo": 151,
-    "className": "beastI"
+    "className": "beastI",
+    "rarity": 5
   },
   {
     "name_cn": "所罗门",
     "name_en": "Solomon",
     "id": 9935530,
     "collectionNo": 152,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "宫本武藏",
     "name_en": "Miyamoto Musashi",
     "id": 101700,
     "collectionNo": 153,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "“山中老人”",
     "name_en": "\"First Hassan\"",
     "id": 602500,
     "collectionNo": 154,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "谜之女主角X〔Alter〕",
     "name_en": "Mysterious Heroine X (Alter)",
     "id": 702400,
     "collectionNo": 155,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "詹姆斯·莫里亚蒂",
     "name_en": "James Moriarty",
     "id": 202300,
     "collectionNo": 156,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "卫宫〔Alter〕",
     "name_en": "Emiya (Alter)",
     "id": 201600,
     "collectionNo": 157,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "黑森·罗伯",
     "name_en": "Hessian Lobo",
     "id": 1100500,
     "collectionNo": 158,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "燕青",
     "name_en": "Yan Qing",
     "id": 602600,
     "collectionNo": 159,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "亚瑟·潘德拉贡〔Prototype〕",
     "name_en": "Arthur Pendragon (Prototype)",
     "id": 102900,
     "collectionNo": 160,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "土方岁三",
     "name_en": "Hijikata Toshizo",
     "id": 702500,
     "collectionNo": 161,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "茶茶",
     "name_en": "Chacha",
     "id": 702600,
     "collectionNo": 162,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "Meltryllis",
     "name_en": "Meltryllis",
     "id": 1000200,
     "collectionNo": 163,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "Passionlip",
     "name_en": "Passionlip",
     "id": 1000100,
     "collectionNo": 164,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 4
   },
   {
     "name_cn": "铃鹿御前",
     "name_en": "Suzuka Gozen",
     "id": 103000,
     "collectionNo": 165,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "BB",
     "name_en": "BB",
     "id": 2300100,
     "collectionNo": 166,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 4
   },
   {
     "name_cn": "瞑生院祈荒",
     "name_en": "Sessyoin Kiara",
     "id": 1000300,
     "collectionNo": 167,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "BeastⅢ／R",
     "name_en": "Beast III/R",
     "id": 9939130,
     "collectionNo": 168,
-    "className": "beastIIIR"
+    "className": "beastIIIR",
+    "rarity": 5
   },
   {
     "name_cn": "山鲁佐德",
     "name_en": "Scheherazade",
     "id": 503000,
     "collectionNo": 169,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "周照",
     "name_en": "Wu Zetian",
     "id": 602700,
     "collectionNo": 170,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "彭忒西勒亚",
     "name_en": "Penthesilea",
     "id": 702700,
     "collectionNo": 171,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "克里斯托弗·哥伦布",
     "name_en": "Christopher Columbus",
     "id": 402500,
     "collectionNo": 172,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "夏洛克·福尔摩斯",
     "name_en": "Sherlock Holmes",
     "id": 900500,
     "collectionNo": 173,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "保罗·班扬",
     "name_en": "Paul Bunyan",
     "id": 702800,
     "collectionNo": 174,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 1
   },
   {
     "name_cn": "尼禄·克劳狄乌斯",
     "name_en": "Nero Claudius",
     "id": 503200,
     "collectionNo": 175,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "弗兰肯斯坦",
     "name_en": "Frankenstein",
     "id": 103100,
     "collectionNo": 176,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "尼托克丽丝",
     "name_en": "Nitocris",
     "id": 602800,
     "collectionNo": 177,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "织田信长",
     "name_en": "Oda Nobunaga",
     "id": 702900,
     "collectionNo": 178,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡〔Alter〕",
     "name_en": "Altria Pendragon (Alter)",
     "id": 402700,
     "collectionNo": 179,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "海伦娜·布拉瓦茨基",
     "name_en": "Helena Blavatsky",
     "id": 202800,
     "collectionNo": 180,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "源赖光",
     "name_en": "Minamoto-no-Raikou",
     "id": 302900,
     "collectionNo": 181,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "伊什塔尔",
     "name_en": "Ishtar",
     "id": 402600,
     "collectionNo": 182,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "帕尔瓦蒂",
     "name_en": "Pārvatī",
     "id": 303000,
     "collectionNo": 183,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "巴御前",
     "name_en": "Tomoe Gozen",
     "id": 202100,
     "collectionNo": 184,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "望月千代女",
     "name_en": "Mochizuki Chiyome",
     "id": 602900,
     "collectionNo": 185,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "宝藏院胤舜",
     "name_en": "Houzouin Inshun",
     "id": 301400,
     "collectionNo": 186,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 3
   },
   {
     "name_cn": "柳生但马守宗矩",
     "name_en": "Yagyu Tajima-no-kami Munenori",
     "id": 103200,
     "collectionNo": 187,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "加藤段藏",
     "name_en": "Katou \"Black Kite\" Danzo",
     "id": 603000,
     "collectionNo": 188,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "刑部姬",
     "name_en": "Osakabehime",
     "id": 603100,
     "collectionNo": 189,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "机械伊丽亲",
     "name_en": "Mecha Eli-chan",
     "id": 1000400,
     "collectionNo": 190,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 4
   },
   {
     "name_cn": "机械伊丽亲Ⅱ号机",
     "name_en": "Mecha Eli-chan Mk.II",
     "id": 1000500,
     "collectionNo": 191,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 4
   },
   {
     "name_cn": "喀耳刻",
     "name_en": "Circe",
     "id": 503300,
     "collectionNo": 192,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "莲偶",
     "name_en": "Nezha",
     "id": 303100,
     "collectionNo": 193,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "示巴女王",
     "name_en": "Queen of Sheba",
     "id": 503400,
     "collectionNo": 194,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "阿比盖尔·威廉姆斯",
     "name_en": "Abigail Williams",
     "id": 2500100,
     "collectionNo": 195,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "埃列什基伽勒",
     "name_en": "Ereshkigal",
     "id": 303200,
     "collectionNo": 196,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "阿蒂拉·the·San〔ta〕",
     "name_en": "Attila the San(ta)",
     "id": 202200,
     "collectionNo": 197,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "葛饰北斋",
     "name_en": "Katsushika Hokusai",
     "id": 2500200,
     "collectionNo": 198,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "塞弥拉弥斯",
     "name_en": "Semiramis",
     "id": 603200,
     "collectionNo": 199,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "浅上藤乃",
     "name_en": "Asagami Fujino",
     "id": 202900,
     "collectionNo": 200,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "阿纳斯塔西娅",
     "name_en": "Anastasia",
     "id": 503500,
     "collectionNo": 201,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "阿塔兰忒〔Alter〕",
     "name_en": "Atalante (Alter)",
     "id": 703000,
     "collectionNo": 202,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "阿维斯布隆",
     "name_en": "Avicebron",
     "id": 503600,
     "collectionNo": 203,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "安东尼奥·萨列里",
     "name_en": "Antonio Salieri",
     "id": 1100600,
     "collectionNo": 204,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 3
   },
   {
     "name_cn": "伊凡雷帝",
     "name_en": "Ivan the Terrible",
     "id": 402800,
     "collectionNo": 205,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "阿喀琉斯",
     "name_en": "Achilles",
     "id": 402900,
     "collectionNo": 206,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "喀戎",
     "name_en": "Chiron",
     "id": 203000,
     "collectionNo": 207,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "齐格",
     "name_en": "Sieg",
     "id": 503800,
     "collectionNo": 208,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "冲田总司〔Alter〕",
     "name_en": "Okita Souji (Alter)",
     "id": 1000700,
     "collectionNo": 209,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "冈田以藏",
     "name_en": "Okada Izo",
     "id": 603300,
     "collectionNo": 210,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 3
   },
   {
     "name_cn": "坂本龙马",
     "name_en": "Sakamoto Ryouma",
     "id": 403000,
     "collectionNo": 211,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "拿破仑",
     "name_en": "Napoleon",
     "id": 203100,
     "collectionNo": 212,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "齐格鲁德",
     "name_en": "Sigurd",
     "id": 103300,
     "collectionNo": 213,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "瓦尔基里",
     "name_en": "Valkyrie",
     "id": 303300,
     "collectionNo": 214,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "斯卡哈·斯卡蒂",
     "name_en": "Scáthach-Skadi",
     "id": 503900,
     "collectionNo": 215,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "贞德",
     "name_en": "Jeanne d'Arc",
     "id": 203200,
     "collectionNo": 216,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "茨木童子",
     "name_en": "Ibaraki-Douji",
     "id": 303400,
     "collectionNo": 217,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "牛若丸",
     "name_en": "Ushiwakamaru",
     "id": 603400,
     "collectionNo": 218,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "贞德〔Alter〕",
     "name_en": "Jeanne d'Arc (Alter)",
     "id": 703100,
     "collectionNo": 219,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "BB",
     "name_en": "BB",
     "id": 2300200,
     "collectionNo": 220,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "女王梅芙",
     "name_en": "Queen Medb",
     "id": 103400,
     "collectionNo": 221,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "谜之女主角XX",
     "name_en": "Mysterious Heroine XX",
     "id": 2500300,
     "collectionNo": 222,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 4
   },
   {
     "name_cn": "迪尔姆德·奥迪那",
     "name_en": "Diarmuid Ua Duibhne",
     "id": 103500,
     "collectionNo": 223,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "志度内",
     "name_en": "Sitonai",
     "id": 1000800,
     "collectionNo": 224,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "酒吞童子",
     "name_en": "Shuten-Douji",
     "id": 504000,
     "collectionNo": 225,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "重瞳",
     "name_en": "Xiang Yu",
     "id": 703200,
     "collectionNo": 226,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "兰陵王",
     "name_en": "Prince of Lan Ling",
     "id": 103600,
     "collectionNo": 227,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "忠贞",
     "name_en": "Qin Liangyu",
     "id": 303500,
     "collectionNo": 228,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "祖政",
     "name_en": "Qin Shi Huang",
     "id": 900600,
     "collectionNo": 229,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "雏罂",
     "name_en": "Yu Mei-ren",
     "id": 603500,
     "collectionNo": 230,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "丹驹",
     "name_en": "Red Hare",
     "id": 403100,
     "collectionNo": 231,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "布拉达曼特",
     "name_en": "Bradamante",
     "id": 303600,
     "collectionNo": 232,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "魁札尔·科亚特尔〔桑巴／圣诞〕",
     "name_en": "Quetzalcoatl (Samba/Santa)",
     "id": 900700,
     "collectionNo": 233,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 4
   },
   {
     "name_cn": "红阎魔",
     "name_en": "Beni-Enma",
     "id": 103700,
     "collectionNo": 234,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "李书文",
     "name_en": "Li Shuwen",
     "id": 603600,
     "collectionNo": 235,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "美游·艾德费尔特",
     "name_en": "Miyu Edelfelt",
     "id": 504100,
     "collectionNo": 236,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "紫式部",
     "name_en": "Murasaki Shikibu",
     "id": 504200,
     "collectionNo": 237,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "Kingprotea",
     "name_en": "Kingprotea",
     "id": 1000900,
     "collectionNo": 238,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "迦摩",
     "name_en": "Kama",
     "id": 603700,
     "collectionNo": 239,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "BeastⅢ／L",
     "name_en": "Beast III/L",
     "id": 9941730,
     "collectionNo": 240,
-    "className": "beastIIIL"
+    "className": "beastIIIL",
+    "rarity": 5
   },
   {
     "name_cn": "莱妮丝",
     "name_en": "Sima Yi (Reines)",
     "id": 403200,
     "collectionNo": 241,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "阿斯特赖亚",
     "name_en": "Astraea",
     "id": 900800,
     "collectionNo": 242,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 4
   },
   {
     "name_cn": "格蕾",
     "name_en": "Gray",
     "id": 603900,
     "collectionNo": 243,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "伟大的石像神",
     "name_en": "Great Stone Statue God",
     "id": 2300300,
     "collectionNo": 244,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "拉克什米·芭伊",
     "name_en": "Lakshmi Bai",
     "id": 103900,
     "collectionNo": 245,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "威廉·退尔",
     "name_en": "William Tell",
     "id": 203400,
     "collectionNo": 246,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "阿周那〔Alter〕",
     "name_en": "Arjuna (Alter)",
     "id": 703300,
     "collectionNo": 247,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "马嘶",
     "name_en": "Aśvatthāman",
     "id": 203300,
     "collectionNo": 248,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "阿斯克勒庇俄斯",
     "name_en": "Asclepius",
     "id": 504300,
     "collectionNo": 249,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "织田信长",
     "name_en": "Oda Nobunaga",
     "id": 1100700,
     "collectionNo": 250,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "森长可",
     "name_en": "Mori Nagayoshi",
     "id": 703500,
     "collectionNo": 251,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 3
   },
   {
     "name_cn": "长尾景虎",
     "name_en": "Nagao Kagetora",
     "id": 303800,
     "collectionNo": 252,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "莱昂纳多·达·芬奇",
     "name_en": "Leonardo da Vinci",
     "id": 403500,
     "collectionNo": 253,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "伊阿宋",
     "name_en": "Jason",
     "id": 103800,
     "collectionNo": 254,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 1
   },
   {
     "name_cn": "帕里斯",
     "name_en": "Paris",
     "id": 203500,
     "collectionNo": 255,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 2
   },
   {
     "name_cn": "加雷斯",
     "name_en": "Gareth",
     "id": 303900,
     "collectionNo": 256,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 2
   },
   {
     "name_cn": "巴沙洛缪·罗伯茨",
     "name_en": "Bartholomew Roberts",
     "id": 403400,
     "collectionNo": 257,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 1
   },
   {
     "name_cn": "陈宫",
     "name_en": "Chen Gong",
     "id": 504400,
     "collectionNo": 258,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 2
   },
   {
     "name_cn": "夏洛特·科黛",
     "name_en": "Charlotte Corday",
     "id": 603800,
     "collectionNo": 259,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 1
   },
   {
     "name_cn": "莎乐美",
     "name_en": "Salome",
     "id": 703400,
     "collectionNo": 260,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 2
   },
   {
     "name_cn": "宫本武藏",
     "name_en": "Miyamoto Musashi",
     "id": 703600,
     "collectionNo": 261,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "刑部姬",
     "name_en": "Osakabehime",
     "id": 203600,
     "collectionNo": 262,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "卡米拉",
     "name_en": "Carmilla",
     "id": 403600,
     "collectionNo": 263,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "葛饰北斋",
     "name_en": "Katsushika Hokusai",
     "id": 104000,
     "collectionNo": 264,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "阿尔托莉雅·潘德拉贡",
     "name_en": "Altria Pendragon",
     "id": 900900,
     "collectionNo": 265,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "谜之Alterego·Λ",
     "name_en": "Mysterious Alter Ego Λ",
     "id": 304000,
     "collectionNo": 266,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "冲田·J·总司",
     "name_en": "Okita J. Souji",
     "id": 604000,
     "collectionNo": 267,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "太空伊什塔尔",
     "name_en": "Space Ishtar",
     "id": 1100900,
     "collectionNo": 268,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "灾星简",
     "name_en": "Calamity Jane",
     "id": 203700,
     "collectionNo": 269,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "阿斯托尔福",
     "name_en": "Astolfo",
     "id": 104100,
     "collectionNo": 270,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "南丁格尔〔圣诞〕",
     "name_en": "Florence Nightingale (Santa)",
     "id": 203900,
     "collectionNo": 271,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "超人俄里翁",
     "name_en": "Super Orion",
     "id": 203800,
     "collectionNo": 272,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "曼迪卡尔多",
     "name_en": "Mandricardo",
     "id": 403900,
     "collectionNo": 273,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 3
   },
   {
     "name_cn": "欧罗巴",
     "name_en": "Europa",
     "id": 404000,
     "collectionNo": 274,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "琰女",
     "name_en": "Yang Guifei",
     "id": 2500400,
     "collectionNo": 275,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "清少纳言",
     "name_en": "Sei Shounagon",
     "id": 204000,
     "collectionNo": 276,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "奥德修斯",
     "name_en": "Odysseus",
     "id": 403800,
     "collectionNo": 277,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "狄俄斯库里",
     "name_en": "Dioscuri",
     "id": 104200,
     "collectionNo": 278,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "凯妮斯",
     "name_en": "Caenis",
     "id": 304100,
     "collectionNo": 279,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "罗穆路斯·奎里努斯",
     "name_en": "Romulus=Quirinus",
     "id": 304200,
     "collectionNo": 280,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "旅行者",
     "name_en": "Voyager",
     "id": 2500500,
     "collectionNo": 281,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "鬼女红叶",
     "name_en": "Kijyo Koyo",
     "id": 703700,
     "collectionNo": 282,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "宇津见绘里濑",
     "name_en": "Utsumi Erice",
     "id": 304300,
     "collectionNo": 283,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "阿尔托莉雅·卡斯特",
     "name_en": "Altria Caster",
     "id": 504500,
     "collectionNo": 284,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "瞑生院祈荒",
     "name_en": "Sessyoin Kiara",
     "id": 2300400,
     "collectionNo": 285,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "伊莉雅丝菲尔·冯·爱因兹贝伦",
     "name_en": "Illyasviel von Einzbern",
     "id": 204200,
     "collectionNo": 286,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "布伦希尔德",
     "name_en": "Brynhild",
     "id": 703800,
     "collectionNo": 287,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "雏罂",
     "name_en": "Yu Mei-ren",
     "id": 304400,
     "collectionNo": 288,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "阿比盖尔·威廉姆斯〔夏〕",
     "name_en": "Abigail Williams (Summer)",
     "id": 2500700,
     "collectionNo": 289,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "巴御前",
     "name_en": "Tomoe Gozen",
     "id": 104500,
     "collectionNo": 290,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "紫式部",
     "name_en": "Murasaki Shikibu",
     "id": 404100,
     "collectionNo": 291,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "卑弥呼",
     "name_en": "Himiko",
     "id": 901000,
     "collectionNo": 292,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "斋藤一",
     "name_en": "Saito Hajime",
     "id": 104400,
     "collectionNo": 293,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "织田信胜",
     "name_en": "Oda Nobukatsu",
     "id": 204100,
     "collectionNo": 294,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 1
   },
   {
     "name_cn": "梵高",
     "name_en": "Van Gogh",
     "id": 2500600,
     "collectionNo": 295,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "尼莫",
     "name_en": "Nemo",
     "id": 403700,
     "collectionNo": 296,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "芦屋道满",
     "name_en": "Ashiya Douman",
     "id": 1001000,
     "collectionNo": 297,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "渡边纲",
     "name_en": "Watanabe-no-Tsuna",
     "id": 104700,
     "collectionNo": 298,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "伊吹童子",
     "name_en": "Ibuki-Douji",
     "id": 104600,
     "collectionNo": 299,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "弗栗多",
     "name_en": "Vritra",
     "id": 304600,
     "collectionNo": 300,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "迦尔纳〔圣诞〕",
     "name_en": "Karna (Santa)",
     "id": 104800,
     "collectionNo": 301,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "千子村正",
     "name_en": "Senji Muramasa",
     "id": 104900,
     "collectionNo": 302,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "平景清",
     "name_en": "Taira-no-Kagekiyo",
     "id": 1101000,
     "collectionNo": 303,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "鬼一法眼",
     "name_en": "Kiichi Hogen",
     "id": 604100,
     "collectionNo": 304,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "阿摩耳〔卡莲〕",
     "name_en": "Amor (Caren)",
     "id": 901100,
     "collectionNo": 305,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "伽拉忒亚",
     "name_en": "Galatea",
     "id": 703900,
     "collectionNo": 306,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "克莱恩小姐",
     "name_en": "Miss Crane",
     "id": 504600,
     "collectionNo": 307,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "谜之偶像X〔Alter〕",
     "name_en": "Mysterious Idol X (Alter)",
     "id": 2500800,
     "collectionNo": 308,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 4
   },
   {
     "name_cn": "摩根",
     "name_en": "Morgan",
     "id": 704000,
     "collectionNo": 309,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "妖精骑士高文",
     "name_en": "Tam Lin Gawain",
     "id": 105000,
     "collectionNo": 310,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "妖精骑士崔斯坦",
     "name_en": "Tam Lin Tristan",
     "id": 204300,
     "collectionNo": 311,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "妖精骑士兰斯洛特",
     "name_en": "Tam Lin Lancelot",
     "id": 304800,
     "collectionNo": 312,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "珀西瓦尔",
     "name_en": "Percival",
     "id": 304700,
     "collectionNo": 313,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "光之高扬斯卡娅",
     "name_en": "Koyanskaya of Light",
     "id": 604200,
     "collectionNo": 314,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "哈贝特洛特",
     "name_en": "Habetrot",
     "id": 404200,
     "collectionNo": 315,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "奥伯龙",
     "name_en": "Oberon",
     "id": 2800100,
     "collectionNo": 316,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 5
   },
   {
     "name_cn": "冲田总司〔Alter〕",
     "name_en": "Okita Souji (Alter)",
     "id": 105100,
     "collectionNo": 317,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "阿纳斯塔西娅＆维",
     "name_en": "Anastasia & Viy",
     "id": 204400,
     "collectionNo": 318,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "夏洛特·科黛",
     "name_en": "Charlotte Corday",
     "id": 504800,
     "collectionNo": 319,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "莱昂纳多·达·芬奇",
     "name_en": "Leonardo da Vinci",
     "id": 901200,
     "collectionNo": 320,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 4
   },
   {
     "name_cn": "迦摩",
     "name_en": "Kama",
     "id": 1101100,
     "collectionNo": 321,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "凯妮斯",
     "name_en": "Caenis",
     "id": 404500,
     "collectionNo": 322,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "清少纳言",
     "name_en": "Sei Shounagon",
     "id": 704100,
     "collectionNo": 323,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "雅克·德·莫莱",
     "name_en": "Jacques de Molay",
     "id": 2501000,
     "collectionNo": 324,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "芝诺比阿",
     "name_en": "Zenobia",
     "id": 204500,
     "collectionNo": 325,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "伊丽莎白·巴托里〔灰姑娘〕",
     "name_en": "Elisabeth Báthory (Cinderella)",
     "id": 404600,
     "collectionNo": 326,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "出云阿国",
     "name_en": "Izumo-no-Okuni",
     "id": 504900,
     "collectionNo": 327,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "谜之兰丸X",
     "name_en": "Mysterious Ranmaru X",
     "id": 1101200,
     "collectionNo": 328,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "坂本龙马",
     "name_en": "Sakamoto Ryouma",
     "id": 305000,
     "collectionNo": 329,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "玛尔达〔圣诞〕",
     "name_en": "Martha (Santa)",
     "id": 505000,
     "collectionNo": 330,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "太公望",
     "name_en": "Taigong Wang",
     "id": 404300,
     "collectionNo": 331,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "多布雷尼亚·尼基季奇",
     "name_en": "Dobrynya Nikitich",
     "id": 404400,
     "collectionNo": 332,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "Beast Ⅳ",
     "name_en": "Beast IV",
     "id": 9943610,
     "collectionNo": 333,
-    "className": "beastIV"
+    "className": "beastIV",
+    "rarity": 5
   },
   {
     "name_cn": "暗之高扬斯卡娅",
     "name_en": "Koyanskaya of Dark",
     "id": 2500900,
     "collectionNo": 334,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "赫费斯提翁",
     "name_en": "Hephaistíon",
     "id": 2800200,
     "collectionNo": 335,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "马纳南·麦克·利尔〔巴泽特〕",
     "name_en": "Manannán mac Lir (Bazett)",
     "id": 1001100,
     "collectionNo": 336,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "征氏姐妹",
     "name_en": "Hai Bà Trưng",
     "id": 105300,
     "collectionNo": 337,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "太岁星君",
     "name_en": "Taisui Xingjun",
     "id": 1001200,
     "collectionNo": 338,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 4
   },
   {
     "name_cn": "超级班扬",
     "name_en": "Super Bunyan",
     "id": 1001300,
     "collectionNo": 339,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "大黑天",
     "name_en": "Daikokuten",
     "id": 504700,
     "collectionNo": 340,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "玛丽·安宁",
     "name_en": "Mary Anning",
     "id": 304900,
     "collectionNo": 341,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 1
   },
   {
     "name_cn": "君士坦丁十一世",
     "name_en": "Kōnstantînos XI",
     "id": 404700,
     "collectionNo": 342,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "查理曼",
     "name_en": "Charlemagne",
     "id": 105200,
     "collectionNo": 343,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "罗兰",
     "name_en": "Roland",
     "id": 104300,
     "collectionNo": 344,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "克里姆希尔德",
     "name_en": "Kriemhild",
     "id": 704200,
     "collectionNo": 345,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "詹姆斯·莫里亚蒂",
     "name_en": "James Moriarty",
     "id": 901300,
     "collectionNo": 346,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "堂·吉诃德",
     "name_en": "Don Quixote",
     "id": 305100,
     "collectionNo": 347,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "张角",
     "name_en": "Zhang Jue",
     "id": 505100,
     "collectionNo": 348,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 3
   },
   {
     "name_cn": "曲亭马琴",
     "name_en": "Kyokutei Bakin",
     "id": 404800,
     "collectionNo": 349,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "源为朝",
     "name_en": "Minamoto-no-Tametomo",
     "id": 204600,
     "collectionNo": 350,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "Archetype：Earth",
     "name_en": "Archetype: Earth",
     "id": 2300500,
     "collectionNo": 351,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "方巿",
     "name_en": "Xu Fu",
     "id": 1001400,
     "collectionNo": 352,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 3
   },
   {
     "name_cn": "阿瓦隆女士",
     "name_en": "Lady Avalon",
     "id": 2800300,
     "collectionNo": 353,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 5
   },
   {
     "name_cn": "加雷斯",
     "name_en": "Gareth",
     "id": 105400,
     "collectionNo": 354,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "伊吹童子",
     "name_en": "Ibuki-Douji",
     "id": 704300,
     "collectionNo": 355,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "宇津见绘里濑",
     "name_en": "Utsumi Erice",
     "id": 1101400,
     "collectionNo": 356,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "斯卡哈·斯卡蒂",
     "name_en": "Scáthach-Skadi",
     "id": 901400,
     "collectionNo": 357,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "周照",
     "name_en": "Wu Zetian",
     "id": 505200,
     "collectionNo": 358,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "斯露德",
     "name_en": "Thrúd",
     "id": 604500,
     "collectionNo": 359,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "希露德",
     "name_en": "Hildr",
     "id": 604400,
     "collectionNo": 360,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "奥特琳德",
     "name_en": "Ortlinde",
     "id": 604300,
     "collectionNo": 361,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "千利休",
     "name_en": "Sen-no-Rikyu",
     "id": 704400,
     "collectionNo": 362,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "山南敬助",
     "name_en": "Yamanami Keisuke",
     "id": 105500,
     "collectionNo": 363,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "壹与",
     "name_en": "Iyo",
     "id": 901500,
     "collectionNo": 364,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 4
   },
   {
     "name_cn": "吾绰",
     "name_en": "Huyan Zhuo",
     "id": 604600,
     "collectionNo": 365,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "黄飞虎",
     "name_en": "Huang Feihu",
     "id": 404900,
     "collectionNo": 366,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "九纹龙伊丽莎",
     "name_en": "Nine-Tattoo Dragon Elisa",
     "id": 2800400,
     "collectionNo": 367,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "布里托玛特",
     "name_en": "Britomart",
     "id": 305300,
     "collectionNo": 368,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "格里戈里·拉斯普京",
     "name_en": "Grigori Rasputin",
     "id": 1001500,
     "collectionNo": 369,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "尼托克丽丝〔Alter〕",
     "name_en": "Nitocris (Alter)",
     "id": 1101500,
     "collectionNo": 370,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "特斯卡特利波卡",
     "name_en": "Tezcatlipoca",
     "id": 604700,
     "collectionNo": 371,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "特拉洛克",
     "name_en": "Tlaloc",
     "id": 2800500,
     "collectionNo": 372,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "库库尔坎",
     "name_en": "Kukulcan",
     "id": 2501100,
     "collectionNo": 373,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "女教皇若安",
     "name_en": "Pope Johanna",
     "id": 901600,
     "collectionNo": 374,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "高杉晋作",
     "name_en": "Takasugi Shinsaku",
     "id": 204700,
     "collectionNo": 375,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "幼体／提亚马特",
     "name_en": "Larva/Tiamat",
     "id": 1001600,
     "collectionNo": 376,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "所多玛之兽／德拉科",
     "name_en": "Sodom's Beast/Draco",
     "id": 3300100,
     "collectionNo": 377,
-    "className": "beast"
+    "className": "beast",
+    "rarity": 5
   },
   {
     "name_cn": "洛库斯塔",
     "name_en": "Locusta",
     "id": 604800,
     "collectionNo": 378,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "瑟坦特",
     "name_en": "Setanta",
     "id": 105700,
     "collectionNo": 379,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "果心居士",
     "name_en": "Kashin Koji",
     "id": 604900,
     "collectionNo": 380,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 5
   },
   {
     "name_cn": "怖军",
     "name_en": "Bhima",
     "id": 305400,
     "collectionNo": 381,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "难敌",
     "name_en": "Duryodhana",
     "id": 704600,
     "collectionNo": 382,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "杜尔伽",
     "name_en": "Durga",
     "id": 204800,
     "collectionNo": 383,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "美杜莎",
     "name_en": "Medusa",
     "id": 105600,
     "collectionNo": 384,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "雨之魔女梣",
     "name_en": "Aesc the Rain Witch",
     "id": 505300,
     "collectionNo": 385,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "阿尔托莉雅·卡斯特",
     "name_en": "Altria Caster",
     "id": 704700,
     "collectionNo": 386,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "铃鹿御前〔暑假〕",
     "name_en": "Suzuka Gozen (Summer Vacation)",
     "id": 405000,
     "collectionNo": 387,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "克洛伊·冯·爱因兹贝伦",
     "name_en": "Chloe von Einzbern",
     "id": 1101600,
     "collectionNo": 388,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "诺克娜蕾·雅兰杜",
     "name_en": "Cnoc na Riabh Yaraan-doo",
     "id": 2501200,
     "collectionNo": 389,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 4
   },
   {
     "name_cn": "梅柳齐娜",
     "name_en": "Mélusine",
     "id": 901700,
     "collectionNo": 390,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "ＵＤＫ－巴格斯特",
     "name_en": "UDK-Barghest",
     "id": 204900,
     "collectionNo": 391,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "凯特·库·米可科尔",
     "name_en": "Cait Cú Cerpriestess",
     "id": 2800600,
     "collectionNo": 392,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "旺吉娜",
     "name_en": "Wandjina",
     "id": 2501300,
     "collectionNo": 393,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "托勒密",
     "name_en": "Ptolemaîos",
     "id": 205000,
     "collectionNo": 394,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "杉谷善住坊",
     "name_en": "Sugitani Zenjubou",
     "id": 205100,
     "collectionNo": 395,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 3
   },
   {
     "name_cn": "忒修斯",
     "name_en": "Theseus",
     "id": 105800,
     "collectionNo": 396,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 3
   },
   {
     "name_cn": "武田晴信",
     "name_en": "Takeda Harunobu",
     "id": 405200,
     "collectionNo": 397,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "永仓新八",
     "name_en": "Nagakura Shinpachi",
     "id": 704800,
     "collectionNo": 398,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "杂贺孙一",
     "name_en": "Saika Magoichi",
     "id": 205200,
     "collectionNo": 399,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 4
   },
   {
     "name_cn": "上杉谦信",
     "name_en": "Uesugi Kenshin",
     "id": 901800,
     "collectionNo": 400,
-    "className": "ruler"
+    "className": "ruler",
+    "rarity": 5
   },
   {
     "name_cn": "尼莫〔圣诞〕",
     "name_en": "Nemo (Santa)",
     "id": 405300,
     "collectionNo": 401,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 4
   },
   {
     "name_cn": "大和武尊",
     "name_en": "Yamato Takeru",
     "id": 105900,
     "collectionNo": 402,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "源赖光／丑御前",
     "name_en": "Minamoto-no-Raikou/Ushi Gozen",
     "id": 1101800,
     "collectionNo": 403,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "由井正雪",
     "name_en": "Yui Shousetsu",
     "id": 505400,
     "collectionNo": 404,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 4
   },
   {
     "name_cn": "宫本伊织",
     "name_en": "Miyamoto Iori",
     "id": 106000,
     "collectionNo": 405,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "安德洛墨达",
     "name_en": "Andromeda",
     "id": 405500,
     "collectionNo": 406,
-    "className": "rider"
+    "className": "rider",
+    "rarity": 5
   },
   {
     "name_cn": "玛丽·安托瓦内特〔Alter〕",
     "name_en": "Marie Antoinette (Alter)",
     "id": 1101300,
     "collectionNo": 407,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "耀星哈桑",
     "name_en": "Hassan of the Shining Star",
     "id": 605000,
     "collectionNo": 408,
-    "className": "assassin"
+    "className": "assassin",
+    "rarity": 4
   },
   {
     "name_cn": "岩窟王　基督山",
     "name_en": "The Count of Monte Cristo",
     "id": 1101700,
     "collectionNo": 409,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 5
   },
   {
     "name_cn": "亚历山德罗·迪·卡利奥斯特罗",
     "name_en": "Alessandro di Cagliostro",
     "id": 2800700,
     "collectionNo": 410,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "Ｅ－火玛丽",
     "name_en": "E-Flare Marie",
     "id": 9945590,
     "collectionNo": 411,
-    "className": "uOlgaMarieFlareCollection"
+    "className": "uOlgaMarieFlareCollection",
+    "rarity": 0
   },
   {
     "name_cn": "Ｅ－水玛丽",
     "name_en": "E-Aqua Marie",
     "id": 9945600,
     "collectionNo": 412,
-    "className": "uOlgaMarieAquaCollection"
+    "className": "uOlgaMarieAquaCollection",
+    "rarity": 0
   },
   {
     "name_cn": "苍崎青子",
     "name_en": "Aozaki Aoko",
     "id": 2501400,
     "collectionNo": 413,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 5
   },
   {
     "name_cn": "静希草十郎",
     "name_en": "Shizuki Soujuurou",
     "id": 704900,
     "collectionNo": 414,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 4
   },
   {
     "name_cn": "久远寺有珠",
     "name_en": "Kuonji Alice",
     "id": 505500,
     "collectionNo": 415,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "响＆千键",
     "name_en": "Hibiki & Chikagi",
     "id": 1001700,
     "collectionNo": 416,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "埃列什基伽勒",
     "name_en": "Ereshkigal",
     "id": 3300200,
     "collectionNo": 417,
-    "className": "beastEresh"
+    "className": "beastEresh",
+    "rarity": 5
   },
   {
     "name_cn": "谜之代行者C.I.E.L",
     "name_en": "Mysterious Executor C.I.E.L",
     "id": 2300900,
     "collectionNo": 418,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "多布雷尼亚·尼基季奇",
     "name_en": "Dobrynya Nikitich",
     "id": 305500,
     "collectionNo": 419,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "方巿",
     "name_en": "Xu Fu",
     "id": 1101900,
     "collectionNo": 420,
-    "className": "avenger"
+    "className": "avenger",
+    "rarity": 4
   },
   {
     "name_cn": "ＢＢ迪拜",
     "name_en": "BB Dubai",
     "id": 2300600,
     "collectionNo": 421,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 5
   },
   {
     "name_cn": "特诺奇蒂特兰",
     "name_en": "Tenochtitlan",
     "id": 2301000,
     "collectionNo": 422,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 4
   },
   {
     "name_cn": "谜之女主角XX〔Alter〕",
     "name_en": "Mysterious Heroine XX (Alter)",
     "id": 2501600,
     "collectionNo": 423,
-    "className": "foreigner"
+    "className": "foreigner",
+    "rarity": 4
   },
   {
     "name_cn": "岸波白野",
     "name_en": "Kishinami Hakuno",
     "id": 2300700,
     "collectionNo": 424,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 4
   },
   {
     "name_cn": "岸波白野",
     "name_en": "Kishinami Hakuno",
     "id": 2300800,
     "collectionNo": 425,
-    "className": "moonCancer"
+    "className": "moonCancer",
+    "rarity": 4
   },
   {
     "name_cn": "Kazuradrop",
     "name_en": "Kazuradrop",
     "id": 1001800,
     "collectionNo": 426,
-    "className": "alterEgo"
+    "className": "alterEgo",
+    "rarity": 5
   },
   {
     "name_cn": "图坦卡蒙",
     "name_en": "Tutankhamun",
     "id": 205300,
     "collectionNo": 427,
-    "className": "archer"
+    "className": "archer",
+    "rarity": 5
   },
   {
     "name_cn": "梵高〔矿工〕",
     "name_en": "Van Gogh (Miner)",
     "id": 305600,
     "collectionNo": 428,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 4
   },
   {
     "name_cn": "娄希",
     "name_en": "Louhi",
     "id": 705000,
     "collectionNo": 429,
-    "className": "berserker"
+    "className": "berserker",
+    "rarity": 5
   },
   {
     "name_cn": "阿比盖尔·威廉姆斯〔圣诞〕",
     "name_en": "Abigail Williams (Santa)",
     "id": 2800800,
     "collectionNo": 430,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 4
   },
   {
     "name_cn": "Phantasmoon",
     "name_en": "Phantasmoon",
     "id": 2800900,
     "collectionNo": 431,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 5
   },
   {
     "name_cn": "理查一世",
     "name_en": "Richard I",
     "id": 106100,
     "collectionNo": 432,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 5
   },
   {
     "name_cn": "比肖内",
     "name_en": "Biscione",
     "id": 305700,
     "collectionNo": 433,
-    "className": "lancer"
+    "className": "lancer",
+    "rarity": 5
   },
   {
     "name_cn": "黑姬",
     "name_en": "Kurohime",
     "id": 106200,
     "collectionNo": 434,
-    "className": "saber"
+    "className": "saber",
+    "rarity": 4
   },
   {
     "name_cn": "小野小町",
     "name_en": "Ono no Komachi",
     "id": 505800,
     "collectionNo": 435,
-    "className": "caster"
+    "className": "caster",
+    "rarity": 5
   },
   {
     "name_cn": "Ｅ－宏玛丽",
     "name_en": "E-Grand Marie",
     "id": 9946280,
     "collectionNo": 436,
-    "className": "uOlgaMarieGrandCollection"
+    "className": "uOlgaMarieGrandCollection",
+    "rarity": 0
   },
   {
     "name_cn": "但丁·阿利吉耶里",
     "name_en": "Dante Alighieri",
     "id": 2801000,
     "collectionNo": 437,
-    "className": "pretender"
+    "className": "pretender",
+    "rarity": 5
   }
 ]

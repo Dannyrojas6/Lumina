@@ -71,7 +71,7 @@ uv run .\main.py
 - 本地从者资源：`local_data/servants/<className>/<slug>/`
 
 原始从者图片只放在本地从者目录里的 `atlas/`，`support/` 只保留运行和生成结果。
-更细的目录说明见 [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)。
+更细的目录说明和下载命令见 [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)。
 
 ## 目录入口
 
@@ -79,7 +79,7 @@ uv run .\main.py
 - [core](/D:/VSCodeRepository/Lumina/core)：主流程、识别、判断
 - [config](/D:/VSCodeRepository/Lumina/config)：运行配置
 - [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui)：界面模板
-- [assets/servants](/D:/VSCodeRepository/Lumina/assets/servants)：从者资料与助战资源
+- [assets/servants](/D:/VSCodeRepository/Lumina/assets/servants)：从者公共资料、索引与下载脚本
 - [assets/screenshots](/D:/VSCodeRepository/Lumina/assets/screenshots)：调试截图
 - [scripts](/D:/VSCodeRepository/Lumina/scripts)：离线检查和资源处理脚本
 

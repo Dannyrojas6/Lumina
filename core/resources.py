@@ -38,8 +38,6 @@ class ServantManifest:
     servant_name: str
     display_name: str = ""
     class_name: str = ""
-    role: str = ""
-    support_template: str = "support/portrait.png"
     support_recognition: SupportRecognitionManifest = field(
         default_factory=SupportRecognitionManifest
     )
@@ -217,8 +215,6 @@ class ResourceCatalog:
             servant_name=self._normalize_servant_name(servant_name),
             display_name=str(data.get("display_name", "")),
             class_name=str(data.get("class_name", default_class_name)),
-            role=str(data.get("role", "")),
-            support_template=str(data.get("support_template", "support/portrait.png")),
             support_recognition=support_recognition,
             skills=skills,
         )
@@ -246,7 +242,7 @@ class ResourceCatalog:
         servant_root = Path(self.servants_dir)
         download_hint = (
             "请先运行 "
-            "`uv run python assets/servants/_meta/scripts/download_servant_assets.py` "
+            "`uv run .\\assets\\servants\\_meta\\scripts\\download_servant_assets.py --id <servant_id>` "
             "把需要的从者资源下载到本地。"
         )
         if servant_name:
