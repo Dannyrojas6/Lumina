@@ -13,6 +13,11 @@ from core.battle_actions import BattleAction
 from core.battle_ocr import BattleOcrReader, ServantNpStatus
 from core.battle_snapshot import BattleSnapshotReader
 from core.config import BattleConfig
+from core.command_card_recognition import (
+    CommandCardInfo,
+    CommandCardRecognizer,
+    choose_best_card_chain,
+)
 from core.coordinates import GameCoordinates
 from core.game_state import GameState
 from core.image_recognizer import ImageRecognizer
@@ -23,6 +28,64 @@ from core.state_detector import StateDetectionResult, StateDetector
 from core.support_portrait_verification import SupportPortraitVerifier
 
 log = logging.getLogger("core.workflow")
+
+
+def build_command_card_plan(
+    *,
+    noble_indices: list[int],
+    card_owners: dict[int, str | None],
+    servant_priority: list[str],
+    cards: Optional[list[CommandCardInfo]] = None,
+    support_attacker: str | None = None,
+) -> list[dict[str, int]]:
+    """按宝具优先和从者优先顺序构建统一出卡计划。"""
+    plan: list[dict[str, int]] = [
+        {"type": "noble", "index": servant_index}
+        for servant_index in noble_indices[:3]
+    ]
+    if len(plan) >= 3:
+        return plan[:3]
+
+    remaining_cards = [index for index in (1, 2, 3, 4, 5)]
+    used_cards: set[int] = set()
+    normalized_priority = [
+        str(item).replace("\\", "/").strip().strip("/")
+        for item in servant_priority
+        if str(item).strip()
+    ]
+    if cards:
+        best_chain = choose_best_card_chain(
+            cards=sorted(cards, key=lambda item: item.index),
+            servant_priority=normalized_priority,
+            support_attacker=support_attacker,
+        )
+        for card in best_chain:
+            if len(plan) >= 3:
+                return plan[:3]
+            if card.index in used_cards:
+                continue
+            plan.append({"type": "card", "index": card.index})
+            used_cards.add(card.index)
+
+    for servant_name in normalized_priority:
+        for card_index in remaining_cards:
+            if len(plan) >= 3:
+                return plan[:3]
+            if card_index in used_cards:
+                continue
+            if card_owners.get(card_index) != servant_name:
+                continue
+            plan.append({"type": "card", "index": card_index})
+            used_cards.add(card_index)
+
+    for card_index in remaining_cards:
+        if len(plan) >= 3:
+            break
+        if card_index in used_cards:
+            continue
+        plan.append({"type": "card", "index": card_index})
+        used_cards.add(card_index)
+    return plan[:3]
 
 
 class DailyAction:
@@ -92,6 +155,7 @@ class DailyAction:
         self._last_processed_turn: Optional[int] = None
         self._unknown_snapshot_saved = False
         self._support_verifiers: dict[str, SupportPortraitVerifier] = {}
+        self._command_card_recognizer: Optional[CommandCardRecognizer] = None
         self._unknown_fallback_templates = [
             ("close_upper_left.png", "未知状态兜底：已点击左上角关闭"),
             ("close.png", "未知状态兜底：已点击关闭"),
@@ -409,7 +473,13 @@ class DailyAction:
     def handle_card_select(self) -> None:
         """进入选卡界面后优先选择可用宝具，再补普通指令卡。"""
         np_statuses = self._read_np_statuses_with_retry()
-        card_plan = self.build_card_plan(np_statuses)
+        cards = self._read_command_cards()
+        card_owners = (
+            {card.index: card.owner for card in cards}
+            if cards is not None
+            else self._read_command_card_owners()
+        )
+        card_plan = self.build_card_plan(np_statuses, card_owners, cards)
         self.execute_card_plan(card_plan)
         self._wait_after_card_plan()
 
@@ -661,19 +731,25 @@ class DailyAction:
         return statuses
 
     def build_card_plan(
-        self, np_statuses: list[ServantNpStatus]
+        self,
+        np_statuses: list[ServantNpStatus],
+        card_owners: Optional[dict[int, str | None]] = None,
+        cards: Optional[list[CommandCardInfo]] = None,
     ) -> list[dict[str, int]]:
         """构建本回合的出卡计划，优先宝具，其次固定普通指令卡。"""
-        plan: list[dict[str, int]] = []
-        for status in np_statuses:
-            if status.is_ready:
-                plan.append({"type": "noble", "index": status.servant_index})
-
-        for card_index in (1, 2, 3, 4, 5):
-            if len(plan) >= 3:
-                break
-            plan.append({"type": "card", "index": card_index})
-
+        noble_indices = [
+            status.servant_index for status in np_statuses if status.is_ready
+        ]
+        servant_priority = self._command_card_priority()
+        if card_owners is None:
+            card_owners = {}
+        plan = build_command_card_plan(
+            noble_indices=noble_indices,
+            card_owners=card_owners,
+            servant_priority=servant_priority,
+            cards=cards,
+            support_attacker=self._support_attacker_servant_name(),
+        )
         log.info("本回合出卡计划：%s", plan)
         return plan[:3]
 
@@ -700,6 +776,78 @@ class DailyAction:
             log.info("宝具 servant=%s 触发目标选择，默认选择第一个从者", servant_index)
             return
         log.info("宝具 servant=%s 已加入本回合出卡", servant_index)
+
+    def _command_card_priority(self) -> list[str]:
+        """返回当前普通卡从者优先顺序。"""
+        raw_priority = getattr(
+            self.config.smart_battle,
+            "command_card_priority",
+            [],
+        )
+        return [
+            str(item).replace("\\", "/").strip().strip("/")
+            for item in raw_priority
+            if str(item).strip()
+        ]
+
+    def _frontline_servant_names(self) -> list[str]:
+        """返回前排三人的完整从者标识。"""
+        return [
+            str(slot.servant).replace("\\", "/").strip().strip("/")
+            for slot in self.config.smart_battle.frontline
+            if str(slot.servant).strip()
+        ]
+
+    def _read_command_card_owners(self) -> Optional[dict[int, str | None]]:
+        """识别五张普通指令卡分别属于谁。"""
+        servant_priority = self._command_card_priority()
+        frontline_servants = self._frontline_servant_names()
+        if not servant_priority or not frontline_servants:
+            return None
+        if self._command_card_recognizer is None:
+            self._command_card_recognizer = CommandCardRecognizer(self.resources)
+        try:
+            owners = self._command_card_recognizer.recognize_frontline(
+                self._get_latest_screen_rgb(),
+                frontline_servants,
+            )
+        except Exception as exc:
+            log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
+            return None
+        log.info("普通指令卡归属识别：%s", owners)
+        return owners
+
+    def _read_command_cards(self) -> Optional[list[CommandCardInfo]]:
+        """识别五张普通卡的归属和颜色。"""
+        servant_priority = self._command_card_priority()
+        frontline_servants = self._frontline_servant_names()
+        if not servant_priority or not frontline_servants:
+            return None
+        if self._command_card_recognizer is None:
+            self._command_card_recognizer = CommandCardRecognizer(self.resources)
+        try:
+            cards = self._command_card_recognizer.recognize_frontline_cards(
+                self._get_latest_screen_rgb(),
+                frontline_servants,
+            )
+        except Exception as exc:
+            log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
+            return None
+        log.info(
+            "普通指令卡识别：%s",
+            [
+                {"index": card.index, "owner": card.owner, "color": card.color}
+                for card in cards
+            ],
+        )
+        return cards
+
+    def _support_attacker_servant_name(self) -> str | None:
+        """返回助战打手的从者标识。"""
+        for slot in self.config.smart_battle.frontline:
+            if slot.is_support and slot.role == "attacker":
+                return str(slot.servant).replace("\\", "/").strip().strip("/")
+        return None
 
     def _handle_unknown_fallback(self) -> bool:
         """在未知状态下尝试点击常见通用按钮，避免流程卡死。"""

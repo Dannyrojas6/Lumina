@@ -77,6 +77,10 @@ smart_battle:
       - actor: 3
         skill: 3
         phase: buff
+  command_card_priority:
+    - berserker/morgan
+    - caster/zhuge_liang
+    - caster/merlin
   fail_mode: conservative
   sample_mode: false
 

@@ -31,22 +31,6 @@ from core.portrait_embedding import (
 from core.resources import ResourceCatalog
 from core.support_portrait_verification import SupportPortraitVerifier
 
-DEFAULT_POSITIVE_IMAGES = [
-    "test_image/助战选择界面摩根1.png",
-    "test_image/助战选择界面摩根2.png",
-    "test_image/助战选择界面摩根3.png",
-    "test_image/助战选择界面摩根5.png",
-    "test_image/失败测试图片.png",
-]
-DEFAULT_NEGATIVE_IMAGES = [
-    "test_image/失败测试图片2.png",
-    "test_image/失败测试图片3.png",
-    "test_image/失败测试图片4.png",
-    "test_image/失败测试图片5.png",
-    "test_image/失败测试图片6.png",
-]
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成人物头像向量库")
     parser.add_argument("--servant", required=True, help="从者标识，例如 berserker/morgan")
@@ -54,13 +38,13 @@ def parse_args() -> argparse.Namespace:
         "--positive-images",
         nargs="+",
         default=[],
-        help="正例截图路径，留空时 berserker/morgan 使用仓库内默认样本",
+        help="额外加入的正例截图路径",
     )
     parser.add_argument(
         "--negative-images",
         nargs="+",
         default=[],
-        help="反例截图路径，留空时 berserker/morgan 使用仓库内默认样本",
+        help="额外加入的反例截图路径",
     )
     parser.add_argument(
         "--negative-atlas-servants",
@@ -94,13 +78,9 @@ def main() -> int:
 
     positive_images = _resolve_sample_paths(
         args.positive_images,
-        DEFAULT_POSITIVE_IMAGES,
-        args.servant,
     )
     negative_images = _resolve_sample_paths(
         args.negative_images,
-        DEFAULT_NEGATIVE_IMAGES,
-        args.servant,
     )
     negative_atlas_servants = _resolve_negative_atlas_servants(
         servant_name=args.servant,
@@ -348,12 +328,8 @@ def _calibrate_meta(
     )
 
 
-def _resolve_sample_paths(
-    provided: list[str],
-    defaults: list[str],
-    servant_name: str,
-) -> list[Path]:
-    raw_paths = provided or (defaults if servant_name == "berserker/morgan" else [])
+def _resolve_sample_paths(provided: list[str]) -> list[Path]:
+    raw_paths = provided
     if not raw_paths:
         return []
     paths = [REPO_ROOT / item for item in raw_paths]

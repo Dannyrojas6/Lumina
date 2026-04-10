@@ -202,6 +202,7 @@ cython_debug/
 .cursorindexingignore
 
 # Local tool caches
+.worktrees/
 .uv-cache/
 .uv_cache/
 local_data/

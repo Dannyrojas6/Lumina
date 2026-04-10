@@ -84,6 +84,7 @@ class SmartBattleConfig:
     enabled: bool = False
     frontline: list[SmartBattleFrontlineSlot] = field(default_factory=list)
     wave_plan: list[SmartBattleWavePlan] = field(default_factory=list)
+    command_card_priority: list[str] = field(default_factory=list)
     fail_mode: Literal["conservative"] = "conservative"
     sample_mode: bool = False
 
@@ -99,6 +100,9 @@ class SmartBattleConfig:
             enabled=bool(raw.get("enabled", False)),
             frontline=_parse_frontline(raw.get("frontline", [])),
             wave_plan=_parse_wave_plan(raw.get("wave_plan", [])),
+            command_card_priority=_parse_command_card_priority(
+                raw.get("command_card_priority", [])
+            ),
             fail_mode=_parse_fail_mode(raw.get("fail_mode", "conservative")),
             sample_mode=bool(raw.get("sample_mode", False)),
         )
@@ -365,3 +369,12 @@ def _parse_support_recognition(data: Any) -> SupportRecognitionConfig:
         save_debug_mismatches=bool(raw.get("save_debug_mismatches", True)),
         max_debug_images=int(raw.get("max_debug_images", 12)),
     )
+
+
+def _parse_command_card_priority(data: Any) -> list[str]:
+    """解析普通指令卡的从者优先顺序。"""
+    if data is None:
+        return []
+    if not isinstance(data, list):
+        raise TypeError("smart_battle.command_card_priority must be a list")
+    return [str(item).replace("\\", "/").strip().strip("/") for item in data if str(item).strip()]

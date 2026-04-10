@@ -169,13 +169,27 @@ class GameCoordinates:
         2: None,
         3: None,
     }
-    CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
-        1: (290, 650),
-        2: (570, 650),
-        3: (860, 650),
-        4: (1140, 650),
-        5: (1420, 650),
+    COMMAND_CARD_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        1: (77, 586, 347, 927),
+        2: (463, 586, 733, 927),
+        3: (849, 586, 1119, 927),
+        4: (1235, 586, 1505, 927),
+        5: (1621, 586, 1891, 927),
     }
+    CARD_POSITIONS: Final[dict[int, tuple[int, int]]] = {
+        index: ((x1 + x2) // 2, (y1 + y2) // 2)
+        for index, (x1, y1, x2, y2) in COMMAND_CARD_REGIONS.items()
+    }
+    COMMAND_CARD_FACE_REGIONS: Final[dict[int, tuple[int, int, int, int]]] = {
+        index: (x1, y1, x2, y1 + ((y2 - y1) // 2))
+        for index, (x1, y1, x2, y2) in COMMAND_CARD_REGIONS.items()
+    }
+    COMMAND_CARD_COLOR_ZONE_RATIOS: Final[tuple[float, float, float, float]] = (
+        0.18,
+        0.58,
+        0.82,
+        0.82,
+    )
 
     @staticmethod
     def region_center(region: tuple[int, int, int, int]) -> tuple[int, int]:
