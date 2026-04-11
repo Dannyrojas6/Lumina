@@ -12,9 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.config import SupportRecognitionConfig
-from core.coordinates import GameCoordinates
-from core.portrait_embedding import (
+from core.shared.config_models import SupportRecognitionConfig
+from core.shared.screen_coordinates import GameCoordinates
+from core.support_recognition import (
     DEFAULT_MIN_MARGIN,
     DEFAULT_MIN_SCORE,
     PortraitEncoder,
@@ -28,8 +28,10 @@ from core.portrait_embedding import (
     save_reference_bank,
     write_png,
 )
-from core.resources import ResourceCatalog
-from core.support_portrait_verification import SupportPortraitVerifier
+from core.shared.resource_catalog import ResourceCatalog
+from core.support_recognition.verifier import SupportPortraitVerifier
+
+ATLAS_ONLY_MIN_SCORE = 0.27
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成人物头像向量库")
@@ -269,6 +271,26 @@ def _calibrate_meta(
     negative_images: list[Path],
     expected_slot: int,
 ) -> PortraitReferenceMeta:
+    if not positive_images and not negative_images:
+        return PortraitReferenceMeta(
+            servant_name=base_meta.servant_name,
+            model_path=base_meta.model_path,
+            image_size=base_meta.image_size,
+            embedding_dim=base_meta.embedding_dim,
+            square_weight=base_meta.square_weight,
+            face_weight=base_meta.face_weight,
+            negative_penalty=base_meta.negative_penalty,
+            min_score=float(ATLAS_ONLY_MIN_SCORE),
+            min_margin=float(DEFAULT_MIN_MARGIN),
+            portrait_crop=base_meta.portrait_crop,
+            face_crop=base_meta.face_crop,
+            base_size=base_meta.base_size,
+            ignore_regions=base_meta.ignore_regions,
+            masked_face_crop=base_meta.masked_face_crop,
+            positive_samples=base_meta.positive_samples,
+            negative_samples=base_meta.negative_samples,
+        )
+
     positive_scores: list[float] = []
     positive_margins: list[float] = []
     negative_scores: list[float] = []

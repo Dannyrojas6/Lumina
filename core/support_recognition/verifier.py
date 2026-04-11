@@ -8,23 +8,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import cv2
 import numpy as np
 
-from core.config import SupportRecognitionConfig
-from core.coordinates import GameCoordinates
-from core.portrait_embedding import (
-    PortraitEncoder,
+from core.shared.config_models import SupportRecognitionConfig
+from core.shared.resource_catalog import ResourceCatalog
+from core.shared.screen_coordinates import GameCoordinates
+from core.support_recognition.bank import (
     PortraitReferenceBank,
     PortraitReferenceMeta,
-    build_masked_portrait_views,
-    cosine_similarity,
     load_reference_bank,
-    write_png,
 )
-from core.resources import ResourceCatalog
+from core.support_recognition.encoder import PortraitEncoder, cosine_similarity
+from core.support_recognition.image_io import load_rgb_image, write_png
+from core.support_recognition.masking import build_masked_portrait_views
+from core.support_recognition.visualize import annotate_support_screen
 
-log = logging.getLogger("core.support_portrait_verification")
+log = logging.getLogger("core.support_recognition.verifier")
 
 OFFSET_MIN = -220
 OFFSET_MAX = 40
@@ -212,16 +211,13 @@ class SupportPortraitVerifier:
         )
 
     def match_image(self, image_path: Path) -> Optional[SupportPortraitVerifyResult]:
-        screen_rgb = _read_image_rgb(image_path)
+        screen_rgb = load_rgb_image(image_path)
         return self.confirm_match(screen_rgb, screen_rgb)
 
     def is_confident(self, analysis: SupportPortraitVerification) -> bool:
         if analysis.best_slot is None:
             return False
-        return (
-            analysis.best_slot.score >= self.min_score
-            and analysis.margin >= self.min_margin
-        )
+        return analysis.best_slot.score >= self.min_score and analysis.margin >= self.min_margin
 
     def save_debug_mismatch(
         self,
@@ -234,7 +230,7 @@ class SupportPortraitVerifier:
             return
         debug_dir = Path(self.resources.support_debug_dir)
         debug_dir.mkdir(parents=True, exist_ok=True)
-        annotated = _annotate_support_screen(screen_rgb, analysis)
+        annotated = annotate_support_screen(screen_rgb, analysis)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         save_path = debug_dir / f"{self.servant_name}_{reason}_{timestamp}.png"
         write_png(save_path, annotated)
@@ -245,7 +241,7 @@ class SupportPortraitVerifier:
         screen_rgb: np.ndarray,
         analysis: SupportPortraitVerification,
     ) -> np.ndarray:
-        return _annotate_support_screen(screen_rgb, analysis)
+        return annotate_support_screen(screen_rgb, analysis)
 
     def _score_offset(
         self,
@@ -332,27 +328,19 @@ class SupportPortraitVerifier:
     ) -> SupportPortraitSlotScore:
         masked_full_positive_scores = cosine_similarity(
             masked_full_vector,
-            self.bank.masked_full_positive
-            if self.bank.masked_full_positive is not None
-            else self.bank.square_positive,
+            self.bank.masked_full_positive if self.bank.masked_full_positive is not None else self.bank.square_positive,
         )
         masked_face_positive_scores = cosine_similarity(
             masked_face_vector,
-            self.bank.masked_face_positive
-            if self.bank.masked_face_positive is not None
-            else self.bank.face_positive,
+            self.bank.masked_face_positive if self.bank.masked_face_positive is not None else self.bank.face_positive,
         )
         masked_full_negative_scores = cosine_similarity(
             masked_full_vector,
-            self.bank.masked_full_negative
-            if self.bank.masked_full_negative is not None
-            else self.bank.square_negative,
+            self.bank.masked_full_negative if self.bank.masked_full_negative is not None else self.bank.square_negative,
         )
         masked_face_negative_scores = cosine_similarity(
             masked_face_vector,
-            self.bank.masked_face_negative
-            if self.bank.masked_face_negative is not None
-            else self.bank.face_negative,
+            self.bank.masked_face_negative if self.bank.masked_face_negative is not None else self.bank.face_negative,
         )
 
         masked_full_positive = float(masked_full_positive_scores.max(initial=0.0))
@@ -432,16 +420,6 @@ def _best_name(
     return ""
 
 
-def _crop_relative(
-    image_rgb: np.ndarray,
-    region: tuple[int, int, int, int],
-    relative_region: tuple[int, int, int, int],
-) -> np.ndarray:
-    x1, y1, _, _ = region
-    rx1, ry1, rx2, ry2 = relative_region
-    return _safe_crop(image_rgb, x1 + rx1, y1 + ry1, x1 + rx2, y1 + ry2)
-
-
 def _safe_crop(
     image_rgb: np.ndarray,
     x1: int,
@@ -457,44 +435,6 @@ def _safe_crop(
     if right <= left or bottom <= top:
         return np.empty((0, 0, 3), dtype=np.uint8)
     return image_rgb[top:bottom, left:right]
-
-
-def _annotate_support_screen(
-    screen_rgb: np.ndarray,
-    analysis: SupportPortraitVerification,
-) -> np.ndarray:
-    annotated = cv2.cvtColor(screen_rgb, cv2.COLOR_RGB2BGR)
-    strip_x1, strip_y1, strip_x2, strip_y2 = GameCoordinates.SUPPORT_PORTRAIT_STRIP
-    cv2.rectangle(annotated, (strip_x1, strip_y1), (strip_x2, strip_y2), (255, 128, 0), 1)
-    for item in analysis.slot_scores:
-        color = (
-            (0, 255, 0)
-            if analysis.best_slot and item.slot_index == analysis.best_slot.slot_index
-            else (0, 128, 255)
-        )
-        x1, y1, x2, y2 = item.region
-        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(
-            annotated,
-            f"S{item.slot_index}:{item.score:.3f}",
-            (x1 + 4, max(24, y1 - 8)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            color,
-            2,
-            cv2.LINE_AA,
-        )
-    return cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-
-
-def _read_image_rgb(image_path: Path) -> np.ndarray:
-    raw = np.fromfile(str(image_path), dtype=np.uint8)
-    if raw.size == 0:
-        raise FileNotFoundError(f"无法读取截图：{image_path}")
-    image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
-    if image is None:
-        raise FileNotFoundError(f"无法读取截图：{image_path}")
-    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
 def _regions_close(

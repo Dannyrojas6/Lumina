@@ -1,5 +1,7 @@
 """统一管理截图输出路径和模板资源路径。"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -7,41 +9,15 @@ from typing import Any
 
 import yaml
 
-from core.game_state import GameState
+from core.shared.game_types import GameState
+from core.shared.resource_manifest import (
+    ServantManifest,
+    SupportRecognitionManifest,
+    parse_servant_skill,
+    parse_support_recognition_manifest,
+)
 
-
-@dataclass(frozen=True)
-class SupportRecognitionManifest:
-    """描述助战头像识别资源布局。"""
-
-    source_dir: str = "atlas/faces"
-    source_glob: str = "**/*.png"
-    generated_dir: str = "support/generated"
-    reference_bank: str = "support/generated/reference_bank.npz"
-    reference_meta: str = "support/generated/reference_meta.json"
-
-
-@dataclass(frozen=True)
-class ServantSkillManifest:
-    """描述从者单个技能的长期资料。"""
-
-    skill_index: int
-    effect_tags: list[str] = field(default_factory=list)
-    target_type: str = ""
-    priority_tags: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class ServantManifest:
-    """描述从者资料文件的标准结构。"""
-
-    servant_name: str
-    display_name: str = ""
-    class_name: str = ""
-    support_recognition: SupportRecognitionManifest = field(
-        default_factory=SupportRecognitionManifest
-    )
-    skills: list[ServantSkillManifest] = field(default_factory=list)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -54,9 +30,38 @@ class ResourceCatalog:
     screen_path: str = "assets/screenshots/screen.png"
     ocr_debug_dir: str = "assets/screenshots/ocr"
     support_debug_dir: str = "assets/screenshots/support_recognition"
+    _repo_root: Path = field(init=False, repr=False, compare=False)
     state_templates: dict[GameState, str] = field(init=False)
 
     def __post_init__(self) -> None:
+        repo_root = self._resolve_repo_root()
+        object.__setattr__(self, "_repo_root", repo_root)
+        object.__setattr__(self, "assets_dir", str(self._resolve_path(self.assets_dir)))
+        object.__setattr__(
+            self,
+            "servants_dir",
+            str(self._resolve_path(self.servants_dir)),
+        )
+        object.__setattr__(
+            self,
+            "legacy_ui_dir",
+            str(self._resolve_path(self.legacy_ui_dir)),
+        )
+        object.__setattr__(
+            self,
+            "screen_path",
+            str(self._resolve_path(self.screen_path)),
+        )
+        object.__setattr__(
+            self,
+            "ocr_debug_dir",
+            str(self._resolve_path(self.ocr_debug_dir)),
+        )
+        object.__setattr__(
+            self,
+            "support_debug_dir",
+            str(self._resolve_path(self.support_debug_dir)),
+        )
         object.__setattr__(
             self,
             "state_templates",
@@ -155,7 +160,9 @@ class ResourceCatalog:
         manifest: ServantManifest | None = None,
     ) -> str:
         """返回助战头像原图目录。"""
-        support = manifest.support_recognition if manifest else SupportRecognitionManifest()
+        support = (
+            manifest.support_recognition if manifest else SupportRecognitionManifest()
+        )
         return str(self.servant_dir(servant_name) / support.source_dir)
 
     def support_generated_dir(
@@ -164,7 +171,9 @@ class ResourceCatalog:
         manifest: ServantManifest | None = None,
     ) -> str:
         """返回助战头像生成模板目录。"""
-        support = manifest.support_recognition if manifest else SupportRecognitionManifest()
+        support = (
+            manifest.support_recognition if manifest else SupportRecognitionManifest()
+        )
         return str(self.servant_dir(servant_name) / support.generated_dir)
 
     def servant_manifest_path(self, servant_name: str) -> str:
@@ -181,7 +190,9 @@ class ResourceCatalog:
         manifest: ServantManifest | None = None,
     ) -> str:
         """返回助战头像向量库路径。"""
-        support = manifest.support_recognition if manifest else SupportRecognitionManifest()
+        support = (
+            manifest.support_recognition if manifest else SupportRecognitionManifest()
+        )
         return str(self.servant_dir(servant_name) / support.reference_bank)
 
     def support_reference_meta_path(
@@ -190,7 +201,9 @@ class ResourceCatalog:
         manifest: ServantManifest | None = None,
     ) -> str:
         """返回助战头像向量库元数据路径。"""
-        support = manifest.support_recognition if manifest else SupportRecognitionManifest()
+        support = (
+            manifest.support_recognition if manifest else SupportRecognitionManifest()
+        )
         return str(self.servant_dir(servant_name) / support.reference_meta)
 
     def load_servant_manifest(self, servant_name: str) -> ServantManifest:
@@ -207,8 +220,8 @@ class ResourceCatalog:
         if isinstance(support_data, SupportRecognitionManifest):
             support_recognition = support_data
         else:
-            support_recognition = _parse_support_recognition(support_data)
-        skills = [_parse_servant_skill(item) for item in skills_data]
+            support_recognition = parse_support_recognition_manifest(support_data)
+        skills = [parse_servant_skill(item) for item in skills_data]
         servant_dir = manifest_path.parent
         default_class_name = servant_dir.parent.name
         return ServantManifest(
@@ -226,6 +239,18 @@ class ResourceCatalog:
         if legacy.exists():
             return str(legacy)
         return str(preferred)
+
+    def _resolve_repo_root(self) -> Path:
+        assets_dir = Path(self.assets_dir)
+        if assets_dir.is_absolute():
+            return assets_dir.parent
+        return REPO_ROOT
+
+    def _resolve_path(self, path: str | Path) -> Path:
+        raw_path = Path(path)
+        if raw_path.is_absolute():
+            return raw_path
+        return (self._repo_root / raw_path).resolve()
 
     def _normalize_servant_name(self, servant_name: str) -> str:
         return str(servant_name).replace("\\", "/").strip().strip("/")
@@ -264,47 +289,3 @@ class ResourceCatalog:
             f"未找到本地从者资源目录，或目录为空：`{servant_root}`。"
             f"{download_hint}"
         )
-
-
-def _parse_servant_skill(data: Any) -> ServantSkillManifest:
-    """解析从者技能定义。"""
-    if not isinstance(data, dict):
-        raise TypeError("servant manifest skill must be a mapping")
-    for key in ("skill_index", "effect_tags", "target_type", "priority_tags"):
-        if key not in data:
-            raise ValueError(f"servant manifest skill requires {key}")
-    effect_tags = data.get("effect_tags", [])
-    priority_tags = data.get("priority_tags", [])
-    if isinstance(effect_tags, str):
-        effect_tags = [effect_tags]
-    if isinstance(priority_tags, str):
-        priority_tags = [priority_tags]
-    if not isinstance(effect_tags, list):
-        raise TypeError("servant manifest skill effect_tags must be a list")
-    if not isinstance(priority_tags, list):
-        raise TypeError("servant manifest skill priority_tags must be a list")
-    return ServantSkillManifest(
-        skill_index=int(data.get("skill_index")),
-        effect_tags=[str(tag) for tag in effect_tags],
-        target_type=str(data.get("target_type", "")),
-        priority_tags=[str(tag) for tag in priority_tags],
-    )
-
-
-def _parse_support_recognition(data: Any) -> SupportRecognitionManifest:
-    """解析助战头像识别资源定义。"""
-    if data is None:
-        data = {}
-    if not isinstance(data, dict):
-        raise TypeError("support_recognition must be a mapping")
-    return SupportRecognitionManifest(
-        source_dir=str(data.get("source_dir", "atlas/faces")),
-        source_glob=str(data.get("source_glob", "**/*.png")),
-        generated_dir=str(data.get("generated_dir", "support/generated")),
-        reference_bank=str(
-            data.get("reference_bank", "support/generated/reference_bank.npz")
-        ),
-        reference_meta=str(
-            data.get("reference_meta", "support/generated/reference_meta.json")
-        ),
-    )

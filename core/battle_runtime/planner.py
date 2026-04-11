@@ -1,169 +1,16 @@
-"""智能战斗判断层，负责根据战场快照生成当前回合动作。"""
+"""智能战斗判断器。"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Literal
-
-
-SkillTargetType = Literal["team", "self", "ally_single"]
-ServantRole = Literal["attacker", "support", "hybrid"]
-
-
-@dataclass(frozen=True)
-class FrontlineServantConfig:
-    """描述前排三位从者的身份信息。"""
-
-    slot: int
-    servant: str
-    role: ServantRole
-    is_support: bool = False
-
-
-@dataclass(frozen=True)
-class ServantSkillDefinition:
-    """描述单个技能的基础资料。"""
-
-    skill_index: int
-    effect_tags: list[str] = field(default_factory=list)
-    target_type: SkillTargetType = "team"
-    priority_tags: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class ServantManifest:
-    """描述单个从者的最小可用资料。"""
-
-    slug: str
-    display_name: str
-    role_tags: list[str] = field(default_factory=list)
-    skills: list[ServantSkillDefinition] = field(default_factory=list)
-
-    def skill_by_index(self, skill_index: int) -> ServantSkillDefinition | None:
-        """返回指定序号的技能定义。"""
-        for skill in self.skills:
-            if skill.skill_index == skill_index:
-                return skill
-        return None
-
-
-@dataclass(frozen=True)
-class WaveActionRule:
-    """描述某一面里可尝试执行的一步动作。"""
-
-    actor: int | str
-    skill: int
-    condition_tags: list[str] = field(default_factory=list)
-    phase: str | None = None
-
-
-@dataclass(frozen=True)
-class BattleSnapshot:
-    """描述当前回合判断层真正依赖的战场事实。"""
-
-    wave_index: int
-    enemy_count: int
-    current_turn: int
-    frontline_np: dict[int, int]
-    skill_availability: dict[int, bool]
-    used_skills: set[int] = field(default_factory=set)
-    attacker_np_known: bool = True
-    wave_known: bool = True
-    enemy_count_known: bool = True
-    turn_known: bool = True
-
-
-@dataclass(frozen=True)
-class BattleDecisionAction:
-    """描述一条将交给主流程执行的动作。"""
-
-    action_type: Literal["servant"] = "servant"
-    actor_slot: int = 1
-    skill: int = 1
-    global_skill: int = 1
-    target: int | None = None
-    actor: str = ""
-
-
-@dataclass(frozen=True)
-class BattleDecision:
-    """描述本回合的整体判断结果。"""
-
-    actions: list[BattleDecisionAction] = field(default_factory=list)
-    reason: str = ""
-    fallback_used: bool = False
-
-
-def normalize_frontline(frontline: list[Any]) -> list[FrontlineServantConfig]:
-    """将配置层的 frontline 结构转换成判断层结构。"""
-    normalized: list[FrontlineServantConfig] = []
-    for item in frontline:
-        normalized.append(
-            FrontlineServantConfig(
-                slot=int(_read_attr(item, "slot")),
-                servant=str(_read_attr(item, "servant")),
-                role=str(_read_attr(item, "role")),
-                is_support=bool(_read_attr(item, "is_support", False)),
-            )
-        )
-    return normalized
-
-
-def normalize_wave_plan(wave_plan: list[Any]) -> dict[int, list[WaveActionRule]]:
-    """将配置层的 wave_plan 结构转换成判断层结构。"""
-    normalized: dict[int, list[WaveActionRule]] = {}
-    for item in wave_plan:
-        wave_index = int(_read_attr(item, "wave"))
-        raw_actions = list(_read_attr(item, "actions", []))
-        normalized[wave_index] = [
-            WaveActionRule(
-                actor=_read_attr(action, "actor"),
-                skill=int(_read_attr(action, "skill")),
-                condition_tags=[
-                    str(tag) for tag in list(_read_attr(action, "condition_tags", []))
-                ],
-                phase=str(_read_attr(action, "phase", "buff")),
-            )
-            for action in raw_actions
-        ]
-    return normalized
-
-
-def normalize_manifests(manifests: list[Any]) -> dict[str, ServantManifest]:
-    """将资源层从者资料转换成判断层结构。"""
-    normalized: dict[str, ServantManifest] = {}
-    for item in manifests:
-        if item is None:
-            continue
-        slug = str(_read_attr(item, "servant_name", _read_attr(item, "slug")))
-        raw_skills = list(_read_attr(item, "skills", []))
-        normalized[slug] = ServantManifest(
-            slug=slug,
-            display_name=str(_read_attr(item, "display_name", slug)),
-            role_tags=[str(_read_attr(item, "role", ""))],
-            skills=[
-                ServantSkillDefinition(
-                    skill_index=int(_read_attr(skill, "skill_index")),
-                    effect_tags=[
-                        str(tag) for tag in list(_read_attr(skill, "effect_tags", []))
-                    ],
-                    target_type=str(_read_attr(skill, "target_type", "team")),
-                    priority_tags=[
-                        str(tag)
-                        for tag in list(_read_attr(skill, "priority_tags", []))
-                    ],
-                )
-                for skill in raw_skills
-            ],
-        )
-    return normalized
-
-
-def _read_attr(item: Any, key: str, default: Any = None) -> Any:
-    """兼容 dataclass、普通对象和 dict 的统一读值。"""
-    if isinstance(item, dict):
-        return item.get(key, default)
-    return getattr(item, key, default)
+from core.battle_runtime.planner_models import (
+    BattleDecision,
+    BattleDecisionAction,
+    BattleSnapshot,
+    FrontlineServantConfig,
+    ServantManifest,
+    ServantSkillDefinition,
+    WaveActionRule,
+)
 
 
 class SmartBattlePlanner:
@@ -238,7 +85,9 @@ class SmartBattlePlanner:
             ):
                 continue
 
-            global_skill = self._global_skill_index(frontline_entry.slot, skill.skill_index)
+            global_skill = self._global_skill_index(
+                frontline_entry.slot, skill.skill_index
+            )
             if global_skill in snapshot.used_skills:
                 continue
             if not snapshot.skill_availability.get(global_skill, False):
@@ -295,7 +144,7 @@ class SmartBattlePlanner:
 
     def _resolve_target(
         self,
-        target_type: SkillTargetType,
+        target_type: str,
         attacker_slot: int,
     ) -> int | None:
         """根据技能目标类型推导默认目标。"""

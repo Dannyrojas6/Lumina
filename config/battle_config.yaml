@@ -28,7 +28,7 @@ ocr:
   save_ocr_crops: true # 当前示例开启；如需减少留图可改为 false，且最多保留 9 张
 
 smart_battle:
-  enabled: true # 当前示例开启；关闭后回退到 skill_sequence
+  enabled: false # 当前示例关闭；首回合动作改走 skill_sequence
   frontline:
     - slot: 1
       servant: caster/zhuge_liang
@@ -42,47 +42,10 @@ smart_battle:
       servant: berserker/morgan
       role: attacker
       is_support: true
-  wave_plan:
-    1:
-      - actor: 1
-        skill: 1
-        condition_tags:
-          - np_not_ready
-        phase: charge
-      - actor: 1
-        skill: 2
-        phase: buff
-      - actor: 2
-        skill: 1
-        phase: buff
-      - actor: 2
-        skill: 3
-        phase: buff
-    2:
-      - actor: 1
-        skill: 3
-        phase: buff
-      - actor: 3
-        skill: 2
-        condition_tags:
-          - np_not_ready
-        phase: charge
-      - actor: 3
-        skill: 1
-        phase: buff
-    3:
-      - actor: 3
-        skill: 1
-        phase: buff
-      - actor: 3
-        skill: 3
-        phase: buff
   command_card_priority:
     - berserker/morgan
     - caster/zhuge_liang
     - caster/merlin
-  fail_mode: conservative
-  sample_mode: false
 
 # 本场战斗要依次释放的技能动作。
 # 纯数字 1-9 仍表示从者技能。

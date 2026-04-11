@@ -17,15 +17,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.adb_controller import AdbController
-from core.config import BattleConfig, load_battle_config
-from core.coordinates import GameCoordinates
-from core.game_state import GameState
-from core.image_recognizer import ImageRecognizer
-from core.portrait_embedding import write_png
-from core.resources import ResourceCatalog
-from core.state_detector import StateDetectionResult, StateDetector
-from core.support_portrait_verification import (
+from core.device.adb_controller import AdbController
+from core.shared import BattleConfig, GameCoordinates, GameState, load_battle_config
+from core.perception import ImageRecognizer, StateDetectionResult, StateDetector
+from core.shared.resource_catalog import ResourceCatalog
+from core.support_recognition import write_png
+from core.support_recognition.verifier import (
     SupportPortraitVerification,
     SupportPortraitVerifier,
 )
@@ -101,6 +98,7 @@ class SupportMatchWatcher:
         self._latest_screen_rgb: Optional[np.ndarray] = None
         self._last_state: Optional[GameState] = None
         self._swipe_count = 0
+        self._miss_count = 0
         self.state_detector = StateDetector(
             recognizer=recognizer,
             screen_callback=self._refresh_screen,
@@ -129,7 +127,12 @@ class SupportMatchWatcher:
     def _run_round(self, initial_screen: np.ndarray) -> bool:
         initial_analysis = self.verifier.analyze(initial_screen)
         if not self.verifier.is_confident(initial_analysis):
-            self._log_non_match(initial_analysis)
+            miss_paths = self._save_non_hit_artifacts(
+                screen_rgb=initial_screen,
+                analysis=initial_analysis,
+                reason="initial_low",
+            )
+            self._log_non_match(initial_analysis, miss_paths=miss_paths)
             return False
 
         time.sleep(self.verifier.config.confirm_delay)
@@ -138,7 +141,12 @@ class SupportMatchWatcher:
         match_result = self.verifier.confirm_match(initial_screen, confirm_screen)
         if match_result is None:
             confirm_analysis = self.verifier.analyze(confirm_screen)
-            self._log_non_match(confirm_analysis)
+            miss_paths = self._save_non_hit_artifacts(
+                screen_rgb=confirm_screen,
+                analysis=confirm_analysis,
+                reason="confirm_reject",
+            )
+            self._log_non_match(confirm_analysis, miss_paths=miss_paths)
             return False
 
         final_analysis = self.verifier.analyze(confirm_screen)
@@ -194,18 +202,28 @@ class SupportMatchWatcher:
             return
         log.info("当前不在助战页 state=%s，继续等待", detection.state.name)
 
-    def _log_non_match(self, analysis: SupportPortraitVerification) -> None:
+    def _log_non_match(
+        self,
+        analysis: SupportPortraitVerification,
+        *,
+        miss_paths: Optional[dict[str, str]] = None,
+    ) -> None:
         best_slot = analysis.best_slot
         if best_slot is None:
-            log.info("当前页未得到有效候选，准备下滑 swipe=%s", self._swipe_count)
+            log.info(
+                "当前页未得到有效候选，准备下滑 swipe=%s files=%s",
+                self._swipe_count,
+                miss_paths,
+            )
             return
         log.info(
-            "当前页未命中 servant=%s best_slot=%s best_score=%.3f margin=%.3f swipe=%s",
+            "当前页未命中 servant=%s best_slot=%s best_score=%.3f margin=%.3f swipe=%s files=%s",
             self.servant_name,
             best_slot.slot_index,
             best_slot.score,
             analysis.margin,
             self._swipe_count,
+            miss_paths,
         )
 
     def _scroll_support_list(self) -> None:
@@ -247,6 +265,66 @@ class SupportMatchWatcher:
             "best_positive_name": match_result.best_positive_name,
             "best_negative_name": match_result.best_negative_name,
             "swipe_count": self._swipe_count,
+            "analysis": {
+                "best_slot": None if analysis.best_slot is None else analysis.best_slot.slot_index,
+                "second_slot": None if analysis.second_slot is None else analysis.second_slot.slot_index,
+                "margin": analysis.margin,
+                "min_score": analysis.min_score,
+                "min_margin": analysis.min_margin,
+                "slot_scores": [
+                    {
+                        "slot_index": item.slot_index,
+                        "score": item.score,
+                        "positive_score": item.positive_score,
+                        "negative_score": item.negative_score,
+                        "square_positive": item.square_positive,
+                        "face_positive": item.face_positive,
+                        "square_negative": item.square_negative,
+                        "face_negative": item.face_negative,
+                        "best_positive_name": item.best_positive_name,
+                        "best_negative_name": item.best_negative_name,
+                        "region": list(item.region),
+                        "click_position": list(item.click_position),
+                    }
+                    for item in analysis.slot_scores
+                ],
+            },
+        }
+        summary_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return {
+            "screenshot": str(screenshot_path),
+            "annotated": str(annotated_path),
+            "summary": str(summary_path),
+        }
+
+    def _save_non_hit_artifacts(
+        self,
+        *,
+        screen_rgb: np.ndarray,
+        analysis: SupportPortraitVerification,
+        reason: str,
+    ) -> dict[str, str]:
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        self._miss_count += 1
+        miss_tag = f"miss_{self._miss_count:04d}_{reason}_{timestamp}"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        screenshot_path = self.output_dir / f"{miss_tag}.png"
+        annotated_path = self.output_dir / f"{miss_tag}_annotated.png"
+        summary_path = self.output_dir / f"{miss_tag}.json"
+
+        write_png(screenshot_path, screen_rgb)
+        write_png(annotated_path, self.verifier.build_annotated_image(screen_rgb, analysis))
+        payload = {
+            "timestamp": timestamp,
+            "servant": self.servant_name,
+            "backend": "embedding",
+            "result": "miss",
+            "reason": reason,
+            "swipe_count": self._swipe_count,
+            "miss_count": self._miss_count,
             "analysis": {
                 "best_slot": None if analysis.best_slot is None else analysis.best_slot.slot_index,
                 "second_slot": None if analysis.second_slot is None else analysis.second_slot.slot_index,

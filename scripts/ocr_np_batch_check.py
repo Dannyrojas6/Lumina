@@ -127,10 +127,10 @@ def format_report(report: BatchReport) -> str:
 
 def resolve_reader():
     try:
-        from core.battle_ocr import BattleOcrReader
+        from core.perception.battle_ocr import BattleOcrReader
     except ImportError as exc:  # pragma: no cover - exercised by integration only
         raise RuntimeError(
-            "core.battle_ocr.BattleOcrReader is not available yet. "
+            "core.perception.battle_ocr.BattleOcrReader is not available yet. "
             "Implement BattleOcrReader.read_np_values(image_path) -> list[int]."
         ) from exc
 

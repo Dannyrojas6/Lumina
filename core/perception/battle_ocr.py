@@ -11,12 +11,11 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from core.config import BattleOcrConfig
-from core.coordinates import GameCoordinates
-from core.ocr_engine import OcrTextChunk
-from core.ocr_engine import OcrEngine
+from core.shared.config_models import BattleOcrConfig
+from core.shared.screen_coordinates import GameCoordinates
+from core.perception.ocr_engine import OcrEngine, OcrTextChunk
 
-log = logging.getLogger("core.battle_ocr")
+log = logging.getLogger("core.perception.battle_ocr")
 
 BASE_SCREEN_SIZE = (1920, 1080)
 

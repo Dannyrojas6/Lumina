@@ -1,18 +1,18 @@
-"""战斗快照识别层，集中产出智能战斗 v1 需要的最小信息。"""
+"""战斗快照识别层。"""
 
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Optional
 
 import cv2
 import numpy as np
 
-from core.battle_ocr import BattleOcrReader, EnemyHpStatus, ServantNpStatus
-from core.coordinates import GameCoordinates
+from core.perception.battle_ocr import BattleOcrReader, EnemyHpStatus, ServantNpStatus
+from core.shared.screen_coordinates import GameCoordinates
 
 log = logging.getLogger("core.battle_snapshot")
 
@@ -268,7 +268,6 @@ class BattleSnapshotReader:
         x1, y1, x2, y2 = region
         return screen[y1:y2, x1:x2]
 
-
     def _to_gray(self, image: np.ndarray) -> np.ndarray:
         if image.ndim == 2:
             return image
@@ -299,5 +298,3 @@ class BattleSnapshotReader:
         if "剩" in normalized or "余" in normalized:
             return True
         return any(int(item) > 0 for item in re.findall(r"\d+", normalized))
-
-

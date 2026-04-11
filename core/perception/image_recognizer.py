@@ -9,7 +9,7 @@ from typing import Callable, Optional
 import cv2
 import numpy as np
 
-log = logging.getLogger("core.image_recognizer")
+log = logging.getLogger("core.perception.image_recognizer")
 
 
 @dataclass(frozen=True)
@@ -112,7 +112,6 @@ class ImageRecognizer:
             log.warning(f"截图读取失败：{screen_desc}")
             return TemplateMatchResult(score=0.0, position=None)
 
-        # 模板尺寸异常时直接跳过，避免 OpenCV 在匹配阶段报错。
         if (
             template.shape[0] > screen_image.shape[0]
             or template.shape[1] > screen_image.shape[1]
@@ -200,4 +199,3 @@ class ImageRecognizer:
 
         log.warning(f"等待超时 {timeout}s，模板均未出现：{template_paths}")
         return None
-

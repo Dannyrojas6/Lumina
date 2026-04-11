@@ -10,10 +10,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.config import load_battle_config
-from core.portrait_embedding import load_rgb_image
-from core.resources import ResourceCatalog
-from core.support_portrait_verification import SupportPortraitVerifier
+from core.shared import ResourceCatalog, load_battle_config
+from core.support_recognition import load_rgb_image
+from core.support_recognition.verifier import SupportPortraitVerifier
 
 
 def parse_args() -> argparse.Namespace:

@@ -8,14 +8,14 @@ from pathlib import Path
 
 import numpy as np
 
-from core.coordinates import GameCoordinates
-from core.portrait_embedding import (
+from core.shared.screen_coordinates import GameCoordinates
+from core.support_recognition import (
     PortraitEncoder,
     cosine_similarity,
     load_rgba_image,
     rgba_to_rgb_on_black,
 )
-from core.resources import ResourceCatalog
+from core.shared.resource_catalog import ResourceCatalog
 
 COMMAND_CARD_MIN_SCORE = 0.07
 COMMAND_CARD_MIN_MARGIN = 0.002

@@ -1,15 +1,36 @@
-from core.app import run
-from core.battle_ocr import BattleOcrReader, EnemyHpStatus, ServantNpStatus
-from core.battle_actions import BattleAction
-from core.config import BattleConfig, BattleOcrConfig, load_battle_config
-from core.coordinates import GameCoordinates
-from core.game_state import GameState
-from core.ocr_engine import OcrEngine, OcrReadResult
-from core.resources import ResourceCatalog
-from core.smart_battle import SmartBattlePlanner
-from core.workflow import DailyAction
+from core.battle_runtime import BattleAction, SmartBattlePlanner
+from core.device import AdbController
+from core.perception import (
+    BattleOcrReader,
+    EnemyHpStatus,
+    ImageRecognizer,
+    OcrEngine,
+    OcrReadResult,
+    ServantNpStatus,
+    StateDetectionResult,
+    StateDetector,
+    TemplateMatchResult,
+)
+from core.runtime import DailyAction, run
+from core.shared import (
+    BattleConfig,
+    BattleOcrConfig,
+    GameCoordinates,
+    GameState,
+    ResourceCatalog,
+    load_battle_config,
+)
+from core.support_recognition import (
+    PortraitReferenceBank,
+    PortraitReferenceMeta,
+    SupportPortraitSlotScore,
+    SupportPortraitVerification,
+    SupportPortraitVerifier,
+    SupportPortraitVerifyResult,
+)
 
 __all__ = [
+    "AdbController",
     "BattleOcrConfig",
     "BattleOcrReader",
     "BattleAction",
@@ -18,11 +39,21 @@ __all__ = [
     "EnemyHpStatus",
     "GameCoordinates",
     "GameState",
+    "ImageRecognizer",
     "OcrEngine",
     "OcrReadResult",
+    "PortraitReferenceBank",
+    "PortraitReferenceMeta",
     "ResourceCatalog",
     "ServantNpStatus",
     "SmartBattlePlanner",
+    "SupportPortraitSlotScore",
+    "SupportPortraitVerification",
+    "SupportPortraitVerifier",
+    "SupportPortraitVerifyResult",
+    "StateDetectionResult",
+    "StateDetector",
+    "TemplateMatchResult",
     "load_battle_config",
     "run",
 ]

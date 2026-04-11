@@ -18,12 +18,12 @@
 ## 离线检查入口
 
 - 批量脚本：[scripts/ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)
-- 主读取入口：[core/battle_ocr.py](/D:/VSCodeRepository/Lumina/core/battle_ocr.py)
+- 主读取入口：[core/perception/battle_ocr.py](/D:/VSCodeRepository/Lumina/core/perception/battle_ocr.py)
 - 通用区域检查：[scripts/ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)
 
 ## 当前约定
 
-- `core.battle_ocr.BattleOcrReader.read_np_values(image_path) -> list[int]`
+- `core.perception.battle_ocr.BattleOcrReader.read_np_values(image_path) -> list[int]`
 - 返回固定三项，对应前排三位从者
 - 单项读取失败时返回 `-1`
 

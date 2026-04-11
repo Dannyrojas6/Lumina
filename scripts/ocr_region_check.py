@@ -15,9 +15,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.battle_ocr import BattleOcrReader
-from core.config import BattleOcrConfig
-from core.coordinates import GameCoordinates
+from core.shared.config_models import BattleOcrConfig
+from core.shared.screen_coordinates import GameCoordinates
+from core.perception.battle_ocr import BattleOcrReader
 
 
 def _resolve_path(path: str | Path) -> Path:

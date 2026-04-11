@@ -1,6 +1,6 @@
 """程序入口，只负责启动核心应用。"""
 
-from core.app import run
+from core.runtime.app import run
 
 
 def main() -> None:

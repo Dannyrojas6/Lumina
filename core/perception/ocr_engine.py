@@ -14,7 +14,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-log = logging.getLogger("core.ocr_engine")
+log = logging.getLogger("core.perception.ocr_engine")
 _DLL_HANDLES: list[object] = []
 
 
@@ -45,11 +45,11 @@ class PaddleOcrBackend:
         self._ensure_torch_dll_path()
         try:
             import torch  # noqa: F401
-        except ImportError as exc:  # pragma: no cover - 依赖安装后再验证
+        except ImportError as exc:
             raise RuntimeError("未安装 torch，无法启用 PaddleOCR 对照后端。") from exc
         try:
             from paddleocr import PaddleOCR
-        except ImportError as exc:  # pragma: no cover - 依赖安装后再验证
+        except ImportError as exc:
             raise RuntimeError("未安装 paddleocr，无法启用 PaddleOCR。") from exc
 
         self._engine = PaddleOCR(
@@ -117,39 +117,6 @@ class PaddleOcrBackend:
         except (TypeError, ValueError):
             return None, 0.0, float(fallback_index), tuple()
         return text, confidence, float(fallback_index), tuple()
-
-    def _parse_result_item(
-        self,
-        item,
-        *,
-        fallback_index: int,
-    ) -> tuple[Optional[str], float, float, tuple[tuple[float, float], ...]]:
-        if not isinstance(item, (list, tuple)) or len(item) < 2:
-            return None, 0.0, float(fallback_index), tuple()
-
-        box = self._normalize_box(item[0])
-        rec = item[1]
-        if not isinstance(rec, (list, tuple)) or len(rec) < 2:
-            return None, 0.0, float(fallback_index), box
-        try:
-            text = str(rec[0])
-            confidence = float(rec[1])
-        except (TypeError, ValueError):
-            return None, 0.0, float(fallback_index), box
-        left_x = min((point[0] for point in box), default=float(fallback_index))
-        return text, confidence, left_x, box
-
-    def _normalize_box(self, box) -> tuple[tuple[float, float], ...]:
-        if not isinstance(box, (list, tuple)):
-            return tuple()
-        normalized: list[tuple[float, float]] = []
-        for point in box:
-            if isinstance(point, (list, tuple)) and len(point) >= 2:
-                try:
-                    normalized.append((float(point[0]), float(point[1])))
-                except (TypeError, ValueError):
-                    continue
-        return tuple(normalized)
 
 
 class OcrEngine:
@@ -225,7 +192,6 @@ class OcrEngine:
         if preset != "default":
             raise ValueError(f"不支持的 OCR 预处理模式：{preset}")
 
-        # 小数字裁图在强二值化下容易直接丢字，这里优先保留灰度细节。
         if grayscale.shape[0] <= 40:
             return self._prepare_small_crop_image(grayscale)
 
@@ -263,7 +229,6 @@ class OcrEngine:
         )
 
     def _prepare_skill_corner_image(self, grayscale: np.ndarray) -> np.ndarray:
-        # 技能角落数字更小，先做对比度拉伸，再放大保留描边。
         normalized = cv2.normalize(grayscale, None, 0, 255, cv2.NORM_MINMAX)
         padded = cv2.copyMakeBorder(
             normalized,
@@ -284,7 +249,10 @@ class OcrEngine:
 
     def _save_debug_crop(self, image: np.ndarray, label: str) -> None:
         self.debug_dir.mkdir(parents=True, exist_ok=True)
-        existing_files = sorted(self.debug_dir.glob("*.png"), key=lambda path: path.stat().st_mtime)
+        existing_files = sorted(
+            self.debug_dir.glob("*.png"),
+            key=lambda path: path.stat().st_mtime,
+        )
         while len(existing_files) >= self.MAX_DEBUG_CROPS:
             existing_files[0].unlink(missing_ok=True)
             existing_files.pop(0)

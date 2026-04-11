@@ -4,8 +4,8 @@ import logging
 import time
 from typing import Optional
 
-from core.adb_controller import AdbController
-from core.coordinates import GameCoordinates
+from core.device.adb_controller import AdbController
+from core.shared.screen_coordinates import GameCoordinates
 
 log = logging.getLogger("core.battle_actions")
 

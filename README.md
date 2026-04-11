@@ -12,13 +12,14 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - `OCR` 读取敌方三个位的 `HP`
 - 判断前排九个技能位当前是否可点
 - 按 `smart_battle` 配置决定本回合技能动作
+- 识别五张普通卡的归属和颜色，并按基础连携优先补满出卡
 
 ## 当前限制
 
 - 不做多设备适配
 - 不做后排、换人、替补上场
 - 不做御主技能智能判断
-- 不做普通卡完整智能化
+- 不做普通卡完整智能化，只保留基础连携和从者优先出卡
 - `tests/` 当前不是主验证入口
 
 ## 环境要求
@@ -76,7 +77,12 @@ uv run .\main.py
 ## 目录入口
 
 - [main.py](/D:/VSCodeRepository/Lumina/main.py)：程序入口
-- [core](/D:/VSCodeRepository/Lumina/core)：主流程、识别、判断
+- [core/perception](/D:/VSCodeRepository/Lumina/core/perception)：模板识别与战斗 OCR
+- [core/support_recognition](/D:/VSCodeRepository/Lumina/core/support_recognition)：助战头像识别
+- [core/shared](/D:/VSCodeRepository/Lumina/core/shared)：配置、资源、坐标与基础类型
+- [core/battle_runtime](/D:/VSCodeRepository/Lumina/core/battle_runtime)：战斗判断、快照与动作执行
+- [core/runtime](/D:/VSCodeRepository/Lumina/core/runtime)：主流程总控
+- [core/device](/D:/VSCodeRepository/Lumina/core/device)：设备控制
 - [config](/D:/VSCodeRepository/Lumina/config)：运行配置
 - [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui)：界面模板
 - [assets/servants](/D:/VSCodeRepository/Lumina/assets/servants)：从者公共资料、索引与下载脚本

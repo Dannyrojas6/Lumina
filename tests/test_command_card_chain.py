@@ -1,14 +1,22 @@
 import unittest
+from pathlib import Path
 
-from core.command_card_recognition import (
+from core.battle_runtime.command_card_recognition import (
     CommandCardInfo,
     detect_command_card_color,
     choose_best_card_chain,
 )
-from core.coordinates import GameCoordinates
-from core.portrait_embedding import load_rgb_image
-from core.workflow import build_command_card_plan
+from core.shared.screen_coordinates import GameCoordinates
+from core.support_recognition import load_rgb_image
+from core.runtime.workflow import build_command_card_plan
 import numpy as np
+
+TEST_IMAGE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "test_image"
+    / "fight"
+    / "指令卡梅林摩根诸葛亮.png"
+)
 
 
 def make_color_block(color: str) -> np.ndarray:
@@ -54,9 +62,7 @@ class CommandCardChainTest(unittest.TestCase):
         self.assertEqual(detect_command_card_color(make_color_block("quick")), "quick")
 
     def test_detect_command_card_color_matches_merlin_morgan_zhuge_sample(self) -> None:
-        screen = load_rgb_image(
-            r"D:\VSCodeRepository\Lumina\test_image\fight\指令卡梅林摩根诸葛亮.png"
-        )
+        screen = load_rgb_image(TEST_IMAGE_PATH)
         colors = {}
         for card_index, region in GameCoordinates.COMMAND_CARD_REGIONS.items():
             x1, y1, x2, y2 = region

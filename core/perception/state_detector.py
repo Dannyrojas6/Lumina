@@ -8,11 +8,11 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from core.game_state import GameState
-from core.image_recognizer import ImageRecognizer
-from core.resources import ResourceCatalog
+from core.shared.game_types import GameState
+from core.perception.image_recognizer import ImageRecognizer
+from core.shared.resource_catalog import ResourceCatalog
 
-log = logging.getLogger("core.state_detector")
+log = logging.getLogger("core.perception.state_detector")
 
 
 @dataclass(frozen=True)

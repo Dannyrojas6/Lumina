@@ -2,20 +2,17 @@
 
 import logging
 
-from core.battle_snapshot import BattleSnapshotReader
-from core.battle_ocr import BattleOcrReader
-from core.adb_controller import AdbController
-from core.config import BattleConfig, load_battle_config
-from core.image_recognizer import ImageRecognizer
-from core.ocr_engine import OcrEngine
-from core.resources import ResourceCatalog
-from core.smart_battle import (
+from core.device.adb_controller import AdbController
+from core.battle_runtime import (
+    BattleSnapshotReader,
     SmartBattlePlanner,
     normalize_frontline,
     normalize_manifests,
     normalize_wave_plan,
 )
-from core.workflow import DailyAction
+from core.perception import BattleOcrReader, ImageRecognizer, OcrEngine
+from core.shared import BattleConfig, ResourceCatalog, load_battle_config
+from core.runtime.workflow import DailyAction
 
 
 def setup_logging(config: BattleConfig, *, force: bool = False) -> None:

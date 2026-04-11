@@ -1,0 +1,73 @@
+from core.support_recognition.bank import (
+    DEFAULT_FACE_WEIGHT,
+    DEFAULT_MIN_MARGIN,
+    DEFAULT_MIN_SCORE,
+    DEFAULT_NEGATIVE_PENALTY,
+    DEFAULT_SQUARE_WEIGHT,
+    PortraitReferenceBank,
+    PortraitReferenceMeta,
+    bank_counts,
+    load_reference_bank,
+    meta_to_debug_dict,
+    save_reference_bank,
+)
+from core.support_recognition.encoder import (
+    EMBEDDING_DIM,
+    INPUT_IMAGE_SIZE,
+    PortraitEncoder,
+    cosine_similarity,
+    ensure_portrait_encoder_model,
+    prepare_encoder_input,
+)
+from core.support_recognition.image_io import (
+    load_rgb_image,
+    load_rgba_image,
+    read_image,
+    rgba_to_rgb_on_black,
+    write_png,
+)
+from core.support_recognition.masking import (
+    DEFAULT_IGNORE_REGIONS,
+    DEFAULT_MASK_BASE_SIZE,
+    DEFAULT_MASKED_FACE_CROP,
+    build_masked_portrait_views,
+)
+from core.support_recognition.verifier import (
+    SupportPortraitSlotScore,
+    SupportPortraitVerification,
+    SupportPortraitVerifier,
+    SupportPortraitVerifyResult,
+)
+
+__all__ = [
+    "DEFAULT_FACE_WEIGHT",
+    "DEFAULT_IGNORE_REGIONS",
+    "DEFAULT_MASK_BASE_SIZE",
+    "DEFAULT_MASKED_FACE_CROP",
+    "DEFAULT_MIN_MARGIN",
+    "DEFAULT_MIN_SCORE",
+    "DEFAULT_NEGATIVE_PENALTY",
+    "DEFAULT_SQUARE_WEIGHT",
+    "EMBEDDING_DIM",
+    "INPUT_IMAGE_SIZE",
+    "PortraitEncoder",
+    "PortraitReferenceBank",
+    "PortraitReferenceMeta",
+    "SupportPortraitSlotScore",
+    "SupportPortraitVerification",
+    "SupportPortraitVerifier",
+    "SupportPortraitVerifyResult",
+    "bank_counts",
+    "build_masked_portrait_views",
+    "cosine_similarity",
+    "ensure_portrait_encoder_model",
+    "load_reference_bank",
+    "load_rgb_image",
+    "load_rgba_image",
+    "meta_to_debug_dict",
+    "prepare_encoder_input",
+    "read_image",
+    "rgba_to_rgb_on_black",
+    "save_reference_bank",
+    "write_png",
+]
