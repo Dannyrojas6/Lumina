@@ -102,5 +102,6 @@ uv run .\main.py
 ## 相关文档
 
 - [AGENTS.md](/D:/VSCodeRepository/Lumina/AGENTS.md)：执行约束
+- [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)：当前项目状态总入口
 - [DevGuide.md](/D:/VSCodeRepository/Lumina/DevGuide.md)：当前开发接手说明
 - [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)：从者资源目录说明

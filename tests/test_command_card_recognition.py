@@ -18,6 +18,12 @@ TEST_IMAGE_PATH = (
     / "fight"
     / "指令卡梅林摩根诸葛亮.png"
 )
+FAILED_IMAGE_PATH = (
+    Path(__file__).resolve().parents[1] / "test_image" / "指令卡识别失败1.png"
+)
+FAILED_IMAGE_PATH_2 = (
+    Path(__file__).resolve().parents[1] / "test_image" / "指令卡识别失败2.png"
+)
 
 
 class CommandCardRecognitionTest(unittest.TestCase):
@@ -73,6 +79,7 @@ class CommandCardRecognitionTest(unittest.TestCase):
                 "caster/merlin",
                 "berserker/morgan",
             ],
+            support_attacker="berserker/morgan",
         )
 
         self.assertEqual(
@@ -83,6 +90,62 @@ class CommandCardRecognitionTest(unittest.TestCase):
                 3: "caster/zhuge_liang",
                 4: "caster/merlin",
                 5: "caster/merlin",
+            },
+        )
+
+    def test_recognize_frontline_masks_top_right_tag_on_morgan_card(self) -> None:
+        resources = ResourceCatalog()
+        recognizer = CommandCardRecognizer(resources)
+        from core.support_recognition import load_rgb_image
+
+        screen = load_rgb_image(FAILED_IMAGE_PATH)
+        owners = recognizer.recognize_frontline(
+            screen,
+            [
+                "caster/zhuge_liang",
+                "caster/merlin",
+                "berserker/morgan",
+            ],
+            support_attacker="berserker/morgan",
+        )
+
+        self.assertEqual(
+            owners,
+            {
+                1: "caster/zhuge_liang",
+                2: "caster/merlin",
+                3: "berserker/morgan",
+                4: "caster/zhuge_liang",
+                5: "caster/zhuge_liang",
+            },
+        )
+
+    def test_recognize_frontline_prefers_support_attacker_view_on_tagged_cards(
+        self,
+    ) -> None:
+        resources = ResourceCatalog()
+        recognizer = CommandCardRecognizer(resources)
+        from core.support_recognition import load_rgb_image
+
+        screen = load_rgb_image(FAILED_IMAGE_PATH_2)
+        owners = recognizer.recognize_frontline(
+            screen,
+            [
+                "caster/zhuge_liang",
+                "caster/merlin",
+                "berserker/morgan",
+            ],
+            support_attacker="berserker/morgan",
+        )
+
+        self.assertEqual(
+            owners,
+            {
+                1: "caster/zhuge_liang",
+                2: "caster/zhuge_liang",
+                3: "berserker/morgan",
+                4: "berserker/morgan",
+                5: "berserker/morgan",
             },
         )
 

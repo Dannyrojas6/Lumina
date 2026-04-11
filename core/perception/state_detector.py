@@ -57,21 +57,29 @@ class StateDetector:
         matched_score = 0.0
         matched_template: Optional[str] = None
         missing_templates: list[str] = []
-        for state, template_path in self.resources.state_templates.items():
-            if not Path(template_path).exists():
-                missing_templates.append(template_path)
-                continue
+        for state, template_entry in self.resources.state_templates.items():
+            template_paths = (
+                list(template_entry)
+                if isinstance(template_entry, tuple)
+                else [template_entry]
+            )
+            for template_path in template_paths:
+                if not Path(template_path).exists():
+                    missing_templates.append(template_path)
+                    continue
 
-            match_result = self.recognizer.match_with_score(template_path, screen_image)
-            if match_result.score > best_score:
-                best_match_state = state
-                best_score = match_result.score
-                best_template = template_path
+                match_result = self.recognizer.match_with_score(
+                    template_path, screen_image
+                )
+                if match_result.score > best_score:
+                    best_match_state = state
+                    best_score = match_result.score
+                    best_template = template_path
 
-            if match_result.position and match_result.score > matched_score:
-                matched_state = state
-                matched_score = match_result.score
-                matched_template = template_path
+                if match_result.position and match_result.score > matched_score:
+                    matched_state = state
+                    matched_score = match_result.score
+                    matched_template = template_path
 
         if matched_state is not None:
             elapsed = time.perf_counter() - started_at

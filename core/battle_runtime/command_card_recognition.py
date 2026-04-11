@@ -22,6 +22,12 @@ COMMAND_CARD_MIN_MARGIN = 0.002
 COMMAND_CARD_NEGATIVE_PENALTY = 0.65
 INFO_STRIP_TOP_RATIO = 24 / 170
 INFO_STRIP_BOTTOM_RATIO = 62 / 170
+SUPPORT_BADGE_ZONE_LEFT_RATIO = 0.48
+SUPPORT_BADGE_ZONE_TOP_RATIO = 0.06
+SUPPORT_BADGE_ZONE_RIGHT_RATIO = 0.98
+SUPPORT_BADGE_ZONE_BOTTOM_RATIO = 0.28
+SUPPORT_BADGE_MIN_WHITE_RATIO = 0.30
+SUPPORT_BADGE_MIN_RED_RATIO = 0.045
 COMMAND_CARD_CHAIN_PRIORITY = {
     "support_attacker_same_servant": 0,
     "buster_3": 1,
@@ -111,6 +117,32 @@ def mask_command_card_info_strip(image_rgb: np.ndarray) -> np.ndarray:
     mean_color = masked[keep_mask].reshape(-1, 3).mean(axis=0)
     masked[top:bottom, :] = np.round(mean_color).astype(np.uint8)
     return masked
+
+
+def has_support_badge(card_rgb: np.ndarray) -> bool:
+    """判断整张普通卡右上是否存在助战标签。"""
+    if card_rgb.size == 0:
+        return False
+    height, width = card_rgb.shape[:2]
+    x1 = max(0, min(int(round(width * SUPPORT_BADGE_ZONE_LEFT_RATIO)), width))
+    y1 = max(0, min(int(round(height * SUPPORT_BADGE_ZONE_TOP_RATIO)), height))
+    x2 = max(x1, min(int(round(width * SUPPORT_BADGE_ZONE_RIGHT_RATIO)), width))
+    y2 = max(y1, min(int(round(height * SUPPORT_BADGE_ZONE_BOTTOM_RATIO)), height))
+    zone = card_rgb[y1:y2, x1:x2]
+    if zone.size == 0:
+        return False
+
+    flat = zone.reshape(-1, 3)
+    white_ratio = np.mean(
+        (flat[:, 0] > 205) & (flat[:, 1] > 205) & (flat[:, 2] > 205)
+    )
+    red_ratio = np.mean(
+        (flat[:, 0] > 160) & (flat[:, 1] < 145) & (flat[:, 2] < 145)
+    )
+    return (
+        float(white_ratio) >= SUPPORT_BADGE_MIN_WHITE_RATIO
+        and float(red_ratio) >= SUPPORT_BADGE_MIN_RED_RATIO
+    )
 
 
 @dataclass(frozen=True)
@@ -238,6 +270,7 @@ class CommandCardRecognizer:
         self,
         screen_rgb: np.ndarray,
         frontline_servants: list[str],
+        support_attacker: str | None = None,
     ) -> dict[int, str | None]:
         """识别五张普通指令卡分别属于谁。"""
         normalized_frontline = [
@@ -245,6 +278,7 @@ class CommandCardRecognizer:
             for item in frontline_servants
             if str(item).strip()
         ]
+        normalized_support_attacker = _normalize_servant_name(support_attacker)
         if not normalized_frontline:
             return {index: None for index in GameCoordinates.COMMAND_CARD_REGIONS}
 
@@ -254,25 +288,46 @@ class CommandCardRecognizer:
         }
         results: dict[int, str | None] = {}
         for card_index, region in GameCoordinates.COMMAND_CARD_REGIONS.items():
+            x1, y1, x2, y2 = region
+            full_card = screen_rgb[y1:y2, x1:x2].copy()
             crop = crop_command_card_face(screen_rgb, region)
             if crop.size == 0:
                 results[card_index] = None
                 continue
+
+            if normalized_support_attacker and has_support_badge(full_card):
+                results[card_index] = normalized_support_attacker
+                continue
+
+            current_servants = normalized_frontline
+            if normalized_support_attacker:
+                current_servants = [
+                    item
+                    for item in normalized_frontline
+                    if item != normalized_support_attacker
+                ] or normalized_frontline
+
             query_vector = self.encoder.encode(mask_command_card_info_strip(crop))
-            results[card_index] = self._match_owner(
+            best_match = self._match_owner(
                 query_vector=query_vector,
-                current_servants=normalized_frontline,
+                current_servants=current_servants,
                 servant_vectors=servant_vectors,
-            ).owner
+            )
+            results[card_index] = best_match.owner if best_match else None
         return results
 
     def recognize_frontline_cards(
         self,
         screen_rgb: np.ndarray,
         frontline_servants: list[str],
+        support_attacker: str | None = None,
     ) -> list[CommandCardInfo]:
         """识别五张普通卡的归属和颜色。"""
-        owners = self.recognize_frontline(screen_rgb, frontline_servants)
+        owners = self.recognize_frontline(
+            screen_rgb,
+            frontline_servants,
+            support_attacker=support_attacker,
+        )
         cards: list[CommandCardInfo] = []
         for card_index, region in GameCoordinates.COMMAND_CARD_REGIONS.items():
             x1, y1, x2, y2 = region

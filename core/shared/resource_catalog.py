@@ -31,7 +31,7 @@ class ResourceCatalog:
     ocr_debug_dir: str = "assets/screenshots/ocr"
     support_debug_dir: str = "assets/screenshots/support_recognition"
     _repo_root: Path = field(init=False, repr=False, compare=False)
-    state_templates: dict[GameState, str] = field(init=False)
+    state_templates: dict[GameState, str | tuple[str, ...]] = field(init=False)
 
     def __post_init__(self) -> None:
         repo_root = self._resolve_repo_root()
@@ -82,8 +82,10 @@ class ResourceCatalog:
                 GameState.BATTLE_READY: self.state_template(
                     "battle_ready", "fight_menu.png"
                 ),
-                GameState.BATTLE_RESULT: self.state_template(
-                    "battle_result", "fight_result.png"
+                GameState.BATTLE_RESULT: (
+                    self.template("fight_result_1.png"),
+                    self.template("fight_result_2.png"),
+                    self.template("fight_result_3.png"),
                 ),
                 GameState.MAIN_MENU: self.state_template("main_menu", "main_menu.png"),
             },

@@ -23,6 +23,8 @@ class SupportFlowMixin:
         pick_index = int(support_cfg["pick_index"])
         max_scroll_pages = int(support_cfg["max_scroll_pages"])
 
+        log.info("检测到助战选择界面，等待列表加载稳定")
+        time.sleep(self.SUPPORT_ENTRY_BUFFER_WAIT)
         self._select_support_class(support_class)
 
         if servant_name:

@@ -12,8 +12,8 @@ from core.battle_runtime.command_card_recognition import (
     choose_best_card_chain,
 )
 from core.battle_runtime.planner_models import BattleSnapshot as SmartBattleSnapshot
-from core.shared import GameCoordinates, GameState
 from core.perception.battle_ocr import ServantNpStatus
+from core.shared import GameCoordinates, GameState
 
 log = logging.getLogger("core.battle_flow")
 
@@ -28,8 +28,7 @@ def build_command_card_plan(
 ) -> list[dict[str, int]]:
     """按宝具优先和从者优先顺序构建统一出卡计划。"""
     plan: list[dict[str, int]] = [
-        {"type": "noble", "index": servant_index}
-        for servant_index in noble_indices[:3]
+        {"type": "noble", "index": servant_index} for servant_index in noble_indices[:3]
     ]
     if len(plan) >= 3:
         return plan[:3]
@@ -114,7 +113,9 @@ class BattleFlowMixin:
     def _wait_after_card_plan(self) -> None:
         """出卡后先给动画最短缓冲，再等待画面离开选卡界面。"""
         self._sleep_with_log(self.POST_CARD_MIN_WAIT, "已完成出卡，等待战斗动画起步")
-        deadline = time.time() + max(0.0, self.BATTLE_ANIMATION_WAIT - self.POST_CARD_MIN_WAIT)
+        deadline = time.time() + max(
+            0.0, self.BATTLE_ANIMATION_WAIT - self.POST_CARD_MIN_WAIT
+        )
         while time.time() < deadline:
             detection = self.state_detector.detect()
             if detection.state not in (GameState.CARD_SELECT, GameState.UNKNOWN):
@@ -124,7 +125,38 @@ class BattleFlowMixin:
         log.warning("战斗动画等待超时，继续后续流程")
 
     def handle_battle_result(self) -> None:
-        """处理结算界面，并按模板完成收尾点击。"""
+        """按三段结果页顺序处理结算界面。"""
+        stage = self._detect_battle_result_stage()
+        if stage in {1, 2}:
+            self.adb.click(*GameCoordinates.RESULT_CONTINUE)
+            time.sleep(self.DEFAULT_CLICK_DELAY)
+            log.info("已点击结算页第 %s 段继续", stage)
+            return
+
+        if stage == 3:
+            if not self._click_template("next.png", "已点击结算页下一步"):
+                log.warning("已识别到战利品结算页，但未识别到下一步按钮")
+                return
+            time.sleep(1.0)
+            self._mark_battle_result_complete()
+            log.info("战斗结果处理完成")
+            return
+
+        log.warning("已进入结算状态，但未识别到具体结果页阶段")
+
+    def _detect_battle_result_stage(self) -> int | None:
+        """判断当前结算页处于哪一段。"""
+        for stage in (1, 2, 3):
+            pos = self.recognizer.match(
+                self.resources.template(f"fight_result_{stage}.png"),
+                self._get_latest_screen_image(),
+            )
+            if pos:
+                return stage
+        return None
+
+    def _mark_battle_result_complete(self) -> None:
+        """在结算完成后重置本轮战斗状态。"""
         self._loop_done += 1
         self._battle_actions_done = False
         self._used_servant_skills.clear()
@@ -132,25 +164,12 @@ class BattleFlowMixin:
         self._last_enemy_count = None
         self._last_current_turn = None
         self._last_processed_turn = None
-        self._click_template(
-            "please_click_game_interface.png", "已点击结算页第一次继续"
-        )
-        time.sleep(1.0)
-        self._refresh_screen()
-        self._click_template(
-            "please_click_game_interface.png", "已点击结算页第二次继续"
-        )
-        time.sleep(1.0)
-        self._refresh_screen()
-        self._click_template("next.png", "已点击结算页下一步")
-        time.sleep(1.0)
-        log.info("战斗结果处理完成")
 
     def _use_action_with_optional_target(self, action: dict) -> None:
         """释放技能后检查是否出现目标选择界面，出现则默认选择 1 号目标。"""
         action_type = action["type"]
         skill_num = action["skill"]
-        default_target = action.get("target") or 1
+        default_target = action.get("target") or 3
 
         if action_type == "master":
             self.battle.click_master_skill(skill_num)
@@ -383,6 +402,7 @@ class BattleFlowMixin:
             owners = self._command_card_recognizer.recognize_frontline(
                 self._get_latest_screen_rgb(),
                 frontline_servants,
+                support_attacker=self._support_attacker_servant_name(),
             )
         except Exception as exc:
             log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
@@ -402,6 +422,7 @@ class BattleFlowMixin:
             cards = self._command_card_recognizer.recognize_frontline_cards(
                 self._get_latest_screen_rgb(),
                 frontline_servants,
+                support_attacker=self._support_attacker_servant_name(),
             )
         except Exception as exc:
             log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)

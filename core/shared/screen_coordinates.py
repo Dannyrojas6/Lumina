@@ -124,7 +124,7 @@ class GameCoordinates:
     FIGHT_MENU: Final[tuple[int, int, int, int]] = (1700, 220, 1882, 389)
     MASTER_SKILL: Final[tuple[int, int, int, int]] = (1699, 379, 1885, 557)
     SPEED_SKIP: Final[tuple[int, int]] = (1849, 651)
-    RESULT_CONTINUE: Final[tuple[int, int]] = (960, 540)
+    RESULT_CONTINUE: Final[tuple[int, int]] = (961, 969)
     RESULT_NEXT: Final[tuple[int, int]] = (1677, 961)
     TARGET_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (500, 600),

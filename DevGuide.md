@@ -1,6 +1,7 @@
 # Lumina DevGuide
 
 这份文档只写当前真实开发状态、接手时必须知道的事实，以及接下来更值得投入的方向。
+如果只是快速接手当前项目状态，先读 [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)，再回来看这份文档。
 
 ## 1. 当前定位
 

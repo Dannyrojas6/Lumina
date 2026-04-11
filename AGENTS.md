@@ -57,6 +57,8 @@
 ## 文档
 
 - `AGENTS.md` 只写执行约束。
+- 新线程进入仓库后，先读 [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)，再按其中链接继续读其他文档。
+- [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md) 是当前项目状态总入口。
 - `README.md` 负责当前真实结构、入口和资源规则。
 - `DevGuide.md` 负责接手说明和背景补充。
 - 文档只写当前真实状态；结构或资源规则变更时，优先更新 `README.md`。
