@@ -8,7 +8,6 @@ class GameState(Enum):
 
     UNKNOWN = auto()
     MAIN_MENU = auto()
-    IN_BATTLE = auto()
     SUPPORT_SELECT = auto()
     TEAM_CONFIRM = auto()
     LOADING_TIPS = auto()

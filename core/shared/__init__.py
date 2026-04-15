@@ -4,6 +4,7 @@ from core.shared.config_loader import load_battle_config
 from core.shared.config_models import (
     BattleConfig,
     BattleOcrConfig,
+    DeviceConfig,
     SkillAction,
     SmartBattleAction,
     SmartBattleConfig,
@@ -24,6 +25,7 @@ from core.shared.screen_coordinates import GameCoordinates
 __all__ = [
     "BattleConfig",
     "BattleOcrConfig",
+    "DeviceConfig",
     "GameCoordinates",
     "GameState",
     "ResourceCatalog",

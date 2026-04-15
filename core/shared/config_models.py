@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Literal, TypedDict
 
 
@@ -12,6 +12,15 @@ class SkillAction(TypedDict):
     type: Literal["servant", "master"]
     skill: int
     target: int | None
+
+
+@dataclass
+class DeviceConfig:
+    """描述当前固定运行环境。"""
+
+    profile: str = "mumu_1920x1080"
+    serial: str = ""
+    connect_targets: list[str] = field(default_factory=lambda: ["127.0.0.1:7555"])
 
 
 @dataclass
@@ -65,7 +74,6 @@ class SmartBattleAction:
     actor: int | str
     skill: int
     condition_tags: list[str] = field(default_factory=list)
-    phase: str = "buff"
 
 
 @dataclass
@@ -84,8 +92,6 @@ class SmartBattleConfig:
     frontline: list[SmartBattleFrontlineSlot] = field(default_factory=list)
     wave_plan: list[SmartBattleWavePlan] = field(default_factory=list)
     command_card_priority: list[str] = field(default_factory=list)
-    fail_mode: Literal["conservative"] = "conservative"
-    sample_mode: bool = False
 
     @classmethod
     def from_yaml(cls, data: Any) -> "SmartBattleConfig":
@@ -99,6 +105,7 @@ class BattleConfig:
     """控制单次刷本流程的配置项。"""
 
     loop_count: int = 10
+    continue_battle: bool = True
     skill_sequence: list = field(default_factory=list)
     match_threshold: float = 0.75
     save_debug_screenshots: bool = False
@@ -107,6 +114,7 @@ class BattleConfig:
     skill_pre_skip_delay: float = 0.5
     master_skill_open_delay: float = 0.4
     quest_slot: int = 1
+    device: DeviceConfig = field(default_factory=DeviceConfig)
     support: SupportConfig = field(default_factory=SupportConfig)
     ocr: BattleOcrConfig = field(default_factory=BattleOcrConfig)
     smart_battle: SmartBattleConfig = field(default_factory=SmartBattleConfig)
@@ -151,11 +159,3 @@ class BattleConfig:
                             {"type": "servant", "skill": int(skill), "target": None}
                         )
         return actions
-
-    def support_config(self) -> dict[str, int | str]:
-        """返回扁平化的助战配置，便于流程层读取。"""
-        return asdict(self.support)
-
-    def smart_battle_config(self) -> dict[str, Any]:
-        """返回扁平化的智能战斗配置，便于后续决策层读取。"""
-        return asdict(self.smart_battle)

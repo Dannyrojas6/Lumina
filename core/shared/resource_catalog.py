@@ -30,6 +30,7 @@ class ResourceCatalog:
     screen_path: str = "assets/screenshots/screen.png"
     ocr_debug_dir: str = "assets/screenshots/ocr"
     support_debug_dir: str = "assets/screenshots/support_recognition"
+    command_card_debug_dir: str = "assets/screenshots/command_cards"
     _repo_root: Path = field(init=False, repr=False, compare=False)
     state_templates: dict[GameState, str | tuple[str, ...]] = field(init=False)
 
@@ -61,6 +62,11 @@ class ResourceCatalog:
             self,
             "support_debug_dir",
             str(self._resolve_path(self.support_debug_dir)),
+        )
+        object.__setattr__(
+            self,
+            "command_card_debug_dir",
+            str(self._resolve_path(self.command_card_debug_dir)),
         )
         object.__setattr__(
             self,

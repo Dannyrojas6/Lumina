@@ -10,6 +10,7 @@ import yaml
 from core.shared.config_models import (
     BattleConfig,
     BattleOcrConfig,
+    DeviceConfig,
     SmartBattleAction,
     SmartBattleConfig,
     SmartBattleFrontlineSlot,
@@ -23,6 +24,17 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     """从 YAML 文件加载配置。"""
     with open(path, "r", encoding="utf-8") as file:
         data = yaml.safe_load(file) or {}
+    device_data = data.get("device", {})
+    if isinstance(device_data, DeviceConfig):
+        device = device_data
+    else:
+        device = DeviceConfig(
+            profile=str(device_data.get("profile", "mumu_1920x1080")),
+            serial=str(device_data.get("serial", "")),
+            connect_targets=parse_connect_targets(
+                device_data.get("connect_targets", ["127.0.0.1:7555"])
+            ),
+        )
     support_data = data.get("support", {})
     if isinstance(support_data, SupportConfig):
         support = support_data
@@ -49,9 +61,11 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
             save_ocr_crops=bool(ocr_data.get("save_ocr_crops", False)),
         )
     smart_battle = parse_smart_battle_config(data.get("smart_battle", {}))
+    data["device"] = device
     data["support"] = support
     data["ocr"] = ocr
     data["smart_battle"] = smart_battle
+    data["continue_battle"] = bool(data.get("continue_battle", True))
     return BattleConfig(**data)
 
 
@@ -59,8 +73,10 @@ def default_battle_config() -> BattleConfig:
     """提供最小可用的默认战斗配置。"""
     return BattleConfig(
         loop_count=10,
+        continue_battle=True,
         log_level="INFO",
         quest_slot=1,
+        device=DeviceConfig(),
         support=SupportConfig(
             class_name="all",
             servant="",
@@ -100,6 +116,7 @@ def parse_smart_battle_config(data: Any) -> SmartBattleConfig:
     raw = data or {}
     if not isinstance(raw, dict):
         raise TypeError("smart_battle must be a mapping")
+    _ensure_no_deprecated_smart_battle_fields(raw)
     return SmartBattleConfig(
         enabled=bool(raw.get("enabled", False)),
         frontline=parse_frontline(raw.get("frontline", [])),
@@ -107,8 +124,6 @@ def parse_smart_battle_config(data: Any) -> SmartBattleConfig:
         command_card_priority=parse_command_card_priority(
             raw.get("command_card_priority", [])
         ),
-        fail_mode=parse_fail_mode(raw.get("fail_mode", "conservative")),
-        sample_mode=bool(raw.get("sample_mode", False)),
     )
 
 
@@ -201,6 +216,8 @@ def parse_wave_action(data: Any) -> SmartBattleAction:
         raise ValueError("smart_battle.wave_plan action requires actor")
     if "skill" not in data:
         raise ValueError("smart_battle.wave_plan action requires skill")
+    if "phase" in data:
+        raise ValueError("smart_battle.wave_plan.actions.phase 已废弃，请删除该字段")
     condition_tags = data.get("condition_tags", [])
     if isinstance(condition_tags, str):
         condition_tags = [condition_tags]
@@ -210,7 +227,6 @@ def parse_wave_action(data: Any) -> SmartBattleAction:
         actor=data["actor"],
         skill=int(data["skill"]),
         condition_tags=[str(tag) for tag in condition_tags],
-        phase=str(data.get("phase", "buff")),
     )
 
 
@@ -220,14 +236,6 @@ def parse_frontline_role(value: Any) -> Literal["attacker", "support", "hybrid"]
     if role not in {"attacker", "support", "hybrid"}:
         raise ValueError("smart_battle.frontline.role must be attacker/support/hybrid")
     return role  # type: ignore[return-value]
-
-
-def parse_fail_mode(value: Any) -> Literal["conservative"]:
-    """解析 fail_mode。"""
-    mode = str(value).lower()
-    if mode != "conservative":
-        raise ValueError("smart_battle.fail_mode only supports conservative")
-    return "conservative"
 
 
 def parse_support_recognition(data: Any) -> SupportRecognitionConfig:
@@ -257,3 +265,18 @@ def parse_command_card_priority(data: Any) -> list[str]:
         for item in data
         if str(item).strip()
     ]
+
+
+def parse_connect_targets(data: Any) -> list[str]:
+    """解析启动前自动连接的 adb 地址列表。"""
+    if data is None:
+        return []
+    if not isinstance(data, list):
+        raise TypeError("device.connect_targets must be a list")
+    return [str(item).strip() for item in data if str(item).strip()]
+
+
+def _ensure_no_deprecated_smart_battle_fields(raw: dict[str, Any]) -> None:
+    """拒绝当前已废弃但仍可能出现在旧 YAML 里的字段。"""
+    if "fail_mode" in raw:
+        raise ValueError("smart_battle.fail_mode 已废弃，请删除该字段")

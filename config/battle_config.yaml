@@ -2,12 +2,19 @@
 # 修改这个文件来调整每次刷本的策略，无需改代码
 
 loop_count: 10 # 刷本次数（-1 为无限循环）
+continue_battle: true # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
 match_threshold: 0.70 # 图像识别置信度阈值（0~1，越高越严格）
 log_level: DEBUG # 日志级别，可选 DEBUG/INFO/WARNING
 skill_interval: 1.5 # 每个技能释放后的额外等待时间（秒）
 skill_pre_skip_delay: 0.5 # 点击技能后到点击加速跳过前的等待时间（秒）
 master_skill_open_delay: 0.6 # 点击御主技能栏后，到点具体技能前的等待时间（秒）
 quest_slot: 1 # 主菜单中要点击的关卡位，1/2/3 分别对应从上到下三个入口
+
+device:
+  profile: mumu_1920x1080 # 当前只支持 MuMu + 1920x1080
+  serial: "" # 留空时仅允许当前 adb 只有一台可用设备
+  connect_targets:
+    - 127.0.0.1:7555 # 启动前找不到设备时会尝试 adb connect
 
 support:
   class: berserker # v2 支持 all / berserker
@@ -62,5 +69,5 @@ skill_sequence:
   - 9
   - type: master
     skill: 1
-  - type: master
-    skill: 2
+#   - type: master
+#     skill: 2
