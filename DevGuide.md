@@ -25,6 +25,8 @@
 | 多设备适配 | 未开始 | 当前不做 |
 | 后排、换人、御主技能智能判断 | 未开始 | 当前不做 |
 | 普通卡完整智能化 | 未开始 | 当前不做 |
+| 启动自检 | 已完成 | 启动前会检查固定环境和关键资源 |
+| 回放回归 | 已完成 | `tests/replay/` 已纳入正式验证入口 |
 
 ## 3. 当前主链路
 
@@ -36,6 +38,14 @@
 4. 加载等待
 5. 战斗内释放技能、进入攻击、选卡
 6. 结算点击继续并进入下一轮
+
+当前运行时结构已经改成显式分层：
+
+- `core/runtime/app.py`：装配依赖并启动主引擎
+- `core/runtime/engine.py`：主循环、状态识别和 handler 分派
+- `core/runtime/session.py`：运行时共享状态
+- `core/runtime/waiter.py`：页面级等待与同步
+- `core/runtime/handlers/`：按页面拆开的状态处理器
 
 后续改动默认以“不破坏这条链路”为前提。
 
@@ -125,6 +135,9 @@
 - 基础三卡连携优先
 - `support attacker` 同从者三卡优先
 - `command_card_priority` 从者顺序兜底
+- 每回合普通卡识别证据落盘
+- 普通卡单图分析脚本
+- 任一张卡低置信度时直接停止等待人工确认
 
 当前仍不属于“普通卡完整智能化”。
 
@@ -157,17 +170,31 @@
 
 助战识别原图现在直接从 `atlas/faces/` 读取，不再保留 `support/source/` 这种重复资源层。
 
+### 5.3 固定设备配置
+
+当前固定环境不再只是文档约定，而是正式配置项：
+
+- [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 里必须声明 `device.profile`
+- 当前唯一支持值是 `mumu_1920x1080`
+- `device.serial` 留空时，只允许当前 `adb` 只有一台设备
+- 分辨率不符或关键资源缺失时，启动阶段会直接失败
 ## 6. 当前关键文件
 
-- [core/runtime/workflow.py](/D:/VSCodeRepository/Lumina/core/runtime/workflow.py)：主流程状态机
+- [core/runtime/app.py](/D:/VSCodeRepository/Lumina/core/runtime/app.py)：启动装配与启动前自检
+- [core/runtime/engine.py](/D:/VSCodeRepository/Lumina/core/runtime/engine.py)：主循环与状态分派
+- [core/runtime/session.py](/D:/VSCodeRepository/Lumina/core/runtime/session.py)：运行时共享状态
+- [core/runtime/waiter.py](/D:/VSCodeRepository/Lumina/core/runtime/waiter.py)：页面级等待与同步
+- [core/runtime/handlers](/D:/VSCodeRepository/Lumina/core/runtime/handlers)：页面处理器
 - [core/perception/state_detector.py](/D:/VSCodeRepository/Lumina/core/perception/state_detector.py)：界面状态识别
 - [core/perception/image_recognizer.py](/D:/VSCodeRepository/Lumina/core/perception/image_recognizer.py)：模板匹配基础能力
 - [core/perception/battle_ocr.py](/D:/VSCodeRepository/Lumina/core/perception/battle_ocr.py)：战斗 `OCR` 入口
 - [core/battle_runtime/snapshot_reader.py](/D:/VSCodeRepository/Lumina/core/battle_runtime/snapshot_reader.py)：战斗快照
 - [core/battle_runtime/planner.py](/D:/VSCodeRepository/Lumina/core/battle_runtime/planner.py)：智能战斗决策
+- [core/battle_runtime/card_plan.py](/D:/VSCodeRepository/Lumina/core/battle_runtime/card_plan.py)：统一出卡计划
 - [core/support_recognition/verifier.py](/D:/VSCodeRepository/Lumina/core/support_recognition/verifier.py)：助战人物头像核验
 - [core/support_recognition](/D:/VSCodeRepository/Lumina/core/support_recognition)：人物头像向量编码、遮挡裁图、向量库与调试辅助
 - [core/shared/resource_catalog.py](/D:/VSCodeRepository/Lumina/core/shared/resource_catalog.py)：资源定位
+- [core/runtime/startup_check.py](/D:/VSCodeRepository/Lumina/core/runtime/startup_check.py)：固定环境和关键资源自检
 - [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml)：运行配置
 
 ## 7. 近期优先级

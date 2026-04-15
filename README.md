@@ -13,6 +13,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - 判断前排九个技能位当前是否可点
 - 按 `smart_battle` 配置决定本回合技能动作
 - 识别五张普通卡的归属和颜色，并按基础连携优先补满出卡
+- 普通卡每回合保存识别证据；任一张卡低置信度时直接停止等待人工确认
 
 ## 当前限制
 
@@ -28,6 +29,8 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - 可用的 `adb`
 - `MuMu + 1920x1080`
 - Python 依赖使用 `uv` 管理
+- `battle_config.yaml` 中的 `device.profile` 固定为 `mumu_1920x1080`
+- `battle_config.yaml` 中的 `device.serial` 可留空；留空时只允许当前只有一台可用设备
 
 依赖定义见 [pyproject.toml](/D:/VSCodeRepository/Lumina/pyproject.toml)。
 
@@ -52,10 +55,19 @@ uv run .\main.py
 - `loop_count`：刷本次数，`-1` 为无限循环
 - `match_threshold`：界面模板识别阈值
 - `log_level`：排查时建议用 `DEBUG`
+- `device`：固定环境档位、可选目标设备序列号、启动前自动连接地址
 - `support`：助战职阶、目标从者、回退位、头像核验参数
 - `ocr`：战斗文字读取参数
 - `smart_battle`：前排角色和各波次动作计划
 - `skill_sequence`：关闭 `smart_battle` 时使用的固定技能顺序
+
+`device` 当前规则：
+
+- `device.profile` 只支持 `mumu_1920x1080`
+- `device.serial` 留空时，启动阶段会在恢复后自动绑定唯一可用设备
+- `device.connect_targets` 只用于启动前执行 `adb connect`，当前默认示例是 `127.0.0.1:7555`
+- 启动阶段若找不到可用设备，会先执行一次 `kill-server -> start-server -> adb connect`
+- 运行中若 `ADB` 断开，会直接停止主链，不做自动重连
 
 ## 识别方式
 
@@ -81,7 +93,7 @@ uv run .\main.py
 - [core/support_recognition](/D:/VSCodeRepository/Lumina/core/support_recognition)：助战头像识别
 - [core/shared](/D:/VSCodeRepository/Lumina/core/shared)：配置、资源、坐标与基础类型
 - [core/battle_runtime](/D:/VSCodeRepository/Lumina/core/battle_runtime)：战斗判断、快照与动作执行
-- [core/runtime](/D:/VSCodeRepository/Lumina/core/runtime)：主流程总控
+- [core/runtime](/D:/VSCodeRepository/Lumina/core/runtime)：主流程引擎、会话状态、等待层与状态处理器
 - [core/device](/D:/VSCodeRepository/Lumina/core/device)：设备控制
 - [config](/D:/VSCodeRepository/Lumina/config)：运行配置
 - [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui)：界面模板
@@ -93,8 +105,11 @@ uv run .\main.py
 
 - [unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)：未识别界面截图
 - [ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)：`OCR` 裁图与调试图
+- [command_cards](/D:/VSCodeRepository/Lumina/assets/screenshots/command_cards)：普通卡识别截图与分析 JSON
+- [tests/replay](/D:/VSCodeRepository/Lumina/tests/replay)：静态回放回归样本
 - [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
 - [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
+- [analyze_command_cards.py](/D:/VSCodeRepository/Lumina/scripts/analyze_command_cards.py)：普通卡单图分析
 - [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
 - [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
 - [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证

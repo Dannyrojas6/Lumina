@@ -32,6 +32,9 @@
 - 敌方三个位 `HP` 读取
 - 前排九个技能位可用性判断
 - 五张普通卡的归属识别、颜色识别和基础连携选卡
+- 普通卡每回合留证，低置信度时立即停止等待人工确认
+- 启动前固定环境与关键资源自检
+- `tests/replay/` 静态回放回归
 
 ### 半成品能力
 
@@ -75,6 +78,19 @@
 
 - 项目当前不追求通用化
 - 坐标、裁图、模板和资源都围绕 `MuMu + 1920x1080`
+- [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 里的 `device.profile` 当前只允许 `mumu_1920x1080`
+- `device.serial` 留空时，只允许当前 `adb` 只有一台可用设备
+- `device.connect_targets` 只用于启动前自动 `adb connect`
+- 启动阶段若 `adb` 状态不对，会先执行一次 `kill-server -> start-server -> adb connect`
+- 运行中若 `adb` 断开，会直接停止，不做自动重连
+
+### 运行时结构
+
+- [core/runtime/app.py](/D:/VSCodeRepository/Lumina/core/runtime/app.py) 只负责装配和启动前自检
+- [core/runtime/engine.py](/D:/VSCodeRepository/Lumina/core/runtime/engine.py) 负责主循环和状态分派
+- [core/runtime/session.py](/D:/VSCodeRepository/Lumina/core/runtime/session.py) 保存运行期状态
+- [core/runtime/waiter.py](/D:/VSCodeRepository/Lumina/core/runtime/waiter.py) 统一页面级等待
+- [core/runtime/handlers](/D:/VSCodeRepository/Lumina/core/runtime/handlers) 按页面拆分处理逻辑
 
 ### 助战识别
 
@@ -107,6 +123,9 @@
 - 已能识别五张普通卡的归属和颜色
 - 已能做基础三卡连携优先
 - 已能结合 `support attacker` 和 `command_card_priority` 补卡
+- 已有普通卡单图分析脚本和统一样本真值清单
+- 每回合会保存普通卡识别截图和分析 JSON
+- 任一张卡低置信度时会直接停止，不再继续自动出卡
 - 还没有敌方目标导向、伤害估算和收尾补刀策略
 
 ## 当前最容易误判的点
@@ -118,6 +137,8 @@
   - `docs/drafts/` 只看作草稿
 - 不要把“能启动项目”误判成“助战链一定可跑”：
   - 助战识别依赖本地从者资源
+- 不要把“配置里没写 `device`”当作还能继续兼容：
+  - 现在固定环境已经是正式契约，不是口头约定
 - 不要把 AI 执行环境里的 `uv run` 权限拦截误判成项目环境坏掉：
   - 受限环境里如果 `uv run` 被拦，先申请权限，不要改走别的 Python 启动链
 - 不要把 `tests/` 当成唯一真相：
@@ -134,6 +155,7 @@ uv run python -m unittest discover -s tests -v
 uv run .\scripts\ocr_region_check.py --help
 uv run .\scripts\watch_support_match.py --help
 uv run .\scripts\build_reference_bank.py --help
+uv run .\scripts\analyze_command_cards.py --help
 ```
 
 这组通过，说明：
@@ -141,6 +163,7 @@ uv run .\scripts\build_reference_bank.py --help
 - 当前 Python 依赖能起
 - 主要脚本入口还活着
 - 文档里写的主入口没有明显失效
+- 回放回归样本还能按当前规则通过
 
 ### 连模拟器时
 
@@ -154,6 +177,7 @@ uv run .\main.py
 
 - 能连上 `ADB`
 - 能读到当前分辨率
+- 启动前若未直接发现设备，会先尝试一次自动恢复
 - 主流程能进入页面识别
 - 日志不会在启动阶段直接断掉
 
