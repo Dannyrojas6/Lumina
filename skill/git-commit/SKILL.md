@@ -61,6 +61,7 @@ Refuse to continue when any of these is true:
 - Do not attempt hunk splitting.
 - Do not silently override partial staging.
 - Allow docs, tests, config, and assets to attach to a single primary topic only when the attachment is unambiguous.
+- Treat `test_image/` as tracked test fixtures, not generic assets.
 - When attachment is plausible but not automatic, move the file into `review_candidates` instead of hard-blocking immediately.
 - Report known local-only note files as ignored instead of treating them as commit candidates.
 - Do not revert unrelated changes.
@@ -72,6 +73,7 @@ Refuse to continue when any of these is true:
 - Use the suggested verification commands from the inspection report.
 - Always rerun them before the commit.
 - Docs-only groups may proceed without code verification.
+- `test_image/` fixture groups use the full test suite as the default verification.
 - Never rely on historical verification results.
 
 ## Commit Title Rules

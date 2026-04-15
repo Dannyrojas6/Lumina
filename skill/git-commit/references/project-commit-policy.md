@@ -19,12 +19,14 @@
 - `core/*` 与 `scripts/*` 作为主主题文件
 - `skill/*` 作为独立主主题文件
 - `docs / tests / config / assets / root-meta` 作为支持型文件
+- `test_image/` 作为 `test-fixtures`，属于可提交的实机样本
 - 支持型文件只有在**能唯一附着到一个主主题**时，才允许跟随该组
 - 如果支持型文件存在多个合理归属，先进入 `review_candidates`
 - `review_candidates` 由 agent 审核差异后给出建议归属，再交人工确认
 - 如果工作区没有主主题文件，可以形成支持型独立组：
   - `docs`
   - `tests`
+  - `test-fixtures`
   - `config`
   - `assets`
   - `root-meta`
@@ -41,6 +43,7 @@
 | --- | --- |
 | `docs` | 可不跑代码验证 |
 | `tests` | 跑该组对应测试文件 |
+| `test-fixtures` | 回退到全量 `uv run python -m unittest discover -s tests -v` |
 | `device` | 优先跑 `test_adb_controller.py` |
 | `command-card` | 优先跑 `test_command_card*.py` |
 | `runtime` | 优先跑 `test_runtime*.py` |
@@ -49,6 +52,11 @@
 | `skill` | 优先跑 `test_git_commit_skill.py` |
 | `perception / shared / scripts / config / root-meta` | 回退到全量 `uv run python -m unittest discover -s tests -v` |
 | `assets` | 当前没有可靠默认验证，直接阻断 |
+
+说明：
+
+- `test_image/` 下的实机图片不按普通 `assets` 处理
+- 它们作为 `test-fixtures` 正式追踪，并使用全量测试作为默认验证
 
 如果脚本给不出可靠验证命令，除 `docs` 外，一律不允许提交。
 

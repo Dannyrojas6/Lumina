@@ -20,6 +20,7 @@ PRIMARY_TOPIC_LABELS = {
     "skill": "git commit skill",
     "docs": "project documentation",
     "tests": "targeted test coverage",
+    "test-fixtures": "test image fixtures",
     "config": "runtime configuration",
     "assets": "ui assets",
     "root-meta": "repository metadata",
@@ -28,6 +29,7 @@ PRIMARY_TOPIC_LABELS = {
 PRIMARY_TOPIC_TYPES = {
     "docs": "docs",
     "tests": "test",
+    "test-fixtures": "test",
     "config": "chore",
     "assets": "chore",
     "root-meta": "chore",
@@ -47,6 +49,7 @@ TOPIC_TEST_PATTERNS = {
     "skill": ['uv run python -m unittest discover -s tests -p "test_git_commit_skill.py" -v'],
     "config": ["uv run python -m unittest discover -s tests -v"],
     "root-meta": ["uv run python -m unittest discover -s tests -v"],
+    "test-fixtures": ["uv run python -m unittest discover -s tests -v"],
 }
 
 IGNORED_PATHS = {
@@ -144,7 +147,7 @@ def classify_path(path: str) -> dict[str, str]:
     if normalized.startswith("assets/"):
         return {"kind": "support", "topic": "assets"}
     if normalized.startswith("test_image/"):
-        return {"kind": "support", "topic": "assets"}
+        return {"kind": "support", "topic": "test-fixtures"}
     if normalized.startswith("docs/"):
         return {"kind": "support", "topic": "docs"}
     if normalized in {
@@ -231,7 +234,7 @@ def attach_support_file(
         if len(primary_topics) == 1:
             return next(iter(primary_topics))
         return None
-    if topic in {"docs", "config", "assets", "root-meta"}:
+    if topic in {"docs", "config", "assets", "root-meta", "test-fixtures"}:
         if len(primary_topics) == 1:
             return next(iter(primary_topics))
         return None
@@ -247,7 +250,7 @@ def suggest_review_topics(
         inferred = infer_test_topic(record["path"])
         if inferred:
             candidate_topics.append(inferred)
-    elif record["topic"] in {"docs", "config", "assets", "root-meta"}:
+    elif record["topic"] in {"docs", "config", "assets", "root-meta", "test-fixtures"}:
         candidate_topics.append(record["topic"])
     candidate_topics.extend(sorted(primary_topics))
 
@@ -274,6 +277,8 @@ def suggest_verification_commands(topic: str, files: list[str], support_files: l
         return []
     if topic == "tests":
         return build_test_commands(files)
+    if topic == "test-fixtures":
+        return TOPIC_TEST_PATTERNS["test-fixtures"]
     if topic == "assets":
         return []
     if test_files:
@@ -361,6 +366,9 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
         for record in primary_records:
             ensure_group(groups, record["topic"])["files"].append(record["path"])
         for record in support_records:
+            if record["topic"] == "test-fixtures":
+                ensure_group(groups, "test-fixtures")["files"].append(record["path"])
+                continue
             attached_topic = attach_support_file(record, primary_topics)
             if attached_topic:
                 ensure_group(groups, attached_topic)["support_files"].append(record["path"])

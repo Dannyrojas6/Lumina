@@ -263,6 +263,55 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         self.assertIn("missing_verification_commands", group["blocking_reasons"])
         self.assertIn("group_missing_verification_commands", report["global_blocking_reasons"])
 
+    def test_test_image_group_uses_full_suite_verification(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "test_image/login_bonus/登录奖励1.png",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                }
+            ]
+        )
+
+        self.assertEqual(report["global_blocking_reasons"], [])
+        self.assertEqual(len(report["proposed_groups"]), 1)
+        group = report["proposed_groups"][0]
+        self.assertEqual(group["primary_topic"], "test-fixtures")
+        self.assertEqual(
+            group["suggested_verification_commands"],
+            ["uv run python -m unittest discover -s tests -v"],
+        )
+        self.assertEqual(group["blocking_reasons"], [])
+        self.assertRegex(group["suggested_summary"], r"^test: .+")
+
+    def test_test_image_files_form_separate_group_even_with_primary_topic(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "skill/git-commit/SKILL.md",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "test_image/login_bonus/登录奖励1.png",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+            ]
+        )
+
+        self.assertEqual(
+            [group["primary_topic"] for group in report["proposed_groups"]],
+            ["skill", "test-fixtures"],
+        )
+        skill_group, fixture_group = report["proposed_groups"]
+        self.assertEqual(skill_group["support_files"], [])
+        self.assertEqual(
+            fixture_group["files"],
+            ["test_image/login_bonus/登录奖励1.png"],
+        )
+
     def test_cli_outputs_workspace_group_json_report(self) -> None:
         with TemporaryDirectory() as tmp_dir:
             status_path = Path(tmp_dir) / "status.json"
