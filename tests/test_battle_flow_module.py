@@ -1,7 +1,7 @@
 import unittest
 
-from core.battle_runtime.command_card_recognition import CommandCardInfo
-from core.runtime.battle_flow import build_command_card_plan
+from core.command_card_recognition import CommandCardInfo
+from core.battle_runtime.card_plan import build_command_card_plan
 
 
 class BattleFlowModuleTest(unittest.TestCase):

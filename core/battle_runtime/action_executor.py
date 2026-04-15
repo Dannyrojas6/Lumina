@@ -19,11 +19,17 @@ class BattleAction:
         skill_interval: float = 1.5,
         skill_pre_skip_delay: float = 0.5,
         master_skill_open_delay: float = 0.4,
+        attack_button_delay: float = 0.5,
+        card_select_delay: float = 0.3,
+        target_select_delay: float = 0.3,
     ) -> None:
         self.adb = adb_ctl
         self.skill_interval = skill_interval
         self.skill_pre_skip_delay = skill_pre_skip_delay
         self.master_skill_open_delay = master_skill_open_delay
+        self.attack_button_delay = attack_button_delay
+        self.card_select_delay = card_select_delay
+        self.target_select_delay = target_select_delay
 
     def use_servant_skill(self, skill_num: int, target: Optional[int] = None) -> None:
         """释放指定从者技能，可选带目标。"""
@@ -44,32 +50,24 @@ class BattleAction:
     def attack(self) -> None:
         """点击攻击按钮，进入选卡流程。"""
         self.adb.click_region(GameCoordinates.ATTACK_BUTTON)
-        time.sleep(0.5)
+        time.sleep(self.attack_button_delay)
         log.info("进入攻击选卡")
 
     def select_cards(self, card_indices: list[int]) -> None:
         """按传入顺序选择前三张卡。"""
         for idx in card_indices[:3]:
             self.adb.click(*GameCoordinates.CARD_POSITIONS[idx])
-            time.sleep(0.3)
+            time.sleep(self.card_select_delay)
         log.info(f"已选卡：{card_indices[:3]}")
 
     def select_noble_card(self, servant_index: int) -> None:
         """点击指定从者的宝具卡。"""
         self.adb.click(*GameCoordinates.NOBLE_CARD_POSITIONS[servant_index])
-        time.sleep(0.3)
+        time.sleep(self.card_select_delay)
 
     def speed_skip(self) -> None:
         """点击战斗加速/跳过区域。"""
         self.adb.click(*GameCoordinates.SPEED_SKIP)
-
-    def can_use_servant_skill(self, skill_num: int) -> bool:
-        """预留从者技能可用性检查钩子。"""
-        return True
-
-    def can_use_master_skill(self, skill_num: int) -> bool:
-        """预留御主技能可用性检查钩子。"""
-        return True
 
     def click_servant_skill(self, skill_num: int) -> None:
         """点击从者技能按钮，进入技能后续处理。"""
@@ -79,7 +77,7 @@ class BattleAction:
     def select_servant_target(self, target: int) -> None:
         """在技能目标选择界面中选择目标从者。"""
         self.adb.click(*GameCoordinates.TARGET_POSITIONS[target])
-        time.sleep(0.3)
+        time.sleep(self.target_select_delay)
 
     def finish_servant_skill(
         self,

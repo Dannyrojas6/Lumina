@@ -49,13 +49,11 @@ class BattleSnapshotReader:
         battle_ocr: Optional[BattleOcrReader] = None,
         *,
         wave_banner_template_path: Optional[str] = None,
-        wave_match_threshold: float = 0.6,
         skill_available_threshold: float = 0.54,
         skill_uncertain_threshold: float = 0.48,
         debug_dir: Optional[str] = None,
     ) -> None:
         self.battle_ocr = battle_ocr or BattleOcrReader(debug_dir=debug_dir)
-        self.wave_match_threshold = wave_match_threshold
         self.skill_available_threshold = skill_available_threshold
         self.skill_uncertain_threshold = skill_uncertain_threshold
 

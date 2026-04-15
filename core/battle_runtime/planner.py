@@ -22,13 +22,11 @@ class SmartBattlePlanner:
         manifests: dict[str, ServantManifest],
         wave_plan: dict[int, list[WaveActionRule]],
         *,
-        fail_mode: str = "conservative",
         np_ready_value: int = 100,
     ) -> None:
         self.frontline = frontline
         self.manifests = manifests
         self.wave_plan = wave_plan
-        self.fail_mode = fail_mode
         self.np_ready_value = np_ready_value
         self._frontline_by_slug = {item.servant: item for item in frontline}
 
@@ -118,7 +116,7 @@ class SmartBattlePlanner:
 
         return BattleDecision(
             reason="当前没有满足条件的可用技能，已保守继续",
-            fallback_used=self.fail_mode == "conservative",
+            fallback_used=True,
         )
 
     def _attacker_slot(self) -> int | None:

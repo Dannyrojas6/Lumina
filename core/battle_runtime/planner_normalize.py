@@ -40,7 +40,6 @@ def normalize_wave_plan(wave_plan: list[Any]) -> dict[int, list[WaveActionRule]]
                 condition_tags=[
                     str(tag) for tag in list(_read_attr(action, "condition_tags", []))
                 ],
-                phase=str(_read_attr(action, "phase", "buff")),
             )
             for action in raw_actions
         ]

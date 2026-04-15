@@ -53,7 +53,6 @@ class WaveActionRule:
     actor: int | str
     skill: int
     condition_tags: list[str] = field(default_factory=list)
-    phase: str | None = None
 
 
 @dataclass(frozen=True)
