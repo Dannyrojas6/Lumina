@@ -17,6 +17,7 @@ PRIMARY_TOPIC_LABELS = {
     "perception": "perception detection",
     "shared": "shared configuration",
     "scripts": "project scripts",
+    "skill": "git commit skill",
     "docs": "project documentation",
     "tests": "targeted test coverage",
     "config": "runtime configuration",
@@ -43,8 +44,16 @@ TOPIC_TEST_PATTERNS = {
     "perception": ["uv run python -m unittest discover -s tests -v"],
     "shared": ["uv run python -m unittest discover -s tests -v"],
     "scripts": ["uv run python -m unittest discover -s tests -v"],
+    "skill": ['uv run python -m unittest discover -s tests -p "test_git_commit_skill.py" -v'],
     "config": ["uv run python -m unittest discover -s tests -v"],
     "root-meta": ["uv run python -m unittest discover -s tests -v"],
+}
+
+IGNORED_PATHS = {
+    "TODO.md": "local_notes",
+    "Pro项目指导文档.md": "local_notes",
+    "DevLog.md": "local_notes",
+    "DevRecord.md": "local_notes",
 }
 
 
@@ -126,11 +135,15 @@ def classify_path(path: str) -> dict[str, str]:
         return {"kind": "primary", "topic": "shared"}
     if normalized.startswith("scripts/"):
         return {"kind": "primary", "topic": "scripts"}
+    if normalized.startswith("skill/"):
+        return {"kind": "primary", "topic": "skill"}
     if normalized.startswith("tests/"):
         return {"kind": "support", "topic": "tests"}
     if normalized.startswith("config/"):
         return {"kind": "support", "topic": "config"}
     if normalized.startswith("assets/"):
+        return {"kind": "support", "topic": "assets"}
+    if normalized.startswith("test_image/"):
         return {"kind": "support", "topic": "assets"}
     if normalized.startswith("docs/"):
         return {"kind": "support", "topic": "docs"}
@@ -151,10 +164,20 @@ def classify_path(path: str) -> dict[str, str]:
 
 def infer_test_topic(path: str) -> str | None:
     name = Path(path).name.lower()
+    if "git_commit_skill" in name:
+        return "skill"
     if "command_card" in name or "card_plan" in name:
         return "command-card"
     if "adb" in name or "device" in name:
         return "device"
+    if "startup_check" in name:
+        return "runtime"
+    if "action_executor" in name:
+        return "battle-runtime"
+    if "state_detection" in name:
+        return "perception"
+    if "support_verifier" in name:
+        return "support-recognition"
     if "runtime" in name or "workflow" in name or "session" in name or "handler" in name:
         return "runtime"
     if "battle" in name or "planner" in name or "snapshot" in name:
@@ -177,6 +200,7 @@ def make_workspace_record(entry: dict[str, str]) -> dict[str, Any]:
         "is_untracked": entry["index_status"] == "?" and entry["worktree_status"] == "?",
         "kind": classification["kind"],
         "topic": classification["topic"],
+        "ignored": normalize_path(entry["path"]) in IGNORED_PATHS,
     }
 
 
@@ -212,6 +236,26 @@ def attach_support_file(
             return next(iter(primary_topics))
         return None
     return None
+
+
+def suggest_review_topics(
+    record: dict[str, Any],
+    primary_topics: set[str],
+) -> list[str]:
+    candidate_topics: list[str] = []
+    if record["topic"] == "tests":
+        inferred = infer_test_topic(record["path"])
+        if inferred:
+            candidate_topics.append(inferred)
+    elif record["topic"] in {"docs", "config", "assets", "root-meta"}:
+        candidate_topics.append(record["topic"])
+    candidate_topics.extend(sorted(primary_topics))
+
+    unique_topics: list[str] = []
+    for topic in candidate_topics:
+        if topic and topic not in unique_topics:
+            unique_topics.append(topic)
+    return unique_topics
 
 
 def build_test_commands(paths: list[str]) -> list[str]:
@@ -274,6 +318,17 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
         (make_workspace_record(entry) for entry in entries),
         key=lambda item: item["path"],
     )
+    ignored_files = sorted(
+        [
+            {
+                "path": record["path"],
+                "reason": IGNORED_PATHS[normalize_path(record["path"])],
+            }
+            for record in workspace_files
+            if record["ignored"]
+        ],
+        key=lambda item: item["path"],
+    )
     partially_staged_files = sorted(
         {
             entry["path"]
@@ -286,16 +341,20 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
         return {
             "workspace_files": [],
             "proposed_groups": [],
+            "review_candidates": [],
             "unassigned_files": [],
+            "ignored_files": [],
             "partially_staged_files": [],
             "global_blocking_reasons": ["no_workspace_changes"],
         }
 
     groups: dict[str, dict[str, Any]] = {}
+    review_candidates: list[dict[str, Any]] = []
     unassigned_files: list[dict[str, str]] = []
 
-    primary_records = [record for record in workspace_files if record["kind"] == "primary"]
-    support_records = [record for record in workspace_files if record["kind"] == "support"]
+    active_records = [record for record in workspace_files if not record["ignored"]]
+    primary_records = [record for record in active_records if record["kind"] == "primary"]
+    support_records = [record for record in active_records if record["kind"] == "support"]
     primary_topics = {record["topic"] for record in primary_records}
 
     if primary_records:
@@ -306,9 +365,19 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
             if attached_topic:
                 ensure_group(groups, attached_topic)["support_files"].append(record["path"])
             else:
-                unassigned_files.append(
-                    {"path": record["path"], "reason": "shared_support_file"}
-                )
+                candidate_topics = suggest_review_topics(record, primary_topics)
+                if candidate_topics:
+                    review_candidates.append(
+                        {
+                            "path": record["path"],
+                            "reason": "shared_support_file",
+                            "candidate_topics": candidate_topics,
+                        }
+                    )
+                else:
+                    unassigned_files.append(
+                        {"path": record["path"], "reason": "shared_support_file"}
+                    )
     else:
         for record in support_records:
             ensure_group(groups, record["topic"])["files"].append(record["path"])
@@ -321,11 +390,15 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
         global_blocking_reasons.append("unassigned_files")
     if any(group["blocking_reasons"] for group in proposed_groups):
         global_blocking_reasons.append("group_missing_verification_commands")
+    if not proposed_groups and not review_candidates:
+        global_blocking_reasons.append("no_commit_candidates")
 
     return {
         "workspace_files": workspace_files,
         "proposed_groups": proposed_groups,
+        "review_candidates": sorted(review_candidates, key=lambda item: item["path"]),
         "unassigned_files": sorted(unassigned_files, key=lambda item: item["path"]),
+        "ignored_files": ignored_files,
         "partially_staged_files": partially_staged_files,
         "global_blocking_reasons": global_blocking_reasons,
     }
@@ -344,7 +417,9 @@ def render_text(report: dict[str, Any]) -> str:
     lines = [
         f"workspace_files: {[item['path'] for item in report['workspace_files']]}",
         f"proposed_groups: {[group['group_id'] for group in report['proposed_groups']]}",
+        f"review_candidates: {report['review_candidates']}",
         f"unassigned_files: {report['unassigned_files']}",
+        f"ignored_files: {report['ignored_files']}",
         f"partially_staged_files: {report['partially_staged_files']}",
         f"global_blocking_reasons: {report['global_blocking_reasons']}",
     ]

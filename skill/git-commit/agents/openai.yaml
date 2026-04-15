@@ -1,4 +1,4 @@
 interface:
   display_name: "Git Commit"
-  short_description: "Inspect the full working tree, propose commit groups, and prepare each local commit"
-  default_prompt: "Use $git-commit to inspect the full working tree, propose commit groups, suggest verification commands, and prepare each local commit with explicit confirmation."
+  short_description: "Inspect the full working tree, propose commit groups, review candidates, and prepare each local commit"
+  default_prompt: "Use $git-commit to inspect the full working tree, propose commit groups, review candidates, suggest verification commands, and prepare each local commit with explicit confirmation."

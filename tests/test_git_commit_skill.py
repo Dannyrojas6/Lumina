@@ -38,11 +38,13 @@ class GitCommitSkillStructureTest(unittest.TestCase):
         self.assertIn("suggested verification commands", content)
         self.assertIn("explicit confirmation", content)
         self.assertIn("Do not attempt hunk splitting", content)
+        self.assertIn("review_candidates", content)
 
     def test_openai_yaml_mentions_grouped_workflow(self) -> None:
         content = OPENAI_YAML.read_text(encoding="utf-8")
         self.assertIn("full working tree", content)
         self.assertIn("commit groups", content)
+        self.assertIn("review candidates", content)
 
 
 class GitCommitScopeInspectorTest(unittest.TestCase):
@@ -69,6 +71,32 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         self.assertEqual(report["workspace_files"], [])
         self.assertEqual(report["proposed_groups"], [])
         self.assertIn("no_workspace_changes", report["global_blocking_reasons"])
+
+    def test_ignores_local_note_files_during_grouping(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {"path": "TODO.md", "index_status": " ", "worktree_status": "M"},
+                {
+                    "path": "Pro项目指导文档.md",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+                {
+                    "path": "core/device/adb_controller.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+            ]
+        )
+
+        self.assertEqual(report["global_blocking_reasons"], [])
+        self.assertEqual(len(report["ignored_files"]), 2)
+        self.assertEqual(
+            [item["path"] for item in report["ignored_files"]],
+            ["Pro项目指导文档.md", "TODO.md"],
+        )
+        self.assertEqual(len(report["proposed_groups"]), 1)
+        self.assertEqual(report["proposed_groups"][0]["primary_topic"], "device")
 
     def test_groups_single_primary_topic_with_related_support_files(self) -> None:
         report = self.module.inspect_status_entries(
@@ -137,7 +165,7 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
             self.assert_conventional_summary(group["suggested_summary"])
             self.assertEqual(group["blocking_reasons"], [])
 
-    def test_shared_root_file_becomes_unassigned_and_blocks(self) -> None:
+    def test_shared_root_file_enters_review_candidates(self) -> None:
         report = self.module.inspect_status_entries(
             [
                 {
@@ -154,11 +182,48 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
             ]
         )
 
+        self.assertEqual(report["unassigned_files"], [])
         self.assertEqual(
-            report["unassigned_files"],
-            [{"path": "README.md", "reason": "shared_support_file"}],
+            report["review_candidates"],
+            [
+                {
+                    "path": "README.md",
+                    "reason": "shared_support_file",
+                    "candidate_topics": ["docs", "command-card", "device"],
+                }
+            ],
         )
-        self.assertIn("unassigned_files", report["global_blocking_reasons"])
+        self.assertEqual(report["global_blocking_reasons"], [])
+
+    def test_skill_files_form_primary_group(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "skill/git-commit/SKILL.md",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+                {
+                    "path": "tests/test_git_commit_skill.py",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+            ]
+        )
+
+        self.assertEqual(report["review_candidates"], [])
+        self.assertEqual(
+            [group["primary_topic"] for group in report["proposed_groups"]],
+            ["skill"],
+        )
+        self.assertEqual(
+            report["proposed_groups"][0]["support_files"],
+            ["tests/test_git_commit_skill.py"],
+        )
+        self.assertIn(
+            'uv run python -m unittest discover -s tests -p "test_git_commit_skill.py" -v',
+            report["proposed_groups"][0]["suggested_verification_commands"],
+        )
 
     def test_docs_only_group_allows_empty_verification_commands(self) -> None:
         report = self.module.inspect_status_entries(
@@ -236,6 +301,8 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertIn("workspace_files", payload)
         self.assertIn("proposed_groups", payload)
+        self.assertIn("review_candidates", payload)
+        self.assertIn("ignored_files", payload)
         self.assertEqual(payload["unassigned_files"], [])
         self.assertEqual(len(payload["proposed_groups"]), 1)
         self.assertEqual(payload["proposed_groups"][0]["primary_topic"], "device")

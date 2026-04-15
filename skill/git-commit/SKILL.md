@@ -7,7 +7,7 @@ description: Use when Codex needs to inspect the full working tree, propose one 
 
 ## Overview
 
-Use this skill for **local commits only** in this repository. Read the whole working tree, propose commit groups from all current changes, stop on risky scope, suggest verification commands per group, and wait for explicit confirmation before each local commit.
+Use this skill for **local commits only** in this repository. Read the whole working tree, propose commit groups from all current changes, route ambiguous support files into `review_candidates`, and wait for explicit confirmation before each local commit.
 
 Read [project-commit-policy.md](./references/project-commit-policy.md) before acting.
 
@@ -20,34 +20,40 @@ Read [project-commit-policy.md](./references/project-commit-policy.md) before ac
    uv run python .\skill\git-commit\scripts\inspect_commit_scope.py --repo . --format json
    ```
 
-3. Review `workspace_files`, `proposed_groups`, `unassigned_files`, and `global_blocking_reasons`.
-4. If any global blocking reason is present, stop and explain the exact block.
-5. Present the proposed commit groups:
+3. Review `workspace_files`, `proposed_groups`, `review_candidates`, `unassigned_files`, and `global_blocking_reasons`.
+4. If any hard global blocking reason is present, stop and explain the exact block.
+5. If `review_candidates` is non-empty:
+   - inspect diffs for those files
+   - draft one recommended target group per file, with a short reason
+   - present the recommendations for human confirmation
+   - only after confirmation, include those files in the confirmed group
+6. Present the proposed commit groups:
    - group id
    - files
    - support files
    - suggested verification commands
    - suggested Conventional commit title
-6. Ask for explicit confirmation on one group at a time.
-7. After a group is confirmed:
+7. Ask for explicit confirmation on one group at a time.
+8. After a group is confirmed:
    - stage only that group's files
    - rerun the inspection to ensure the scope has not drifted
    - rerun the suggested verification commands
    - show the final Conventional commit title
    - wait for explicit confirmation again before `git commit`
-8. After one group is committed, inspect the remaining working tree again and continue with the next group if any remain.
+9. After one group is committed, inspect the remaining working tree again and continue with the next group if any remain.
 
 ## Hard Stops
 
 Refuse to continue when any of these is true:
 
 - No workspace changes
+- No commit candidates remain after ignoring local-only files
 - Any file is partially staged and partially unstaged
-- A file cannot be assigned to exactly one commit group
+- A file still cannot be assigned after the review-candidate pass
 - A group has no reliable verification command and is not docs-only
 - The suggested title cannot describe the group in one clear line
 
-When the scope is ambiguous, stop and ask for manual cleanup instead of forcing a commit.
+`review_candidates` are not a hard stop by themselves. They require an agent review pass and human confirmation before staging.
 
 ## Commit Scope Rules
 
@@ -55,6 +61,8 @@ When the scope is ambiguous, stop and ask for manual cleanup instead of forcing 
 - Do not attempt hunk splitting.
 - Do not silently override partial staging.
 - Allow docs, tests, config, and assets to attach to a single primary topic only when the attachment is unambiguous.
+- When attachment is plausible but not automatic, move the file into `review_candidates` instead of hard-blocking immediately.
+- Report known local-only note files as ignored instead of treating them as commit candidates.
 - Do not revert unrelated changes.
 - Do not auto-push.
 - Do not open or suggest a PR as part of this skill.
