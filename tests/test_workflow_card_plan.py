@@ -1,6 +1,6 @@
 import unittest
 
-from core.runtime.workflow import build_command_card_plan
+from core.battle_runtime.card_plan import build_command_card_plan
 
 
 class WorkflowCardPlanTest(unittest.TestCase):

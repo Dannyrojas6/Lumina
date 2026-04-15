@@ -1,14 +1,14 @@
 import unittest
 from pathlib import Path
 
-from core.battle_runtime.command_card_recognition import (
+from core.command_card_recognition import (
     CommandCardInfo,
     detect_command_card_color,
     choose_best_card_chain,
 )
 from core.shared.screen_coordinates import GameCoordinates
 from core.support_recognition import load_rgb_image
-from core.runtime.workflow import build_command_card_plan
+from core.battle_runtime.card_plan import build_command_card_plan
 import numpy as np
 
 TEST_IMAGE_PATH = (

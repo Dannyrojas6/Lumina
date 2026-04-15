@@ -1,0 +1,137 @@
+[
+  {
+    "image": "指令卡梅林摩根诸葛亮.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "berserker/morgan",
+      "berserker/morgan",
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "caster/merlin"
+    ],
+    "note": "正常样本"
+    ,
+    "occlusion_level": "light",
+    "hard_negative_tags": [
+      "merlin_vs_zhuge"
+    ],
+    "source": "manual"
+  },
+  {
+    "image": "指令卡识别失败1.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan",
+      "caster/zhuge_liang",
+      "caster/zhuge_liang"
+    ],
+    "note": "右上角信息带影响样本",
+    "occlusion_level": "medium",
+    "hard_negative_tags": [
+      "morgan_support_badge"
+    ],
+    "source": "manual"
+  },
+  {
+    "image": "指令卡识别失败2.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "caster/zhuge_liang",
+      "caster/zhuge_liang",
+      "berserker/morgan",
+      "berserker/morgan",
+      "berserker/morgan"
+    ],
+    "note": "连续助战打手卡样本",
+    "occlusion_level": "heavy",
+    "hard_negative_tags": [
+      "morgan_support_badge"
+    ],
+    "source": "manual"
+  },
+  {
+    "image": "指令卡识别失败3.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "caster/merlin",
+      "caster/merlin",
+      "berserker/morgan",
+      "caster/zhuge_liang",
+      "caster/merlin"
+    ],
+    "note": "无助战标签但仍需允许助战从者参与比较",
+    "occlusion_level": "medium",
+    "hard_negative_tags": [
+      "morgan_without_badge",
+      "merlin_vs_zhuge"
+    ],
+    "source": "manual"
+  },
+  {
+    "image": "指令卡识别失败4.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "caster/zhuge_liang",
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "caster/zhuge_liang",
+      "caster/merlin"
+    ],
+    "note": "人工确认样本",
+    "occlusion_level": "heavy",
+    "hard_negative_tags": [
+      "merlin_vs_zhuge"
+    ],
+    "source": "manual"
+  },
+  {
+    "image": "指令卡识别失败5.png",
+    "frontline": [
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan"
+    ],
+    "support_attacker": "berserker/morgan",
+    "owners": [
+      "caster/merlin",
+      "caster/zhuge_liang",
+      "caster/merlin",
+      "berserker/morgan",
+      "caster/merlin"
+    ],
+    "note": "左侧卡位第一张局部区域偏移样本",
+    "occlusion_level": "medium",
+    "hard_negative_tags": [
+      "merlin_vs_zhuge",
+      "slot1_alignment"
+    ],
+    "source": "runtime_evidence"
+  }
+]
