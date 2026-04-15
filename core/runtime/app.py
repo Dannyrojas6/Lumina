@@ -2,8 +2,9 @@
 
 import logging
 
-from core.device.adb_controller import AdbController
+from core.device import AdbController, resolve_device_profile
 from core.battle_runtime import (
+    BattleAction,
     BattleSnapshotReader,
     SmartBattlePlanner,
     normalize_frontline,
@@ -12,7 +13,9 @@ from core.battle_runtime import (
 )
 from core.perception import BattleOcrReader, ImageRecognizer, OcrEngine
 from core.shared import BattleConfig, ResourceCatalog, load_battle_config
-from core.runtime.workflow import DailyAction
+from core.runtime.engine import AutomationEngine
+from core.runtime.session import RuntimeSession
+from core.runtime.startup_check import validate_runtime_prerequisites
 
 
 def setup_logging(config: BattleConfig, *, force: bool = False) -> None:
@@ -40,7 +43,18 @@ def run() -> None:
     log.debug("开始初始化资源目录")
     resources = ResourceCatalog()
     log.debug("开始初始化 ADB 控制器")
-    adb_ctl = AdbController()
+    device_profile = resolve_device_profile(config.device.profile)
+    adb_ctl = AdbController(
+        serial=config.device.serial or None,
+        connect_targets=config.device.connect_targets,
+        profile=device_profile,
+    )
+    validate_runtime_prerequisites(
+        config,
+        resources,
+        device_profile,
+        device_resolution=adb_ctl.resolution,
+    )
     log.debug("开始初始化模板识别")
     recognizer = ImageRecognizer(threshold=config.match_threshold)
     log.debug("开始初始化 OCR 引擎")
@@ -72,19 +86,28 @@ def run() -> None:
             frontline=frontline,
             manifests=manifests,
             wave_plan=normalize_wave_plan(config.smart_battle.wave_plan),
-            fail_mode=config.smart_battle.fail_mode,
             np_ready_value=config.ocr.np_ready_value,
         )
         log.debug("智能战斗初始化完成")
     log.debug("开始组装主流程")
-    daily_action = DailyAction(
-        adb_ctl,
-        recognizer,
-        config,
-        resources,
-        battle_ocr,
+    session = RuntimeSession(
+        adb=adb_ctl,
+        recognizer=recognizer,
+        battle=BattleAction(
+            adb_ctl,
+            skill_interval=config.skill_interval,
+            skill_pre_skip_delay=config.skill_pre_skip_delay,
+            master_skill_open_delay=config.master_skill_open_delay,
+            attack_button_delay=device_profile.attack_button_delay,
+            card_select_delay=device_profile.card_select_delay,
+            target_select_delay=device_profile.target_select_delay,
+        ),
+        config=config,
+        resources=resources,
+        battle_ocr=battle_ocr,
         battle_snapshot_reader=battle_snapshot_reader,
         smart_battle_planner=smart_battle_planner,
     )
+    engine = AutomationEngine(session)
     log.debug("主流程组装完成，准备进入主循环")
-    daily_action.run()
+    engine.run()
