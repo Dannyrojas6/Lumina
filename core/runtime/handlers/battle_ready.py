@@ -84,7 +84,11 @@ class BattleReadyHandler:
     def _use_action_with_optional_target(self, action: dict) -> None:
         action_type = action["type"]
         skill_num = action["skill"]
-        default_target = action.get("target") or 3
+        default_target = (
+            action["target"]
+            if action.get("target") is not None
+            else self.session.config.default_skill_target
+        )
 
         if action_type == "master":
             self.session.battle.click_master_skill(skill_num)

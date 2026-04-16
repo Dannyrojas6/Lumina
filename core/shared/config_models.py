@@ -106,6 +106,7 @@ class BattleConfig:
 
     loop_count: int = 10
     continue_battle: bool = True
+    default_skill_target: int = 3
     skill_sequence: list = field(default_factory=list)
     match_threshold: float = 0.75
     save_debug_screenshots: bool = False

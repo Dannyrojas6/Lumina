@@ -3,6 +3,7 @@
 
 loop_count: 10 # 刷本次数（-1 为无限循环）
 continue_battle: true # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
+default_skill_target: 3 # 技能释放后若出现选人界面，且动作本身没写 target，则默认选择该目标位
 match_threshold: 0.70 # 图像识别置信度阈值（0~1，越高越严格）
 log_level: DEBUG # 日志级别，可选 DEBUG/INFO/WARNING
 skill_interval: 1.5 # 每个技能释放后的额外等待时间（秒）

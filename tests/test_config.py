@@ -135,6 +135,27 @@ smart_battle:
 
             self.assertFalse(config.continue_battle)
 
+    def test_default_skill_target_defaults_to_three(self) -> None:
+        config = BattleConfig.default()
+
+        self.assertEqual(config.default_skill_target, 3)
+
+    def test_loads_default_skill_target_from_yaml(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "battle_config.yaml"
+            config_path.write_text(
+                dedent(
+                    """
+                    default_skill_target: 2
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            config = BattleConfig.from_yaml(str(config_path))
+
+            self.assertEqual(config.default_skill_target, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

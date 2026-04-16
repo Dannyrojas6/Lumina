@@ -11,6 +11,7 @@ from core.command_card_recognition import (
 )
 from core.perception.image_recognizer import TemplateMatchResult
 from core.perception.state_detector import StateDetectionResult, StateDetector
+from core.runtime.handlers.battle_ready import BattleReadyHandler
 from core.runtime.handlers.battle_result import BattleResultHandler
 from core.runtime.handlers.card_select import CardSelectHandler
 from core.runtime.handlers.loading import LoadingHandler
@@ -97,6 +98,34 @@ class DummySupportHandler(SupportSelectHandler):
 
     def _fallback_pick_support(self, pick_index: int) -> None:
         self.fallback_pick_index = pick_index
+
+
+class DummyBattleReadySession:
+    def __init__(self, *, default_skill_target: int = 3) -> None:
+        self.config = Mock()
+        self.config.default_skill_target = default_skill_target
+        self.config.battle_actions.return_value = [
+            {"type": "servant", "skill": 1, "target": None}
+        ]
+        self.battle = Mock()
+        self.recognizer = Mock()
+        self.recognizer.match.return_value = (200, 300)
+        self.resources = Mock()
+        self.resources.template.side_effect = lambda name, category="ui": name
+        self.battle_actions_done = False
+        self.smart_battle_enabled = False
+
+    def refresh_screen(self) -> str:
+        return "screen.png"
+
+    def get_latest_screen_image(self) -> np.ndarray:
+        return np.zeros((10, 10), dtype=np.uint8)
+
+
+class DummyBattleReadyHandler(BattleReadyHandler):
+    def __init__(self, *, default_skill_target: int = 3) -> None:
+        self.waiter = DummyWaiter()
+        self.session = DummyBattleReadySession(default_skill_target=default_skill_target)
 
 
 class DummyBattleSession:
@@ -388,6 +417,16 @@ class FakeRecognizer:
 
 
 class RuntimeFlowBehaviorTest(unittest.TestCase):
+    def test_battle_ready_uses_configured_default_skill_target(self) -> None:
+        handler = DummyBattleReadyHandler(default_skill_target=2)
+
+        handler.handle()
+
+        handler.session.battle.click_servant_skill.assert_called_once_with(1)
+        handler.session.battle.select_servant_target.assert_called_once_with(2)
+        handler.session.battle.finish_servant_skill.assert_called_once_with(1, target=2)
+        handler.session.battle.attack.assert_called_once_with()
+
     def test_support_select_waits_for_list_to_settle_before_filtering(self) -> None:
         handler = DummySupportHandler()
 

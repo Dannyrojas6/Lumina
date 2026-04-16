@@ -66,6 +66,9 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     data["ocr"] = ocr
     data["smart_battle"] = smart_battle
     data["continue_battle"] = bool(data.get("continue_battle", True))
+    data["default_skill_target"] = parse_default_skill_target(
+        data.get("default_skill_target", 3)
+    )
     return BattleConfig(**data)
 
 
@@ -74,6 +77,7 @@ def default_battle_config() -> BattleConfig:
     return BattleConfig(
         loop_count=10,
         continue_battle=True,
+        default_skill_target=3,
         log_level="INFO",
         quest_slot=1,
         device=DeviceConfig(),
@@ -274,6 +278,14 @@ def parse_connect_targets(data: Any) -> list[str]:
     if not isinstance(data, list):
         raise TypeError("device.connect_targets must be a list")
     return [str(item).strip() for item in data if str(item).strip()]
+
+
+def parse_default_skill_target(data: Any) -> int:
+    """解析技能释放后默认目标位。"""
+    target = int(data)
+    if target < 1 or target > 3:
+        raise ValueError("default_skill_target must be within 1..3")
+    return target
 
 
 def _ensure_no_deprecated_smart_battle_fields(raw: dict[str, Any]) -> None:
