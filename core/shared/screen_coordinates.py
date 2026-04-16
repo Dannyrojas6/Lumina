@@ -118,6 +118,10 @@ class GameCoordinates:
         2: (537, 64, 702, 93),
         3: (930, 65, 1077, 94),
     }
+    ENEMY_TARGET_POSITIONS: Final[dict[int, tuple[int, int]]] = {
+        index: ((x1 + x2) // 2, (y1 + y2) // 2)
+        for index, (x1, y1, x2, y2) in ENEMY_HP_REGIONS.items()
+    }
 
     SKILL_SELECT_SERVANT: Final[tuple[int, int, int, int]] = (849, 262, 1077, 314)
     ATTACK_BUTTON: Final[tuple[int, int, int, int]] = (1600, 800, 1806, 1013)
@@ -136,6 +140,7 @@ class GameCoordinates:
         2: (1490, 460),
         3: (1620, 460),
     }
+    AP_RECOVERY_SCROLL_POSITION: Final[tuple[int, int]] = (1525, 747)
     SUPPORT_POSITIONS: Final[dict[int, tuple[int, int]]] = {
         1: (195, 426),
         2: (197, 727),

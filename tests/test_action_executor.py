@@ -25,10 +25,11 @@ class BattleActionTimingTest(unittest.TestCase):
         action.select_cards([1, 2, 3])
         action.select_noble_card(2)
         action.select_servant_target(3)
+        action.select_enemy_target(2)
 
         self.assertEqual(
             [call.args[0] for call in sleep_mock.call_args_list],
-            [0.7, 0.2, 0.2, 0.2, 0.2, 0.15],
+            [0.7, 0.2, 0.2, 0.2, 0.2, 0.15, 0.15],
         )
 
 
