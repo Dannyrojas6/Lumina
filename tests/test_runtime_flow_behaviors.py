@@ -32,6 +32,10 @@ class DummyWaiter:
         self.stable_calls: list[dict[str, object]] = []
         self.confirm_calls: list[GameState] = []
         self.template_disappear_calls: list[dict[str, object]] = []
+        self.state_exit_calls: list[dict[str, object]] = []
+        self.state_exit_result = None
+        self.post_card_wait_calls: list[dict[str, object]] = []
+        self.post_card_wait_result = None
 
     def wait_seconds(self, reason: str, seconds: float) -> None:
         self.calls.append((reason, seconds))
@@ -74,6 +78,38 @@ class DummyWaiter:
         )
         return True
 
+    def wait_state_exit(
+        self,
+        states,
+        *,
+        timeout: float,
+        poll_interval: float,
+    ):
+        self.state_exit_calls.append(
+            {
+                "states": set(states),
+                "timeout": timeout,
+                "poll_interval": poll_interval,
+            }
+        )
+        return self.state_exit_result
+
+    def wait_post_card_battle_end(
+        self,
+        *,
+        timeout: float,
+        poll_interval: float,
+        stable_hits: int,
+    ):
+        self.post_card_wait_calls.append(
+            {
+                "timeout": timeout,
+                "poll_interval": poll_interval,
+                "stable_hits": stable_hits,
+            }
+        )
+        return self.post_card_wait_result
+
 
 class DummySupportSession:
     def __init__(self) -> None:
@@ -86,6 +122,7 @@ class DummySupportSession:
                 recognition=SupportRecognitionConfig(),
             )
         )
+        self.adb = Mock()
 
 
 class DummySupportHandler(SupportSelectHandler):
@@ -588,6 +625,55 @@ class DummyLoadingHandler(LoadingHandler):
     def __init__(self) -> None:
         self.waiter = DummyWaiter()
         self.session = DummyLoadingSession()
+
+
+class DummySupportTimingHandler(SupportSelectHandler):
+    def __init__(self) -> None:
+        self.waiter = DummyWaiter()
+        self.session = DummySupportSession()
+        self._support_pos = (111, 222)
+        self.scroll_calls = 0
+
+    def _find_support_on_current_page(
+        self,
+        servant_name: str,
+    ) -> tuple[int, int] | None:
+        return self._support_pos
+
+    def _scroll_support_list(self) -> None:
+        self.scroll_calls += 1
+
+
+class DummyPostCardWaitSession:
+    def __init__(self, frames: list[dict[str, tuple[int, int] | None]]) -> None:
+        self._frames = frames
+        self._frame_index = -1
+        self.recognizer = Mock()
+        self.recognizer.match.side_effect = self._match
+        self.resources = SimpleNamespace(
+            state_templates={
+                GameState.BATTLE_READY: "fight_menu.png",
+                GameState.BATTLE_RESULT: (
+                    "fight_result_1.png",
+                    "fight_result_2.png",
+                    "fight_result_3.png",
+                ),
+            }
+        )
+        self._screen = np.zeros((10, 10), dtype=np.uint8)
+
+    def refresh_screen(self) -> str:
+        if self._frame_index < len(self._frames) - 1:
+            self._frame_index += 1
+        return "screen.png"
+
+    def get_latest_screen_image(self) -> np.ndarray:
+        return self._screen
+
+    def _match(self, template_path: str, screen: np.ndarray):
+        if self._frame_index < 0:
+            return None
+        return self._frames[self._frame_index].get(template_path)
 
 
 class RecordingStateEntryWaiter(Waiter):
@@ -1153,7 +1239,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 {
                     "template_path": "tips-template",
                     "timeout": 60.0,
-                    "poll_interval": 4.0,
+                    "poll_interval": 1.0,
                 }
             ],
         )
@@ -1163,7 +1249,93 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 {
                     "region": None,
                     "stable_frames": 2,
-                    "timeout": 3.0,
+                    "timeout": 1.0,
+                    "poll_interval": 0.25,
+                }
+            ],
+        )
+
+    def test_support_search_clicks_target_then_waits_for_state_exit(self) -> None:
+        handler = DummySupportTimingHandler()
+
+        matched = handler._search_and_pick_support("berserker/morgan", max_scroll_pages=3)
+
+        self.assertTrue(matched)
+        handler.session.adb.click.assert_called_once_with(111, 222)
+        self.assertEqual(
+            handler.waiter.calls,
+            [("检测到目标助战=berserker/morgan，已点击进入", 0.3)],
+        )
+        self.assertEqual(
+            handler.waiter.state_exit_calls,
+            [
+                {
+                    "states": {GameState.SUPPORT_SELECT, GameState.UNKNOWN},
+                    "timeout": 4.0,
+                    "poll_interval": 0.3,
+                }
+            ],
+        )
+        self.assertEqual(handler.scroll_calls, 0)
+
+    def test_support_fallback_pick_waits_for_state_exit(self) -> None:
+        handler = DummySupportTimingHandler()
+
+        handler._fallback_pick_support(1)
+
+        handler.session.adb.click.assert_called_once_with(
+            *GameCoordinates.SUPPORT_POSITIONS[1]
+        )
+        self.assertEqual(
+            handler.waiter.calls,
+            [("已回退选择默认助战位=1", 0.3)],
+        )
+        self.assertEqual(
+            handler.waiter.state_exit_calls,
+            [
+                {
+                    "states": {GameState.SUPPORT_SELECT, GameState.UNKNOWN},
+                    "timeout": 4.0,
+                    "poll_interval": 0.3,
+                }
+            ],
+        )
+
+    def test_card_select_wait_after_plan_uses_post_card_signal_when_available(self) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+        handler.waiter.post_card_wait_result = GameState.BATTLE_READY
+
+        CardSelectHandler._wait_after_card_plan(handler)
+
+        self.assertEqual(
+            handler.waiter.calls,
+            [("已完成出卡，等待战斗动画起步", 1.0)],
+        )
+        self.assertEqual(
+            handler.waiter.post_card_wait_calls,
+            [
+                {
+                    "timeout": 35.0,
+                    "poll_interval": 0.25,
+                    "stable_hits": 2,
+                }
+            ],
+        )
+        self.assertEqual(handler.waiter.state_exit_calls, [])
+
+    def test_card_select_wait_after_plan_falls_back_when_post_card_signal_times_out(
+        self,
+    ) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+
+        CardSelectHandler._wait_after_card_plan(handler)
+
+        self.assertEqual(
+            handler.waiter.state_exit_calls,
+            [
+                {
+                    "states": {GameState.CARD_SELECT, GameState.UNKNOWN},
+                    "timeout": 5.0,
                     "poll_interval": 0.5,
                 }
             ],
@@ -1199,6 +1371,45 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(session.consecutive_unknown_count, 0)
         self.assertFalse(session.unknown_snapshot_saved)
 
+    def test_engine_unknown_retry_wait_is_shorter(self) -> None:
+        from core.runtime.engine import AutomationEngine
+
+        session = SimpleNamespace(
+            config=SimpleNamespace(loop_count=1),
+            loop_done=0,
+            state=GameState.UNKNOWN,
+            consecutive_unknown_count=0,
+            unknown_snapshot_saved=False,
+            stop_requested=False,
+        )
+        waiter = DummyWaiter()
+        state_detector = Mock()
+        state_detector.detect.return_value = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=None,
+            best_score=0.0,
+            matched_template=None,
+            missing_templates=[],
+        )
+        unknown_handler = Mock()
+        unknown_handler.handle.side_effect = lambda detection: setattr(session, "loop_done", 1)
+
+        engine = AutomationEngine.__new__(AutomationEngine)
+        engine.session = session
+        engine.waiter = waiter
+        engine.state_detector = state_detector
+        engine.handlers = {}
+        engine.unknown_handler = unknown_handler
+
+        engine.run()
+
+        self.assertEqual(
+            waiter.calls,
+            [("等待下一次状态识别", 0.5)],
+        )
+
 
 class WaiterStateEntryTest(unittest.TestCase):
     def test_confirm_state_entry_support_select_adds_buffer_and_stability_check(
@@ -1209,40 +1420,71 @@ class WaiterStateEntryTest(unittest.TestCase):
         result = waiter.confirm_state_entry(GameState.SUPPORT_SELECT)
 
         self.assertTrue(result)
-        self.assertEqual(
-            waiter.calls,
-            [("检测到助战选择界面，等待列表加载稳定", 2.0)],
-        )
+        self.assertEqual(waiter.calls, [])
         self.assertEqual(
             waiter.stable_calls,
             [
                 {
                     "region": GameCoordinates.SUPPORT_PORTRAIT_STRIP,
                     "stable_frames": 2,
-                    "timeout": 3.0,
-                    "poll_interval": 0.5,
+                    "timeout": 1.5,
+                    "poll_interval": 0.25,
                 }
             ],
         )
 
-    def test_confirm_state_entry_card_select_waits_for_card_region(self) -> None:
+    def test_confirm_state_entry_card_select_returns_immediately(self) -> None:
         waiter = RecordingStateEntryWaiter()
 
         result = waiter.confirm_state_entry(GameState.CARD_SELECT)
 
         self.assertTrue(result)
         self.assertEqual(waiter.calls, [])
-        self.assertEqual(
-            waiter.stable_calls,
+        self.assertEqual(waiter.stable_calls, [])
+
+
+class WaiterPostCardBattleEndTest(unittest.TestCase):
+    @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
+    def test_wait_post_card_battle_end_returns_battle_ready_on_two_fight_menu_hits(
+        self,
+        _sleep_mock,
+    ) -> None:
+        session = DummyPostCardWaitSession(
             [
-                {
-                    "region": (77, 586, 1891, 927),
-                    "stable_frames": 2,
-                    "timeout": 1.5,
-                    "poll_interval": 0.2,
-                }
-            ],
+                {"fight_menu.png": (100, 100)},
+                {"fight_menu.png": (100, 100)},
+            ]
         )
+        waiter = Waiter(session, Mock())
+
+        result = waiter.wait_post_card_battle_end(
+            timeout=1.0,
+            poll_interval=0.01,
+            stable_hits=2,
+        )
+
+        self.assertEqual(result, GameState.BATTLE_READY)
+
+    @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
+    def test_wait_post_card_battle_end_returns_battle_result_on_result_family_hits(
+        self,
+        _sleep_mock,
+    ) -> None:
+        session = DummyPostCardWaitSession(
+            [
+                {"fight_result_1.png": (100, 100)},
+                {"fight_result_2.png": (100, 100)},
+            ]
+        )
+        waiter = Waiter(session, Mock())
+
+        result = waiter.wait_post_card_battle_end(
+            timeout=1.0,
+            poll_interval=0.01,
+            stable_hits=2,
+        )
+
+        self.assertEqual(result, GameState.BATTLE_RESULT)
 
 
 if __name__ == "__main__":

@@ -282,14 +282,27 @@ class CardSelectHandler:
         log.info("已执行出卡计划：%s", card_plan)
 
     def _wait_after_card_plan(self) -> None:
-        self.waiter.wait_seconds("已完成出卡，等待战斗动画起步", 3.0)
+        self.waiter.wait_seconds("已完成出卡，等待战斗动画起步", 1.0)
+        post_card_state = self.waiter.wait_post_card_battle_end(
+            timeout=35.0,
+            poll_interval=0.25,
+            stable_hits=2,
+        )
+        if post_card_state == GameState.BATTLE_READY:
+            log.info("战斗动画结束，专用等待已命中 BATTLE_READY")
+            return
+        if post_card_state == GameState.BATTLE_RESULT:
+            log.info("战斗动画结束，专用等待已命中 BATTLE_RESULT")
+            return
+
+        log.warning("出卡后专用等待超时，已回退旧逻辑继续兜底")
         detection = self.waiter.wait_state_exit(
             {GameState.CARD_SELECT, GameState.UNKNOWN},
-            timeout=max(0.0, 20.0 - 3.0),
-            poll_interval=1.0,
+            timeout=5.0,
+            poll_interval=0.5,
         )
         if detection is not None:
-            log.info("战斗动画结束，当前已切换到 %s", detection.state.name)
+            log.info("战斗动画结束，兜底等待已切换到 %s", detection.state.name)
             return
         log.warning("战斗动画等待超时，继续后续流程")
 

@@ -21,6 +21,6 @@ class LoadingHandler:
         self.waiter.wait_template_disappear(
             tips_template,
             timeout=60.0,
-            poll_interval=4.0,
+            poll_interval=1.0,
         )
-        self.waiter.wait_screen_stable(timeout=3.0, poll_interval=0.5)
+        self.waiter.wait_screen_stable(timeout=1.0, poll_interval=0.25)

@@ -12,6 +12,11 @@ log = logging.getLogger("core.runtime.handlers.support_select")
 
 
 class SupportSelectHandler:
+    SUPPORT_TRANSITION_TIMEOUT = 4.0
+    SUPPORT_TRANSITION_POLL_INTERVAL = 0.3
+    SUPPORT_STABLE_TIMEOUT = 1.5
+    SUPPORT_STABLE_POLL_INTERVAL = 0.25
+
     def __init__(self, session: RuntimeSession, waiter: Waiter) -> None:
         self.session = session
         self.waiter = waiter
@@ -49,9 +54,8 @@ class SupportSelectHandler:
         support_pos = self._find_support_on_current_page(servant_name)
         if support_pos:
             self.session.adb.click(*support_pos)
-            self.waiter.wait_seconds(
-                f"检测到目标助战={servant_name}，已点击进入",
-                3.0,
+            self._wait_after_support_click(
+                f"检测到目标助战={servant_name}，已点击进入"
             )
             return True
 
@@ -60,9 +64,8 @@ class SupportSelectHandler:
             support_pos = self._find_support_on_current_page(servant_name)
             if support_pos:
                 self.session.adb.click(*support_pos)
-                self.waiter.wait_seconds(
-                    f"滑动第 {page} 页后识别到目标助战={servant_name}，已点击进入",
-                    3.0,
+                self._wait_after_support_click(
+                    f"滑动第 {page} 页后识别到目标助战={servant_name}，已点击进入"
                 )
                 return True
 
@@ -92,8 +95,8 @@ class SupportSelectHandler:
             self.waiter.wait_screen_stable(
                 region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
                 stable_frames=2,
-                timeout=3.0,
-                poll_interval=0.5,
+                timeout=self.SUPPORT_STABLE_TIMEOUT,
+                poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
             )
             return
 
@@ -109,8 +112,8 @@ class SupportSelectHandler:
                 self.waiter.wait_screen_stable(
                     region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
                     stable_frames=2,
-                    timeout=3.0,
-                    poll_interval=0.5,
+                    timeout=self.SUPPORT_STABLE_TIMEOUT,
+                    poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
                 )
                 return
         log.warning("助战页未识别到目标职阶按钮，将继续尝试默认选择")
@@ -151,8 +154,8 @@ class SupportSelectHandler:
         self.waiter.wait_screen_stable(
             region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
             stable_frames=2,
-            timeout=3.0,
-            poll_interval=0.5,
+            timeout=self.SUPPORT_STABLE_TIMEOUT,
+            poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
         )
 
     def _refresh_support_list(self) -> bool:
@@ -181,8 +184,8 @@ class SupportSelectHandler:
         self.waiter.wait_screen_stable(
             region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
             stable_frames=2,
-            timeout=3.0,
-            poll_interval=0.5,
+            timeout=self.SUPPORT_STABLE_TIMEOUT,
+            poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
         )
         return True
 
@@ -192,4 +195,14 @@ class SupportSelectHandler:
             log.warning("无效助战序号=%s，回退到第 1 位", pick_index)
             support_pos = GameCoordinates.SUPPORT_POSITIONS[1]
         self.session.adb.click(*support_pos)
-        self.waiter.wait_seconds(f"已回退选择默认助战位={pick_index}", 3.0)
+        self._wait_after_support_click(f"已回退选择默认助战位={pick_index}")
+
+    def _wait_after_support_click(self, reason: str) -> None:
+        self.waiter.wait_seconds(reason, 0.3)
+        detection = self.waiter.wait_state_exit(
+            {GameState.SUPPORT_SELECT, GameState.UNKNOWN},
+            timeout=self.SUPPORT_TRANSITION_TIMEOUT,
+            poll_interval=self.SUPPORT_TRANSITION_POLL_INTERVAL,
+        )
+        if detection is None:
+            log.warning("助战点击后未在超时内离开列表，已按当前画面继续")

@@ -61,7 +61,7 @@ class AutomationEngine:
             handler = self.handlers.get(self.session.state)
             if handler is None:
                 self.unknown_handler.handle(detection)
-                self.waiter.wait_seconds("等待下一次状态识别", 1.0)
+                self.waiter.wait_seconds("等待下一次状态识别", 0.5)
                 continue
             handler.handle()
             if self.session.stop_requested:

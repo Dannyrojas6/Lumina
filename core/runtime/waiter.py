@@ -30,21 +30,15 @@ class Waiter:
     def confirm_state_entry(self, state: GameState) -> bool:
         """在处理高风险页面前，先确认页面内容已经稳定。"""
         if state == GameState.SUPPORT_SELECT:
-            self.wait_seconds("检测到助战选择界面，等待列表加载稳定", 2.0)
             return self.wait_screen_stable(
                 region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
                 stable_frames=2,
-                timeout=3.0,
-                poll_interval=0.5,
+                timeout=1.5,
+                poll_interval=0.25,
             )
 
         if state == GameState.CARD_SELECT:
-            return self.wait_screen_stable(
-                region=self._command_card_panel_region(),
-                stable_frames=2,
-                timeout=1.5,
-                poll_interval=0.2,
-            )
+            return True
 
         if state == GameState.BATTLE_RESULT:
             return True
@@ -64,6 +58,50 @@ class Waiter:
             detection = self.state_detector.detect()
             if detection.state not in watched:
                 return detection
+            time.sleep(poll_interval)
+        return None
+
+    def wait_post_card_battle_end(
+        self,
+        *,
+        timeout: float,
+        poll_interval: float,
+        stable_hits: int,
+    ) -> GameState | None:
+        deadline = time.time() + max(0.0, timeout)
+        ready_template = self.session.resources.state_templates[GameState.BATTLE_READY]
+        result_templates = self.session.resources.state_templates[GameState.BATTLE_RESULT]
+        if not isinstance(result_templates, tuple):
+            result_templates = (result_templates,)
+
+        previous_family: str | None = None
+        consecutive_hits = 0
+        while time.time() < deadline:
+            self.session.refresh_screen()
+            screen = self.session.get_latest_screen_image()
+            current_family = self._detect_post_card_family(
+                ready_template=ready_template,
+                result_templates=result_templates,
+                screen=screen,
+            )
+            if current_family is None:
+                previous_family = None
+                consecutive_hits = 0
+                time.sleep(poll_interval)
+                continue
+
+            if current_family == previous_family:
+                consecutive_hits += 1
+            else:
+                previous_family = current_family
+                consecutive_hits = 1
+
+            if consecutive_hits >= stable_hits:
+                if current_family == "battle_ready":
+                    return GameState.BATTLE_READY
+                if current_family == "battle_result":
+                    return GameState.BATTLE_RESULT
+
             time.sleep(poll_interval)
         return None
 
@@ -125,11 +163,16 @@ class Waiter:
         diff = cv2.absdiff(previous, current)
         return float(np.mean(diff)) <= 1.0
 
-    def _command_card_panel_region(self) -> tuple[int, int, int, int]:
-        regions = list(GameCoordinates.COMMAND_CARD_REGIONS.values())
-        return (
-            min(region[0] for region in regions),
-            min(region[1] for region in regions),
-            max(region[2] for region in regions),
-            max(region[3] for region in regions),
-        )
+    def _detect_post_card_family(
+        self,
+        *,
+        ready_template: str,
+        result_templates: tuple[str, ...],
+        screen: np.ndarray,
+    ) -> str | None:
+        if self.session.recognizer.match(ready_template, screen):
+            return "battle_ready"
+        for template_path in result_templates:
+            if self.session.recognizer.match(template_path, screen):
+                return "battle_result"
+        return None
