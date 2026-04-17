@@ -64,3 +64,6 @@ class AutomationEngine:
                 self.waiter.wait_seconds("等待下一次状态识别", 1.0)
                 continue
             handler.handle()
+            if self.session.stop_requested:
+                log.info("收到停止标记，主循环结束")
+                break

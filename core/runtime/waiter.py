@@ -47,11 +47,7 @@ class Waiter:
             )
 
         if state == GameState.BATTLE_RESULT:
-            return self.wait_screen_stable(
-                stable_frames=2,
-                timeout=2.0,
-                poll_interval=0.5,
-            )
+            return True
 
         return True
 

@@ -14,6 +14,44 @@ class SkillAction(TypedDict):
     target: int | None
 
 
+@dataclass(frozen=True)
+class CustomSequenceAction:
+    """描述自定义操作序列中的单个动作。"""
+
+    type: Literal["enemy_target", "servant_skill", "master_skill"]
+    actor: int | None = None
+    skill: int | None = None
+    target: int | None = None
+
+
+@dataclass(frozen=True)
+class CustomTurnPlan:
+    """描述某个波次回合下的自定义动作和宝具顺序。"""
+
+    wave: int
+    turn: int
+    actions: list[CustomSequenceAction] = field(default_factory=list)
+    nobles: list[int] = field(default_factory=list)
+
+    @property
+    def turn_key(self) -> tuple[int, int]:
+        return (self.wave, self.turn)
+
+
+@dataclass(frozen=True)
+class CustomSequenceBattleConfig:
+    """描述自定义操作序列战斗的全部回合配置。"""
+
+    sequence: str = ""
+    turns: list[CustomTurnPlan] = field(default_factory=list)
+
+    def find_turn_plan(self, wave: int, turn: int) -> CustomTurnPlan | None:
+        for item in self.turns:
+            if item.wave == wave and item.turn == turn:
+                return item
+        return None
+
+
 @dataclass
 class DeviceConfig:
     """描述当前固定运行环境。"""
@@ -68,29 +106,11 @@ class SmartBattleFrontlineSlot:
 
 
 @dataclass
-class SmartBattleAction:
-    """描述智能战斗中单个技能决策。"""
-
-    actor: int | str
-    skill: int
-    condition_tags: list[str] = field(default_factory=list)
-
-
-@dataclass
-class SmartBattleWavePlan:
-    """描述一波战斗要执行的动作列表。"""
-
-    wave: int
-    actions: list[SmartBattleAction] = field(default_factory=list)
-
-
-@dataclass
 class SmartBattleConfig:
-    """描述智能战斗 v1 的策略配置。"""
+    """描述主链路下的智能战斗配置。"""
 
     enabled: bool = False
     frontline: list[SmartBattleFrontlineSlot] = field(default_factory=list)
-    wave_plan: list[SmartBattleWavePlan] = field(default_factory=list)
     command_card_priority: list[str] = field(default_factory=list)
 
     @classmethod
@@ -105,6 +125,7 @@ class BattleConfig:
     """控制单次刷本流程的配置项。"""
 
     loop_count: int = 10
+    battle_mode: Literal["main", "custom_sequence"] = "main"
     continue_battle: bool = True
     default_skill_target: int = 3
     skill_sequence: list = field(default_factory=list)
@@ -119,6 +140,9 @@ class BattleConfig:
     support: SupportConfig = field(default_factory=SupportConfig)
     ocr: BattleOcrConfig = field(default_factory=BattleOcrConfig)
     smart_battle: SmartBattleConfig = field(default_factory=SmartBattleConfig)
+    custom_sequence_battle: CustomSequenceBattleConfig = field(
+        default_factory=CustomSequenceBattleConfig
+    )
 
     @classmethod
     def from_yaml(cls, path: str) -> "BattleConfig":

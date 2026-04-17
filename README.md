@@ -11,7 +11,8 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - `OCR` 读取前排三位从者 `NP`
 - `OCR` 读取敌方三个位的 `HP`
 - 判断前排九个技能位当前是否可点
-- 按 `smart_battle` 配置决定本回合技能动作
+- `battle_mode=main` 下支持固定开局动作和保守版 `smart_battle`
+- 支持按 `wave + turn` 执行自定义操作序列，并在攻击阶段按录入时机释放宝具
 - 识别五张普通卡的归属和颜色，并按基础连携优先补满出卡
 - 普通卡每回合保存识别证据；任一张卡低置信度时直接停止等待人工确认
 
@@ -20,6 +21,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - 不做多设备适配
 - 不做后排、换人、替补上场
 - 不做御主技能智能判断
+- 自定义操作序列模式本轮不做换人
 - 不做普通卡完整智能化，只保留基础连携和从者优先出卡
 - `tests/` 当前不是主验证入口
 
@@ -58,8 +60,21 @@ uv run .\main.py
 - `device`：固定环境档位、可选目标设备序列号、启动前自动连接地址
 - `support`：助战职阶、目标从者、回退位、头像核验参数
 - `ocr`：战斗文字读取参数
-- `smart_battle`：前排角色和各波次动作计划
-- `skill_sequence`：关闭 `smart_battle` 时使用的固定技能顺序
+- `smart_battle`：主链路下的保守智能战斗开关、前排角色和出卡优先级
+- `battle_mode`：选择当前主链路或自定义操作序列战斗
+- `custom_sequence_battle`：选择当前要加载的自定义操作序列文件
+- `skill_sequence`：`battle_mode=main` 下两种主链路子模式临时共用的开局技能顺序
+
+`battle_mode` 当前规则：
+
+- `main`：沿用当前主链路
+  - `smart_battle.enabled=false`：首回合按 `skill_sequence` 释放开局技能，后续回合直接攻击
+  - `smart_battle.enabled=true`：进入当前保守版 `smart_battle`，宝具和普通卡优先助战，且一场战斗结算后直接停止
+- `custom_sequence`：按 `custom_sequence_battle.sequence` 指向的独立 YAML 执行录入动作
+- `custom_sequence` 模式下，攻击阶段仍沿用现有出卡层，但只按普通卡颜色连携，不做从者归属识别
+- `custom_sequence` 模式下，宝具只按当前回合录入的 `nobles` 释放；未录入时不自动放宝具
+- 自定义操作序列文件统一放在 `config/custom_sequences/*.yaml`
+- `smart_battle.wave_plan` 已废弃，配置中不再允许出现
 
 `device` 当前规则：
 
@@ -96,6 +111,7 @@ uv run .\main.py
 - [core/runtime](/D:/VSCodeRepository/Lumina/core/runtime)：主流程引擎、会话状态、等待层与状态处理器
 - [core/device](/D:/VSCodeRepository/Lumina/core/device)：设备控制
 - [config](/D:/VSCodeRepository/Lumina/config)：运行配置
+- [custom_sequences](/D:/VSCodeRepository/Lumina/config/custom_sequences)：自定义操作序列文件
 - [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui)：界面模板
 - [assets/servants](/D:/VSCodeRepository/Lumina/assets/servants)：从者公共资料、索引与下载脚本
 - [assets/screenshots](/D:/VSCodeRepository/Lumina/assets/screenshots)：调试截图
@@ -110,6 +126,7 @@ uv run .\main.py
 - [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
 - [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
 - [analyze_command_cards.py](/D:/VSCodeRepository/Lumina/scripts/analyze_command_cards.py)：普通卡单图分析
+- [custom_sequence_recorder.py](/D:/VSCodeRepository/Lumina/scripts/custom_sequence_recorder.py)：自定义操作序列 GUI 录入器
 - [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
 - [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
 - [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证

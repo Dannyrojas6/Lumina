@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 from core.runtime.session import RuntimeSession
 from core.runtime.waiter import Waiter
@@ -12,6 +13,11 @@ log = logging.getLogger("core.runtime.handlers.battle_result")
 
 
 class BattleResultHandler:
+    AP_TEMPLATE_TIMEOUT = 10.0
+    AP_TEMPLATE_POLL_INTERVAL = 0.5
+    RESULT_TRANSITION_TIMEOUT = 1.2
+    RESULT_TRANSITION_POLL_INTERVAL = 0.2
+
     def __init__(self, session: RuntimeSession, waiter: Waiter) -> None:
         self.session = session
         self.waiter = waiter
@@ -24,7 +30,7 @@ class BattleResultHandler:
         if stage in {1, 2}:
             self.session.adb.click(*GameCoordinates.RESULT_CONTINUE)
             self.waiter.wait_seconds(f"已点击结算页第 {stage} 段继续", 0.5)
-            self.waiter.wait_screen_stable(timeout=3.0, poll_interval=0.5)
+            self._wait_for_result_stage_progress(stage)
             return
 
         if stage == 3:
@@ -38,6 +44,11 @@ class BattleResultHandler:
             self.session.adb.click_raw(*next_pos)
             self.waiter.wait_seconds("已点击结算页下一步", 0.5)
             self.waiter.wait_seconds("等待结算完成收尾", 1.0)
+            if getattr(self.session, "smart_battle_enabled", False):
+                self.session.mark_battle_result_complete()
+                self.session.stop_requested = True
+                log.info("智能战斗本场已完成，已在结算后停止运行")
+                return
             if not self._handle_continue_battle_prompt():
                 return
             self.session.mark_battle_result_complete()
@@ -69,6 +80,7 @@ class BattleResultHandler:
         if self.session.config.continue_battle:
             self.session.adb.click_raw(*continue_pos)
             self.waiter.wait_seconds("已点击连续出击", 0.5)
+            self._handle_ap_recovery_prompt()
             return True
 
         close_pos = self.session.recognizer.match(
@@ -81,3 +93,93 @@ class BattleResultHandler:
         self.session.adb.click_raw(*close_pos)
         self.waiter.wait_seconds("已关闭连续出击界面", 0.5)
         return True
+
+    def _wait_for_result_stage_progress(self, current_stage: int) -> None:
+        candidate_templates = self._result_progress_templates(current_stage)
+        if not candidate_templates:
+            return
+        attempts = max(
+            1,
+            math.ceil(
+                self.RESULT_TRANSITION_TIMEOUT
+                / max(self.RESULT_TRANSITION_POLL_INTERVAL, 0.1)
+            ),
+        )
+        for attempt in range(attempts):
+            self.session.refresh_screen()
+            screen = self.session.get_latest_screen_image()
+            for filename in candidate_templates:
+                if self.session.recognizer.match(
+                    self.session.resources.template(filename),
+                    screen,
+                ):
+                    return
+            if attempt < attempts - 1:
+                self.waiter.wait_seconds(
+                    "等待结算页进入下一段",
+                    self.RESULT_TRANSITION_POLL_INTERVAL,
+                )
+        log.warning("结算页第 %s 段点击后未快速进入下一段，已按当前画面继续", current_stage)
+
+    def _handle_ap_recovery_prompt(self) -> None:
+        self.session.refresh_screen()
+        ap_recovery_pos = self.session.recognizer.match(
+            self.session.resources.template("ap_recovery.png", category="ap"),
+            self.session.get_latest_screen_image(),
+        )
+        if not ap_recovery_pos:
+            return
+
+        self.session.adb.click_raw(*GameCoordinates.AP_RECOVERY_SCROLL_POSITION)
+        self.waiter.wait_seconds("已将行动力恢复列表滚到底部", 0.5)
+
+        bronze_pos = self._wait_for_template(
+            "bronzed_cobalt_fruit.png",
+            category="ap",
+            timeout=self.AP_TEMPLATE_TIMEOUT,
+            poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
+        )
+        if not bronze_pos:
+            raise RuntimeError("已识别到行动力恢复界面，但未识别到青铜果实。")
+        self.session.adb.click_raw(*bronze_pos)
+        self.waiter.wait_seconds("已点击青铜果实", 0.5)
+
+        confirm_pos = self._wait_for_template(
+            "confirm.png",
+            category="ap",
+            timeout=self.AP_TEMPLATE_TIMEOUT,
+            poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
+        )
+        if not confirm_pos:
+            raise RuntimeError("青铜果实数量不足，未能进入确认界面。")
+        self.session.adb.click_raw(*confirm_pos)
+        self.waiter.wait_seconds("已确认行动力恢复", 0.5)
+
+    def _wait_for_template(
+        self,
+        filename: str,
+        *,
+        category: str = "common",
+        timeout: float,
+        poll_interval: float,
+    ) -> tuple[int, int] | None:
+        template_path = self.session.resources.template(filename, category=category)
+        attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
+        for _ in range(attempts):
+            match = self.session.recognizer.match(
+                template_path,
+                self.session.get_latest_screen_image(),
+            )
+            if match:
+                return match
+            self.waiter.wait_seconds(f"等待模板出现：{filename}", poll_interval)
+            self.session.refresh_screen()
+        return None
+
+    @staticmethod
+    def _result_progress_templates(current_stage: int) -> tuple[str, ...]:
+        if current_stage == 1:
+            return ("fight_result_2.png", "fight_result_3.png", "next.png")
+        if current_stage == 2:
+            return ("fight_result_3.png", "next.png")
+        return ()

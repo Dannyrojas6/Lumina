@@ -1,0 +1,58 @@
+turns:
+  - wave: 1
+    turn: 1
+    actions:
+      - type: servant_skill
+        actor: 1
+        skill: 1
+        target: 3
+    nobles: [3]
+  - wave: 2
+    turn: 2
+    actions:
+      - type: servant_skill
+        actor: 1
+        skill: 2
+        target: null
+      - type: servant_skill
+        actor: 1
+        skill: 3
+        target: null
+      - type: servant_skill
+        actor: 2
+        skill: 1
+        target: null
+      - type: servant_skill
+        actor: 2
+        skill: 2
+        target: null
+      - type: servant_skill
+        actor: 2
+        skill: 3
+        target: 3
+      - type: servant_skill
+        actor: 3
+        skill: 1
+        target: null
+      - type: servant_skill
+        actor: 3
+        skill: 3
+        target: null
+      - type: servant_skill
+        actor: 3
+        skill: 2
+        target: 3
+    nobles: [3]
+  - wave: 3
+    turn: 3
+    actions:
+      - type: master_skill
+        skill: 1
+        target: null
+      - type: enemy_target
+        target: 2
+    nobles: [1]
+  - wave: 3
+    turn: 5
+    actions: []
+    nobles: [2]

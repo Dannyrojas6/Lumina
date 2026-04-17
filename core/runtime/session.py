@@ -14,9 +14,7 @@ import numpy as np
 from core.battle_runtime import (
     BattleAction,
     BattleSnapshotReader,
-    SmartBattlePlanner,
 )
-from core.battle_runtime.planner_models import BattleSnapshot as SmartBattleSnapshot
 from core.command_card_recognition import (
     CommandCardPrediction,
     CommandCardRecognizer,
@@ -28,6 +26,7 @@ from core.device import AdbController
 from core.perception import BattleOcrReader, ImageRecognizer
 from core.perception.battle_ocr import ServantNpStatus
 from core.shared import BattleConfig, GameState, ResourceCatalog
+from core.shared.config_models import CustomTurnPlan
 from core.support_recognition.verifier import SupportPortraitVerifier
 
 log = logging.getLogger("core.runtime.session")
@@ -44,7 +43,6 @@ class RuntimeSession:
     resources: ResourceCatalog
     battle_ocr: Optional[BattleOcrReader] = None
     battle_snapshot_reader: Optional[BattleSnapshotReader] = None
-    smart_battle_planner: Optional[SmartBattlePlanner] = None
     state: GameState = GameState.UNKNOWN
     latest_screen_image: Optional[np.ndarray] = None
     latest_screen_rgb: Optional[np.ndarray] = None
@@ -55,6 +53,10 @@ class RuntimeSession:
     last_enemy_count: Optional[int] = None
     last_current_turn: Optional[int] = None
     last_processed_turn: Optional[int] = None
+    last_processed_custom_turn: tuple[int, int] | None = None
+    active_custom_turn_plan: CustomTurnPlan | None = None
+    pending_custom_nobles: list[int] = field(default_factory=list)
+    stop_requested: bool = False
     unknown_snapshot_saved: bool = False
     consecutive_unknown_count: int = 0
     support_verifiers: dict[str, SupportPortraitVerifier] = field(default_factory=dict)
@@ -63,9 +65,14 @@ class RuntimeSession:
     @property
     def smart_battle_enabled(self) -> bool:
         return bool(
-            self.config.smart_battle.enabled
+            self.config.battle_mode == "main" and self.config.smart_battle.enabled
+        )
+
+    @property
+    def custom_sequence_enabled(self) -> bool:
+        return bool(
+            self.config.battle_mode == "custom_sequence"
             and self.battle_snapshot_reader is not None
-            and self.smart_battle_planner is not None
         )
 
     def refresh_screen(self) -> str:
@@ -212,61 +219,6 @@ class RuntimeSession:
             )
         return statuses
 
-    def build_smart_snapshot(self, raw_snapshot) -> SmartBattleSnapshot:
-        """将识别层快照转换成判断层需要的最小结构。"""
-        wave_index = raw_snapshot.wave_index
-        enemy_count = raw_snapshot.enemy_count
-        current_turn = raw_snapshot.current_turn
-        attacker_slot = next(
-            (
-                slot.slot
-                for slot in self.config.smart_battle.frontline
-                if slot.role == "attacker"
-            ),
-            None,
-        )
-        attacker_np_status = next(
-            (
-                status
-                for status in raw_snapshot.frontline_np
-                if status.servant_index == attacker_slot
-            ),
-            None,
-        )
-        attacker_np_known = bool(attacker_np_status and attacker_np_status.success)
-
-        wave_known = False
-        if wave_index is not None:
-            wave_known = True
-            self.last_wave_index = wave_index
-        elif self.last_wave_index is not None:
-            wave_index = self.last_wave_index
-            log.warning("波次 OCR 缺失，已沿用上次确认波次=%s", wave_index)
-
-        if enemy_count is not None:
-            self.last_enemy_count = enemy_count
-        if current_turn is not None:
-            self.last_current_turn = current_turn
-
-        return SmartBattleSnapshot(
-            wave_index=self.last_wave_index or 1,
-            enemy_count=self.last_enemy_count or 3,
-            current_turn=self.last_current_turn or 1,
-            frontline_np={
-                status.servant_index: (status.np_value or 0)
-                for status in raw_snapshot.frontline_np
-            },
-            skill_availability={
-                slot_index: item.available
-                for slot_index, item in raw_snapshot.skill_availability.items()
-            },
-            used_skills=set(self.used_servant_skills),
-            attacker_np_known=attacker_np_known,
-            wave_known=wave_known,
-            enemy_count_known=enemy_count is not None,
-            turn_known=current_turn is not None,
-        )
-
     def mark_battle_result_complete(self) -> None:
         """在结算完成后重置本轮战斗状态。"""
         self.loop_done += 1
@@ -276,3 +228,6 @@ class RuntimeSession:
         self.last_enemy_count = None
         self.last_current_turn = None
         self.last_processed_turn = None
+        self.last_processed_custom_turn = None
+        self.active_custom_turn_plan = None
+        self.pending_custom_nobles = []

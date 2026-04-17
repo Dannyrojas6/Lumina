@@ -32,13 +32,13 @@
 - 敌方三个位 `HP` 读取
 - 前排九个技能位可用性判断
 - 五张普通卡的归属识别、颜色识别和基础连携选卡
+- 可选的 `custom_sequence` 战斗链路：按 `wave + turn` 执行录入动作，并按录入时机释放宝具
 - 普通卡每回合留证，低置信度时立即停止等待人工确认
 - 启动前固定环境与关键资源自检
 - `tests/replay/` 静态回放回归
 
 ### 半成品能力
 
-- `smart_battle` 已存在，但只会规划前排从者技能，不会规划御主技能
 - 页面状态识别仍然高度依赖模板匹配
 - 助战识别仍依赖固定布局和纵向扫描
 
@@ -111,12 +111,20 @@
 
 ### 智能战斗当前真实边界
 
-- 代码里存在 `smart_battle v1` 的基础能力
-- 但它当前只会规划前排从者技能，不会规划御主技能
-- 当前默认配置 [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 实际走的是 `v0.0.1` 思路：
-  - 关闭 `smart_battle` 技能决策
-  - 首次进入可操作回合时走 `skill_sequence`
-  - 当前默认配置是开局释放 `1-9` 和御主技能 `1-2`
+- `battle_mode=main` 下，当前主链只保留两条子模式：
+  - `smart_battle.enabled=false`
+  - `smart_battle.enabled=true`
+- 这两条子模式当前都临时共用顶层 `skill_sequence` 作为开局动作
+- `smart_battle.enabled=true` 时：
+  - 宝具顺序优先助战打手
+  - 普通卡先拿助战打手的卡，再补颜色连携
+  - 一场战斗结算完成后直接停止，不继续下一场
+- `smart_battle.wave_plan` 已废弃，配置中不再允许出现
+- 当前还新增了一个独立可选链路：
+  - `battle_mode=custom_sequence`
+  - 按 `(wave, turn)` 执行录入好的从者技能、通用御主技能、敌方目标切换和宝具时机
+  - 当前具体序列内容不再内联写在 `battle_config.yaml`，而是单独放在 `config/custom_sequences/*.yaml`
+  - 进入攻击阶段后只按普通卡颜色连携出卡，不做从者归属识别
 
 ### 普通卡当前只做到什么程度
 
@@ -132,7 +140,9 @@
 
 - 不要把代码能力和默认配置混为一谈：
   - 代码里有 `smart_battle`
-  - 当前默认配置并没有把技能释放交给它
+  - `battle_mode=main` 下是否启用它，要看 `smart_battle.enabled`
+  - 代码里也有 `custom_sequence`
+  - 当前示例配置写什么模式，要以 [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 当前内容为准
 - 不要把草稿文档当当前事实：
   - `docs/drafts/` 只看作草稿
 - 不要把“能启动项目”误判成“助战链一定可跑”：

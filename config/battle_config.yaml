@@ -2,6 +2,7 @@
 # 修改这个文件来调整每次刷本的策略，无需改代码
 
 loop_count: 10 # 刷本次数（-1 为无限循环）
+battle_mode: main # main=主链路；custom_sequence=自定义操作序列战斗
 continue_battle: true # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
 default_skill_target: 3 # 技能释放后若出现选人界面，且动作本身没写 target，则默认选择该目标位
 match_threshold: 0.70 # 图像识别置信度阈值（0~1，越高越严格）
@@ -36,7 +37,7 @@ ocr:
   save_ocr_crops: true # 当前示例开启；如需减少留图可改为 false，且最多保留 9 张
 
 smart_battle:
-  enabled: false # 当前示例关闭；首回合动作改走 skill_sequence
+  enabled: true # 仅在 battle_mode=main 下生效；false=固定技能顺序，true=保守智能战斗
   frontline:
     - slot: 1
       servant: caster/zhuge_liang
@@ -54,9 +55,16 @@ smart_battle:
     - berserker/morgan
     - caster/zhuge_liang
     - caster/merlin
+# smart_battle.wave_plan 已废弃，请勿再配置
+
+custom_sequence_battle:
+  sequence: detective_morgan_6t.yaml
+# 自定义操作序列请使用 uv run .\scripts\custom_sequence_recorder.py 录入和保存
+# 录入器会把 battle_config.yaml 中的当前加载项写到这里，并把具体内容写到独立 YAML 文件
 
 # 本场战斗要依次释放的技能动作。
 # 纯数字 1-9 仍表示从者技能。
+# battle_mode=main 时，fixed_sequence 和 smart_battle 当前都临时共用这段开局动作。
 # 如需释放御主技能，请使用 type/master/skill 结构。
 skill_sequence:
   - 1

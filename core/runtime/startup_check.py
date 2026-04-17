@@ -21,7 +21,7 @@ def validate_runtime_prerequisites(
     _validate_device_resolution(profile, device_resolution)
     if config.support.servant.strip():
         validate_support_servant_resources(resources, config.support.servant)
-    if config.smart_battle.enabled:
+    if config.battle_mode == "main" and config.smart_battle.enabled:
         for slot in config.smart_battle.frontline:
             resources.load_servant_manifest(slot.servant)
 
@@ -60,6 +60,9 @@ def _validate_required_templates(resources: ResourceCatalog) -> None:
             resources.template("next.png"),
             resources.template("continue_battle.png"),
             resources.template("close.png"),
+            resources.template("ap_recovery.png", category="ap"),
+            resources.template("bronzed_cobalt_fruit.png", category="ap"),
+            resources.template("confirm.png", category="ap"),
             resources.support_class_template("all"),
             resources.support_class_template("berserker"),
         ]

@@ -6,10 +6,6 @@ from core.device import AdbController, resolve_device_profile
 from core.battle_runtime import (
     BattleAction,
     BattleSnapshotReader,
-    SmartBattlePlanner,
-    normalize_frontline,
-    normalize_manifests,
-    normalize_wave_plan,
 )
 from core.perception import BattleOcrReader, ImageRecognizer, OcrEngine
 from core.shared import BattleConfig, ResourceCatalog, load_battle_config
@@ -68,27 +64,11 @@ def run() -> None:
     log.debug("OCR 引擎初始化完成")
     battle_ocr = BattleOcrReader(ocr_engine=ocr_engine, config=config.ocr)
     battle_snapshot_reader = None
-    smart_battle_planner = None
-    if config.smart_battle.enabled:
-        log.debug("开始初始化智能战斗配置")
-        frontline = normalize_frontline(config.smart_battle.frontline)
-        manifests = normalize_manifests(
-            [
-                resources.load_servant_manifest(slot.servant)
-                for slot in config.smart_battle.frontline
-            ]
-        )
+    if config.battle_mode == "custom_sequence":
         battle_snapshot_reader = BattleSnapshotReader(
             battle_ocr=battle_ocr,
             debug_dir=resources.ocr_debug_dir,
         )
-        smart_battle_planner = SmartBattlePlanner(
-            frontline=frontline,
-            manifests=manifests,
-            wave_plan=normalize_wave_plan(config.smart_battle.wave_plan),
-            np_ready_value=config.ocr.np_ready_value,
-        )
-        log.debug("智能战斗初始化完成")
     log.debug("开始组装主流程")
     session = RuntimeSession(
         adb=adb_ctl,
@@ -106,7 +86,6 @@ def run() -> None:
         resources=resources,
         battle_ocr=battle_ocr,
         battle_snapshot_reader=battle_snapshot_reader,
-        smart_battle_planner=smart_battle_planner,
     )
     engine = AutomationEngine(session)
     log.debug("主流程组装完成，准备进入主循环")

@@ -5,11 +5,17 @@ from __future__ import annotations
 import logging
 
 from core.battle_runtime import build_command_card_plan
-from core.command_card_recognition import CommandCardInfo, CommandCardPrediction
+from core.command_card_recognition import (
+    CommandCardInfo,
+    CommandCardPrediction,
+    choose_best_card_chain,
+    detect_command_card_color,
+)
 from core.perception.battle_ocr import ServantNpStatus
 from core.runtime.session import RuntimeSession
 from core.runtime.waiter import Waiter
 from core.shared import GameCoordinates, GameState
+from core.shared.config_models import CustomTurnPlan
 
 log = logging.getLogger("core.runtime.handlers.card_select")
 
@@ -23,6 +29,11 @@ class CardSelectHandler:
         if not self.waiter.confirm_state_entry(GameState.CARD_SELECT):
             log.warning("普通指令卡区域在超时内未稳定，已按当前画面继续识别")
         np_statuses = self._read_np_statuses_with_retry()
+        if getattr(self.session, "custom_sequence_enabled", False):
+            card_plan = self._build_custom_sequence_card_plan(np_statuses)
+            self.execute_card_plan(card_plan)
+            self._wait_after_card_plan()
+            return
         cards, prediction = self._read_command_cards()
         card_owners = (
             {card.index: card.owner for card in cards}
@@ -68,14 +79,197 @@ class CardSelectHandler:
         servant_priority = self.session.command_card_priority()
         if card_owners is None:
             card_owners = {}
-        plan = build_command_card_plan(
-            noble_indices=noble_indices,
+        support_attacker = self.session.support_attacker_servant_name()
+        if self.session.smart_battle_enabled:
+            plan = self._build_smart_battle_v001_card_plan(
+                noble_indices=noble_indices,
+                card_owners=card_owners,
+                servant_priority=servant_priority,
+                cards=cards,
+                support_attacker=support_attacker,
+            )
+        else:
+            plan = build_command_card_plan(
+                noble_indices=noble_indices,
+                card_owners=card_owners,
+                servant_priority=servant_priority,
+                cards=cards,
+                support_attacker=support_attacker,
+            )
+        log.info("本回合出卡计划：%s", plan)
+        return plan[:3]
+
+    def _build_smart_battle_v001_card_plan(
+        self,
+        *,
+        noble_indices: list[int],
+        card_owners: dict[int, str | None],
+        servant_priority: list[str],
+        cards: list[CommandCardInfo] | None,
+        support_attacker: str | None,
+    ) -> list[dict[str, int]]:
+        ordered_nobles = self._order_main_nobles(
+            noble_indices,
+            servant_priority=servant_priority,
+            support_attacker=support_attacker,
+        )
+        plan: list[dict[str, int]] = [
+            {"type": "noble", "index": servant_index}
+            for servant_index in ordered_nobles[:3]
+        ]
+        if len(plan) >= 3:
+            return plan[:3]
+
+        used_cards: set[int] = set()
+        support_cards = self._support_attacker_cards(
+            cards=cards,
+            card_owners=card_owners,
+            support_attacker=support_attacker,
+        )
+        for card in support_cards:
+            if len(plan) >= 3:
+                return plan[:3]
+            plan.append({"type": "card", "index": card.index})
+            used_cards.add(card.index)
+
+        if cards:
+            remaining_cards = [
+                CommandCardInfo(index=card.index, owner=card.owner, color=card.color)
+                for card in sorted(cards, key=lambda item: item.index)
+                if card.index not in used_cards
+            ]
+            for card in choose_best_card_chain(
+                cards=remaining_cards,
+                servant_priority=[],
+                support_attacker=None,
+            ):
+                if len(plan) >= 3:
+                    return plan[:3]
+                if card.index in used_cards:
+                    continue
+                plan.append({"type": "card", "index": card.index})
+                used_cards.add(card.index)
+
+        for fallback in build_command_card_plan(
+            noble_indices=[],
             card_owners=card_owners,
             servant_priority=servant_priority,
-            cards=cards,
-            support_attacker=self.session.support_attacker_servant_name(),
+            cards=None,
+            support_attacker=None,
+        ):
+            if len(plan) >= 3:
+                break
+            card_index = fallback["index"]
+            if card_index in used_cards:
+                continue
+            plan.append({"type": "card", "index": card_index})
+            used_cards.add(card_index)
+        return plan[:3]
+
+    def _build_custom_sequence_card_plan(
+        self,
+        np_statuses: list[ServantNpStatus],
+    ) -> list[dict[str, int]]:
+        active_plan = self.session.active_custom_turn_plan
+        nobles = active_plan.nobles if active_plan is not None else []
+        effective_nobles = self._merge_custom_nobles(
+            getattr(self.session, "pending_custom_nobles", []),
+            nobles,
         )
-        log.info("本回合出卡计划：%s", plan)
+        np_status_by_index = {
+            status.servant_index: status for status in np_statuses
+        }
+        ready_nobles: list[int] = []
+        deferred_nobles: list[int] = []
+        for noble_index in effective_nobles:
+            status = np_status_by_index.get(noble_index)
+            if status is not None and status.success and status.is_ready:
+                ready_nobles.append(noble_index)
+                continue
+            deferred_nobles.append(noble_index)
+        self.session.pending_custom_nobles = deferred_nobles
+
+        cards, prediction = self._read_command_cards()
+        support_attacker: str | None = None
+        if cards is None:
+            cards = self._read_custom_color_cards()
+        elif prediction is not None and prediction.has_low_confidence:
+            log.warning("自定义操作序列普通卡归属低置信度，已回退为仅按颜色出卡")
+            cards = [
+                CommandCardInfo(index=card.index, owner=None, color=card.color)
+                for card in cards
+            ]
+        else:
+            support_attacker = self.session.support_attacker_servant_name()
+        for card in cards:
+            if not card.color:
+                raise RuntimeError(
+                    f"自定义操作序列普通卡颜色识别失败，卡位 {card.index} 无法确认颜色。"
+                )
+        plan = self._build_custom_sequence_attack_plan(
+            noble_indices=ready_nobles,
+            cards=cards,
+            support_attacker=support_attacker,
+        )
+        log.info(
+            "自定义操作序列本回合出卡计划：wave_turn=%s ready_nobles=%s deferred_nobles=%s plan=%s",
+            self._custom_turn_key(active_plan),
+            ready_nobles,
+            deferred_nobles,
+            plan,
+        )
+        return plan[:3]
+
+    def _build_custom_sequence_attack_plan(
+        self,
+        *,
+        noble_indices: list[int],
+        cards: list[CommandCardInfo],
+        support_attacker: str | None,
+    ) -> list[dict[str, int]]:
+        plan: list[dict[str, int]] = [
+            {"type": "noble", "index": servant_index} for servant_index in noble_indices[:3]
+        ]
+        if len(plan) >= 3:
+            return plan[:3]
+
+        sorted_cards = sorted(cards, key=lambda item: item.index)
+        used_cards: set[int] = set()
+        normalized_support_attacker = self._normalize_servant_name(support_attacker)
+        if normalized_support_attacker:
+            for card in sorted_cards:
+                if len(plan) >= 3:
+                    return plan[:3]
+                if self._normalize_servant_name(card.owner) != normalized_support_attacker:
+                    continue
+                plan.append({"type": "card", "index": card.index})
+                used_cards.add(card.index)
+
+        remaining_cards = [
+            CommandCardInfo(index=card.index, owner=None, color=card.color)
+            for card in sorted_cards
+            if card.index not in used_cards
+        ]
+        if remaining_cards:
+            for card in choose_best_card_chain(
+                cards=remaining_cards,
+                servant_priority=[],
+                support_attacker=None,
+            ):
+                if len(plan) >= 3:
+                    return plan[:3]
+                if card.index in used_cards:
+                    continue
+                plan.append({"type": "card", "index": card.index})
+                used_cards.add(card.index)
+
+        for card in sorted_cards:
+            if len(plan) >= 3:
+                break
+            if card.index in used_cards:
+                continue
+            plan.append({"type": "card", "index": card.index})
+            used_cards.add(card.index)
         return plan[:3]
 
     def execute_card_plan(self, card_plan: list[dict[str, int]]) -> None:
@@ -111,6 +305,98 @@ class CardSelectHandler:
             log.info("宝具 servant=%s 触发目标选择，默认选择第一个从者", servant_index)
             return
         log.info("宝具 servant=%s 已加入本回合出卡", servant_index)
+
+    def _read_custom_color_cards(self) -> list[CommandCardInfo]:
+        screen_rgb = self.session.get_latest_screen_rgb()
+        cards: list[CommandCardInfo] = []
+        for card_index, (x1, y1, x2, y2) in GameCoordinates.COMMAND_CARD_REGIONS.items():
+            card_rgb = screen_rgb[y1:y2, x1:x2].copy()
+            color = detect_command_card_color(card_rgb)
+            if color is None:
+                raise RuntimeError(
+                    f"自定义操作序列普通卡颜色识别失败，卡位 {card_index} 无法确认颜色。"
+                )
+            cards.append(CommandCardInfo(index=card_index, owner=None, color=color))
+        log.info(
+            "自定义操作序列普通卡颜色：%s",
+            [{"index": card.index, "color": card.color} for card in cards],
+        )
+        return cards
+
+    @staticmethod
+    def _merge_custom_nobles(
+        pending_nobles: list[int],
+        current_nobles: list[int],
+    ) -> list[int]:
+        merged: list[int] = []
+        seen: set[int] = set()
+        for noble_index in [*pending_nobles, *current_nobles]:
+            if noble_index in seen:
+                continue
+            merged.append(noble_index)
+            seen.add(noble_index)
+        return merged
+
+    @staticmethod
+    def _normalize_servant_name(value: str | None) -> str:
+        return str(value or "").replace("\\", "/").strip().strip("/")
+
+    def _order_main_nobles(
+        self,
+        noble_indices: list[int],
+        *,
+        servant_priority: list[str],
+        support_attacker: str | None,
+    ) -> list[int]:
+        normalized_priority = [
+            self._normalize_servant_name(item)
+            for item in servant_priority
+            if self._normalize_servant_name(item)
+        ]
+        normalized_support = self._normalize_servant_name(support_attacker)
+        priority_order: list[str] = []
+        if normalized_support:
+            priority_order.append(normalized_support)
+        for item in normalized_priority:
+            if item not in priority_order:
+                priority_order.append(item)
+
+        slot_to_servant = {
+            index + 1: self._normalize_servant_name(servant_name)
+            for index, servant_name in enumerate(self.session.frontline_servant_names())
+        }
+
+        def _rank(slot_index: int) -> tuple[int, int]:
+            servant_name = slot_to_servant.get(slot_index, "")
+            try:
+                priority_rank = priority_order.index(servant_name)
+            except ValueError:
+                priority_rank = len(priority_order) + 10
+            return (priority_rank, slot_index)
+
+        return sorted(noble_indices, key=_rank)
+
+    def _support_attacker_cards(
+        self,
+        *,
+        cards: list[CommandCardInfo] | None,
+        card_owners: dict[int, str | None],
+        support_attacker: str | None,
+    ) -> list[CommandCardInfo]:
+        normalized_support = self._normalize_servant_name(support_attacker)
+        if not normalized_support:
+            return []
+        if cards:
+            return [
+                card
+                for card in sorted(cards, key=lambda item: item.index)
+                if self._normalize_servant_name(card.owner) == normalized_support
+            ]
+        return [
+            CommandCardInfo(index=index, owner=owner, color=None)
+            for index, owner in sorted(card_owners.items())
+            if self._normalize_servant_name(owner) == normalized_support
+        ]
 
     def _read_command_card_owners(self) -> dict[int, str | None] | None:
         servant_priority = self.session.command_card_priority()
@@ -165,3 +451,13 @@ class CardSelectHandler:
             ],
         )
         return cards, prediction
+
+    @staticmethod
+    def _custom_turn_key(plan: CustomTurnPlan | None) -> tuple[int, int] | None:
+        if plan is None:
+            return None
+        wave = getattr(plan, "wave", None)
+        turn = getattr(plan, "turn", None)
+        if wave is None or turn is None:
+            return None
+        return (wave, turn)

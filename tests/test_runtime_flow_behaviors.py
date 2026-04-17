@@ -5,10 +5,12 @@ from unittest.mock import Mock
 import numpy as np
 
 from core.command_card_recognition import (
+    CommandCardInfo,
     CommandCardPrediction,
     CommandCardScore,
     CommandCardTrace,
 )
+from core.perception.battle_ocr import ServantNpStatus
 from core.perception.image_recognizer import TemplateMatchResult
 from core.perception.state_detector import StateDetectionResult, StateDetector
 from core.runtime.handlers.battle_ready import BattleReadyHandler
@@ -101,8 +103,14 @@ class DummySupportHandler(SupportSelectHandler):
 
 
 class DummyBattleReadySession:
-    def __init__(self, *, default_skill_target: int = 3) -> None:
+    def __init__(
+        self,
+        *,
+        default_skill_target: int = 3,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.config = Mock()
+        self.config.battle_mode = "main"
         self.config.default_skill_target = default_skill_target
         self.config.battle_actions.return_value = [
             {"type": "servant", "skill": 1, "target": None}
@@ -113,7 +121,7 @@ class DummyBattleReadySession:
         self.resources = Mock()
         self.resources.template.side_effect = lambda name, category="ui": name
         self.battle_actions_done = False
-        self.smart_battle_enabled = False
+        self.smart_battle_enabled = smart_battle_enabled
 
     def refresh_screen(self) -> str:
         return "screen.png"
@@ -123,18 +131,96 @@ class DummyBattleReadySession:
 
 
 class DummyBattleReadyHandler(BattleReadyHandler):
-    def __init__(self, *, default_skill_target: int = 3) -> None:
+    def __init__(
+        self,
+        *,
+        default_skill_target: int = 3,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.waiter = DummyWaiter()
-        self.session = DummyBattleReadySession(default_skill_target=default_skill_target)
+        self.session = DummyBattleReadySession(
+            default_skill_target=default_skill_target,
+            smart_battle_enabled=smart_battle_enabled,
+        )
+
+
+class DummyCustomBattleReadySession:
+    def __init__(
+        self,
+        *,
+        wave: int | None,
+        turn: int | None,
+        plan=None,
+        recognizer_matches: list[object | None] | None = None,
+    ) -> None:
+        self.config = Mock()
+        self.config.battle_mode = "custom_sequence"
+        self.config.custom_sequence_battle.find_turn_plan.return_value = plan
+        self.battle_snapshot_reader = Mock()
+        self.battle_snapshot_reader.read_snapshot.return_value = SimpleNamespace(
+            wave_index=wave,
+            current_turn=turn,
+        )
+        self.battle = Mock()
+        self.recognizer = Mock()
+        self.recognizer.match.side_effect = recognizer_matches or []
+        self.resources = Mock()
+        self.resources.template.side_effect = lambda name, category="ui": name
+        self.latest_screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        self.latest_screen_image = np.zeros((10, 10), dtype=np.uint8)
+        self.active_custom_turn_plan = None
+        self.last_processed_custom_turn = None
+        self.smart_battle_enabled = False
+        self.battle_actions_done = False
+
+    @property
+    def custom_sequence_enabled(self) -> bool:
+        return True
+
+    def refresh_screen(self) -> str:
+        return "screen.png"
+
+    def get_latest_screen_image(self) -> np.ndarray:
+        return self.latest_screen_image
+
+    def get_latest_screen_rgb(self) -> np.ndarray:
+        return self.latest_screen_rgb
+
+
+class DummyCustomBattleReadyHandler(BattleReadyHandler):
+    def __init__(
+        self,
+        *,
+        wave: int | None,
+        turn: int | None,
+        plan=None,
+        recognizer_matches: list[object | None] | None = None,
+    ) -> None:
+        self.waiter = DummyWaiter()
+        self.session = DummyCustomBattleReadySession(
+            wave=wave,
+            turn=turn,
+            plan=plan,
+            recognizer_matches=recognizer_matches,
+        )
 
 
 class DummyBattleSession:
-    def __init__(self, *, continue_battle: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        continue_battle: bool = True,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.adb = Mock()
         self.recognizer = Mock()
         self.resources = Mock()
         self.resources.template.side_effect = lambda name, category="ui": name
-        self.config = SimpleNamespace(continue_battle=continue_battle)
+        self.config = SimpleNamespace(
+            continue_battle=continue_battle,
+            battle_mode="main",
+            smart_battle=SimpleNamespace(enabled=smart_battle_enabled),
+        )
         self._screen = np.zeros((10, 10), dtype=np.uint8)
         self.loop_done = 0
         self.battle_actions_done = True
@@ -143,6 +229,9 @@ class DummyBattleSession:
         self.last_enemy_count = 1
         self.last_current_turn = 5
         self.last_processed_turn = 5
+        self.pending_custom_nobles: list[int] = []
+        self.stop_requested = False
+        self.smart_battle_enabled = smart_battle_enabled
 
     def get_latest_screen_image(self) -> np.ndarray:
         return self._screen
@@ -158,12 +247,22 @@ class DummyBattleSession:
         self.last_enemy_count = None
         self.last_current_turn = None
         self.last_processed_turn = None
+        self.pending_custom_nobles = []
 
 
 class DummyBattleResultHandler(BattleResultHandler):
-    def __init__(self, stage: int | None, *, continue_battle: bool = True) -> None:
+    def __init__(
+        self,
+        stage: int | None,
+        *,
+        continue_battle: bool = True,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.waiter = DummyWaiter()
-        self.session = DummyBattleSession(continue_battle=continue_battle)
+        self.session = DummyBattleSession(
+            continue_battle=continue_battle,
+            smart_battle_enabled=smart_battle_enabled,
+        )
         self.session.recognizer.match.return_value = (321, 654)
         self._stage = stage
 
@@ -172,8 +271,14 @@ class DummyBattleResultHandler(BattleResultHandler):
 
 
 class DummyCardSelectSession:
-    def __init__(self, prediction: CommandCardPrediction | None = None) -> None:
+    def __init__(
+        self,
+        prediction: CommandCardPrediction | None = None,
+        *,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.config = Mock()
+        self.config.battle_mode = "main"
         self.config.ocr = Mock()
         self.config.ocr.retry_once_on_low_confidence = False
         self._prediction = prediction
@@ -181,6 +286,10 @@ class DummyCardSelectSession:
         self.saved_rgb_frames: list[np.ndarray] = []
         self.last_current_turn = 2
         self.last_wave_index = 1
+        self.active_custom_turn_plan = None
+        self.battle = Mock()
+        self.adb = Mock()
+        self.smart_battle_enabled = smart_battle_enabled
 
     def command_card_priority(self) -> list[str]:
         return [
@@ -246,9 +355,17 @@ class DummyUnknownSession:
 
 
 class DummyCardSelectHandler(CardSelectHandler):
-    def __init__(self, prediction: CommandCardPrediction | None = None) -> None:
+    def __init__(
+        self,
+        prediction: CommandCardPrediction | None = None,
+        *,
+        smart_battle_enabled: bool = False,
+    ) -> None:
         self.waiter = DummyWaiter()
-        self.session = DummyCardSelectSession(prediction)
+        self.session = DummyCardSelectSession(
+            prediction,
+            smart_battle_enabled=smart_battle_enabled,
+        )
         self.call_order: list[str] = []
 
     def _read_np_statuses_with_retry(self):
@@ -268,6 +385,99 @@ class DummyCardSelectHandler(CardSelectHandler):
 
     def _wait_after_card_plan(self) -> None:
         self.call_order.append("wait_after_plan")
+
+
+class DummyCustomCardSelectSession:
+    def __init__(
+        self,
+        *,
+        nobles: list[int] | None = None,
+        colors: list[str | None] | None = None,
+        np_statuses: list[ServantNpStatus] | None = None,
+        recognized_cards: list[CommandCardInfo] | None = None,
+        pending_nobles: list[int] | None = None,
+    ) -> None:
+        self.config = Mock()
+        self.config.battle_mode = "custom_sequence"
+        self.config.ocr = Mock()
+        self.config.ocr.retry_once_on_low_confidence = False
+        self.active_custom_turn_plan = (
+            SimpleNamespace(nobles=nobles or []) if nobles is not None else None
+        )
+        self._colors = colors or ["arts", "arts", "arts", "quick", "buster"]
+        self._np_statuses = np_statuses or []
+        self._recognized_cards = recognized_cards
+        self.pending_custom_nobles = list(pending_nobles or [])
+        self.battle = Mock()
+        self.adb = Mock()
+
+    @property
+    def custom_sequence_enabled(self) -> bool:
+        return True
+
+    def read_np_statuses(self) -> list[ServantNpStatus]:
+        return self._np_statuses
+
+    def command_card_priority(self) -> list[str]:
+        return [
+            "caster/zhuge_liang",
+            "caster/merlin",
+            "berserker/morgan",
+        ]
+
+    def frontline_servant_names(self) -> list[str]:
+        return [
+            "caster/zhuge_liang",
+            "caster/merlin",
+            "berserker/morgan",
+        ]
+
+    def support_attacker_servant_name(self) -> str | None:
+        return "berserker/morgan"
+
+    def get_latest_screen_rgb(self) -> np.ndarray:
+        return np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+
+class DummyCustomCardSelectHandler(CardSelectHandler):
+    def __init__(
+        self,
+        *,
+        nobles: list[int] | None = None,
+        colors: list[str | None] | None = None,
+        np_statuses: list[ServantNpStatus] | None = None,
+        recognized_cards: list[CommandCardInfo] | None = None,
+        pending_nobles: list[int] | None = None,
+    ) -> None:
+        self.waiter = DummyWaiter()
+        self.session = DummyCustomCardSelectSession(
+            nobles=nobles,
+            colors=colors,
+            np_statuses=np_statuses,
+            recognized_cards=recognized_cards,
+            pending_nobles=pending_nobles,
+        )
+        self.executed_plan = None
+
+    def _read_np_statuses_with_retry(self):
+        return self.session.read_np_statuses()
+
+    def _read_custom_color_cards(self) -> list[CommandCardInfo]:
+        return [
+            CommandCardInfo(index=index + 1, owner=None, color=color)
+            for index, color in enumerate(self.session._colors)
+        ]
+
+    def _read_command_cards(self):
+        if self.session._recognized_cards is None:
+            return None, None
+        return self.session._recognized_cards, None
+
+    def execute_card_plan(self, card_plan):
+        self.executed_plan = card_plan
+
+    def _wait_after_card_plan(self) -> None:
+        return None
 
 
 def _make_prediction(*, low_confidence: bool) -> CommandCardPrediction:
@@ -427,6 +637,77 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         handler.session.battle.finish_servant_skill.assert_called_once_with(1, target=2)
         handler.session.battle.attack.assert_called_once_with()
 
+    def test_smart_battle_v001_uses_skill_sequence_on_first_turn(self) -> None:
+        handler = DummyBattleReadyHandler(
+            default_skill_target=2,
+            smart_battle_enabled=True,
+        )
+
+        handler.handle()
+
+        handler.session.battle.click_servant_skill.assert_called_once_with(1)
+        handler.session.battle.select_servant_target.assert_called_once_with(2)
+        handler.session.battle.finish_servant_skill.assert_called_once_with(1, target=2)
+        handler.session.battle.attack.assert_called_once_with()
+
+    def test_custom_sequence_battle_ready_executes_turn_actions_and_attacks(self) -> None:
+        plan = SimpleNamespace(
+            actions=[
+                SimpleNamespace(type="enemy_target", target=2),
+                SimpleNamespace(type="servant_skill", actor=1, skill=1, target=None),
+                SimpleNamespace(type="servant_skill", actor=2, skill=3, target=1),
+            ],
+            nobles=[3],
+        )
+        handler = DummyCustomBattleReadyHandler(
+            wave=1,
+            turn=1,
+            plan=plan,
+            recognizer_matches=[None, (200, 300)],
+        )
+
+        handler.handle()
+
+        handler.session.battle.select_enemy_target.assert_called_once_with(2)
+        handler.session.battle.click_servant_skill.assert_any_call(1)
+        handler.session.battle.finish_servant_skill.assert_any_call(1)
+        handler.session.battle.click_servant_skill.assert_any_call(6)
+        handler.session.battle.select_servant_target.assert_called_once_with(1)
+        handler.session.battle.finish_servant_skill.assert_any_call(6, target=1)
+        handler.session.battle.attack.assert_called_once_with()
+        self.assertIs(handler.session.active_custom_turn_plan, plan)
+        self.assertEqual(handler.session.last_processed_custom_turn, (1, 1))
+
+    def test_custom_sequence_battle_ready_without_plan_attacks_directly(self) -> None:
+        handler = DummyCustomBattleReadyHandler(wave=1, turn=2, plan=None)
+
+        handler.handle()
+
+        handler.session.battle.select_enemy_target.assert_not_called()
+        handler.session.battle.click_servant_skill.assert_not_called()
+        handler.session.battle.attack.assert_called_once_with()
+        self.assertIsNone(handler.session.active_custom_turn_plan)
+        self.assertEqual(handler.session.last_processed_custom_turn, (1, 2))
+
+    def test_custom_sequence_battle_ready_stops_when_wave_or_turn_missing(self) -> None:
+        handler = DummyCustomBattleReadyHandler(wave=None, turn=1, plan=None)
+
+        with self.assertRaises(RuntimeError):
+            handler.handle()
+
+        handler.session.battle.attack.assert_not_called()
+
+    def test_custom_sequence_battle_ready_skips_duplicate_turn_actions(self) -> None:
+        plan = SimpleNamespace(actions=[SimpleNamespace(type="enemy_target", target=2)], nobles=[])
+        handler = DummyCustomBattleReadyHandler(wave=1, turn=1, plan=plan)
+        handler.session.active_custom_turn_plan = plan
+        handler.session.last_processed_custom_turn = (1, 1)
+
+        handler.handle()
+
+        handler.session.battle.select_enemy_target.assert_not_called()
+        handler.session.battle.attack.assert_called_once_with()
+
     def test_support_select_waits_for_list_to_settle_before_filtering(self) -> None:
         handler = DummySupportHandler()
 
@@ -444,7 +725,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         handler.session.adb.click.assert_called_once_with(*GameCoordinates.RESULT_CONTINUE)
         self.assertEqual(handler.waiter.confirm_calls, [GameState.BATTLE_RESULT])
         self.assertEqual(handler.waiter.calls, [("已点击结算页第 1 段继续", 0.5)])
-        self.assertEqual(len(handler.waiter.stable_calls), 1)
+        self.assertEqual(handler.waiter.stable_calls, [])
         self.assertEqual(handler.session.loop_done, 0)
         self.assertTrue(handler.session.battle_actions_done)
         self.assertEqual(handler.session.used_servant_skills, {1, 2, 3})
@@ -511,6 +792,90 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ],
         )
         self.assertEqual(handler.session.loop_done, 1)
+
+    def test_battle_result_stage_three_stops_after_next_in_smart_battle(self) -> None:
+        handler = DummyBattleResultHandler(
+            stage=3,
+            continue_battle=True,
+            smart_battle_enabled=True,
+        )
+        handler.session.recognizer.match.side_effect = (
+            lambda template_path, screen: {
+                "next.png": (321, 654),
+                "continue_battle.png": (777, 888),
+            }.get(template_path)
+        )
+
+        handler.handle()
+
+        self.assertEqual(
+            handler.session.adb.click_raw.call_args_list,
+            [unittest.mock.call(321, 654)],
+        )
+        self.assertTrue(handler.session.stop_requested)
+        self.assertEqual(handler.session.loop_done, 1)
+
+    def test_battle_result_stage_three_handles_ap_recovery_after_continue_battle(self) -> None:
+        handler = DummyBattleResultHandler(stage=3, continue_battle=True)
+        handler.session.recognizer.match.side_effect = (
+            lambda template_path, screen: {
+                "next.png": (321, 654),
+                "continue_battle.png": (777, 888),
+                "ap_recovery.png": (500, 500),
+                "bronzed_cobalt_fruit.png": (620, 710),
+                "confirm.png": (1100, 720),
+            }.get(template_path)
+        )
+
+        handler.handle()
+
+        self.assertEqual(
+            handler.session.adb.click_raw.call_args_list,
+            [
+                unittest.mock.call(321, 654),
+                unittest.mock.call(777, 888),
+                unittest.mock.call(1525, 747),
+                unittest.mock.call(620, 710),
+                unittest.mock.call(1100, 720),
+            ],
+        )
+        self.assertEqual(
+            handler.waiter.calls,
+            [
+                ("已点击结算页下一步", 0.5),
+                ("等待结算完成收尾", 1.0),
+                ("已点击连续出击", 0.5),
+                ("已将行动力恢复列表滚到底部", 0.5),
+                ("已点击青铜果实", 0.5),
+                ("已确认行动力恢复", 0.5),
+            ],
+        )
+        self.assertEqual(handler.session.loop_done, 1)
+
+    def test_battle_result_stage_three_stops_when_bronze_fruit_cannot_confirm(self) -> None:
+        handler = DummyBattleResultHandler(stage=3, continue_battle=True)
+        handler.session.recognizer.match.side_effect = (
+            lambda template_path, screen: {
+                "next.png": (321, 654),
+                "continue_battle.png": (777, 888),
+                "ap_recovery.png": (500, 500),
+                "bronzed_cobalt_fruit.png": (620, 710),
+            }.get(template_path)
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "青铜果实数量不足"):
+            handler.handle()
+
+        self.assertEqual(
+            handler.session.adb.click_raw.call_args_list,
+            [
+                unittest.mock.call(321, 654),
+                unittest.mock.call(777, 888),
+                unittest.mock.call(1525, 747),
+                unittest.mock.call(620, 710),
+            ],
+        )
+        self.assertEqual(handler.session.loop_done, 0)
 
     def test_battle_result_stage_three_clicks_close_when_continue_battle_disabled(
         self,
@@ -595,6 +960,185 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(len(handler.session.saved_predictions), 1)
         self.assertEqual(len(handler.session.saved_rgb_frames), 1)
         self.assertEqual(handler.call_order, ["read_np", "read_cards"])
+
+    def test_smart_battle_card_select_prioritizes_support_noble_and_cards(self) -> None:
+        prediction = CommandCardPrediction(
+            frontline_servants=[
+                "caster/zhuge_liang",
+                "caster/merlin",
+                "berserker/morgan",
+            ],
+            support_attacker="berserker/morgan",
+            traces=[
+                CommandCardTrace(
+                    index=1,
+                    owner="caster/zhuge_liang",
+                    color="arts",
+                    score=0.4,
+                    margin=0.2,
+                    support_badge=False,
+                    low_confidence=False,
+                    scores=[],
+                ),
+                CommandCardTrace(
+                    index=2,
+                    owner="caster/merlin",
+                    color="arts",
+                    score=0.4,
+                    margin=0.2,
+                    support_badge=False,
+                    low_confidence=False,
+                    scores=[],
+                ),
+                CommandCardTrace(
+                    index=3,
+                    owner="caster/zhuge_liang",
+                    color="buster",
+                    score=0.4,
+                    margin=0.2,
+                    support_badge=False,
+                    low_confidence=False,
+                    scores=[],
+                ),
+                CommandCardTrace(
+                    index=4,
+                    owner="berserker/morgan",
+                    color="quick",
+                    score=0.4,
+                    margin=0.2,
+                    support_badge=False,
+                    low_confidence=False,
+                    scores=[],
+                ),
+                CommandCardTrace(
+                    index=5,
+                    owner="berserker/morgan",
+                    color="buster",
+                    score=0.4,
+                    margin=0.2,
+                    support_badge=False,
+                    low_confidence=False,
+                    scores=[],
+                ),
+            ],
+            min_score=0.07,
+            min_margin=0.002,
+            joint_score=0.4,
+            joint_margin=0.1,
+            joint_low_confidence=False,
+        )
+        handler = DummyCardSelectHandler(
+            prediction,
+            smart_battle_enabled=True,
+        )
+        np_statuses = [
+            ServantNpStatus(1, "100", 100, 0.9, True, True),
+            ServantNpStatus(2, "0", 0, 0.9, True, False),
+            ServantNpStatus(3, "100", 100, 0.9, True, True),
+        ]
+
+        plan = CardSelectHandler.build_card_plan(
+            handler,
+            np_statuses,
+            prediction.owners,
+            prediction.cards,
+        )
+
+        self.assertEqual(
+            plan,
+            [
+                {"type": "noble", "index": 3},
+                {"type": "noble", "index": 1},
+                {"type": "card", "index": 4},
+            ],
+        )
+
+    def test_custom_sequence_card_select_defers_unready_noble_and_prefers_support_cards(
+        self,
+    ) -> None:
+        handler = DummyCustomCardSelectHandler(
+            nobles=[3],
+            recognized_cards=[
+                CommandCardInfo(index=1, owner="caster/zhuge_liang", color="arts"),
+                CommandCardInfo(index=2, owner="caster/merlin", color="arts"),
+                CommandCardInfo(index=3, owner="caster/zhuge_liang", color="arts"),
+                CommandCardInfo(index=4, owner="berserker/morgan", color="quick"),
+                CommandCardInfo(index=5, owner="caster/merlin", color="buster"),
+            ],
+            np_statuses=[
+                ServantNpStatus(1, "10", 10, 0.9, False, True),
+                ServantNpStatus(2, "20", 20, 0.9, False, True),
+                ServantNpStatus(3, "80", 80, 0.9, False, True),
+            ],
+        )
+
+        handler.handle()
+
+        self.assertEqual(
+            handler.executed_plan,
+            [
+                {"type": "card", "index": 4},
+                {"type": "card", "index": 1},
+                {"type": "card", "index": 2},
+            ],
+        )
+        self.assertEqual(handler.session.pending_custom_nobles, [3])
+
+    def test_custom_sequence_card_select_releases_deferred_noble_once_ready(self) -> None:
+        handler = DummyCustomCardSelectHandler(
+            nobles=[],
+            pending_nobles=[3],
+            recognized_cards=[
+                CommandCardInfo(index=1, owner="caster/zhuge_liang", color="arts"),
+                CommandCardInfo(index=2, owner="caster/merlin", color="arts"),
+                CommandCardInfo(index=3, owner="caster/zhuge_liang", color="arts"),
+                CommandCardInfo(index=4, owner="berserker/morgan", color="quick"),
+                CommandCardInfo(index=5, owner="caster/merlin", color="buster"),
+            ],
+            np_statuses=[
+                ServantNpStatus(1, "10", 10, 0.9, False, True),
+                ServantNpStatus(2, "20", 20, 0.9, False, True),
+                ServantNpStatus(3, "100", 100, 0.9, True, True),
+            ],
+        )
+
+        handler.handle()
+
+        self.assertEqual(
+            handler.executed_plan,
+            [
+                {"type": "noble", "index": 3},
+                {"type": "card", "index": 4},
+                {"type": "card", "index": 1},
+            ],
+        )
+        self.assertEqual(handler.session.pending_custom_nobles, [])
+
+    def test_custom_sequence_card_select_stops_when_card_color_missing(self) -> None:
+        handler = DummyCustomCardSelectHandler(
+            colors=["arts", "arts", None, "quick", "buster"],
+            np_statuses=[
+                ServantNpStatus(1, "10", 10, 0.9, False, True),
+                ServantNpStatus(2, "20", 20, 0.9, False, True),
+                ServantNpStatus(3, "30", 30, 0.9, False, True),
+            ],
+        )
+
+        with self.assertRaises(RuntimeError):
+            handler.handle()
+
+    def test_battle_result_clears_pending_custom_nobles(self) -> None:
+        handler = DummyBattleResultHandler(stage=3)
+        handler.session.pending_custom_nobles = [3]
+        handler.session.recognizer.match.side_effect = (
+            lambda template_path, screen: {
+                "next.png": (321, 654),
+            }.get(template_path)
+        )
+
+        handler.handle()
+
+        self.assertEqual(handler.session.pending_custom_nobles, [])
 
     def test_loading_handler_waits_for_next_page_to_stabilize_after_tips_disappear(
         self,

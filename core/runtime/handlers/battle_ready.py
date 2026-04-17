@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from core.runtime.custom_sequence import CustomSequenceExecutor
 from core.runtime.session import RuntimeSession
 from core.runtime.waiter import Waiter
 
@@ -14,72 +15,63 @@ class BattleReadyHandler:
     def __init__(self, session: RuntimeSession, waiter: Waiter) -> None:
         self.session = session
         self.waiter = waiter
+        self.custom_executor = CustomSequenceExecutor(session)
 
     def handle(self) -> None:
-        if self.session.smart_battle_enabled:
-            self._run_smart_battle_turn()
+        if getattr(self.session, "custom_sequence_enabled", False):
+            self._run_custom_sequence_turn()
             self.session.battle.attack()
             return
 
+        if self.session.smart_battle_enabled:
+            self._run_main_sequence_turn(log_reason="进入智能战斗 v0.0.1，开始释放预设技能")
+            self.session.battle.attack()
+            return
+
+        self._run_main_sequence_turn(log_reason="进入战斗流程，开始释放预设技能")
+        self.session.battle.attack()
+
+    def _run_main_sequence_turn(self, *, log_reason: str) -> None:
         if not self.session.battle_actions_done:
             actions = self.session.config.battle_actions()
             if actions:
-                log.info("进入战斗流程，开始释放预设技能")
+                log.info(log_reason)
                 for action in actions:
                     self._use_action_with_optional_target(action)
             self.session.battle_actions_done = True
-        else:
-            log.info("检测到后续回合，跳过技能释放，直接进入攻击")
-
-        self.session.battle.attack()
-
-    def _run_smart_battle_turn(self) -> None:
-        if (
-            self.session.battle_snapshot_reader is None
-            or self.session.smart_battle_planner is None
-        ):
-            log.warning("智能战斗未完整初始化，已保守继续")
             return
+        log.info("检测到后续回合，跳过技能释放，直接进入攻击")
 
-        try:
-            raw_snapshot = self.session.battle_snapshot_reader.read_snapshot(
-                self.session.get_latest_screen_rgb()
-            )
-            snapshot = self.session.build_smart_snapshot(raw_snapshot)
-            decision = self.session.smart_battle_planner.decide(snapshot)
-        except Exception as exc:
-            log.warning("智能战斗识别失败，已保守继续：%s", exc)
-            return
+    def _run_custom_sequence_turn(self) -> None:
+        if self.session.battle_snapshot_reader is None:
+            raise RuntimeError("自定义操作序列模式未初始化战斗快照读取器")
 
-        log.info(
-            "智能战斗 wave=%s turn=%s enemy=%s reason=%s fallback=%s",
-            snapshot.wave_index,
-            snapshot.current_turn,
-            snapshot.enemy_count,
-            decision.reason,
-            decision.fallback_used,
+        raw_snapshot = self.session.battle_snapshot_reader.read_snapshot(
+            self.session.get_latest_screen_rgb()
         )
-        if (
-            snapshot.turn_known
-            and self.session.last_processed_turn is not None
-            and snapshot.current_turn == self.session.last_processed_turn
-        ):
-            log.info(
-                "当前回合=%s 已执行过智能判断，本次跳过重复释放", snapshot.current_turn
-            )
+        wave = raw_snapshot.wave_index
+        turn = raw_snapshot.current_turn
+        if wave is None or turn is None:
+            raise RuntimeError("自定义操作序列模式无法读取当前波次或回合，已停止运行")
+
+        current_turn = (wave, turn)
+        turn_plan = self.session.config.custom_sequence_battle.find_turn_plan(wave, turn)
+        self.session.active_custom_turn_plan = turn_plan
+        if self.session.last_processed_custom_turn == current_turn:
+            log.info("自定义操作序列当前 wave=%s turn=%s 已执行过，跳过重复执行", wave, turn)
             return
 
-        for action in decision.actions:
-            self._use_action_with_optional_target(
-                {
-                    "type": action.action_type,
-                    "skill": action.global_skill,
-                    "target": action.target,
-                }
-            )
-            self.session.used_servant_skills.add(action.global_skill)
-        if snapshot.turn_known:
-            self.session.last_processed_turn = snapshot.current_turn
+        if turn_plan is None:
+            log.info("自定义操作序列当前 wave=%s turn=%s 未配置动作，直接进入攻击", wave, turn)
+            self.session.last_processed_custom_turn = current_turn
+            return
+
+        executor = getattr(self, "custom_executor", None)
+        if executor is None:
+            executor = CustomSequenceExecutor(self.session)
+            self.custom_executor = executor
+        executor.execute_turn_plan(turn_plan)
+        self.session.last_processed_custom_turn = current_turn
 
     def _use_action_with_optional_target(self, action: dict) -> None:
         action_type = action["type"]
