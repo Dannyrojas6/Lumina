@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from core.device import MUMU_1920X1080
+from core.device import FIXED_1920X1080
 from core.runtime.startup_check import (
     validate_runtime_prerequisites,
     validate_support_servant_resources,
@@ -20,11 +20,11 @@ class StartupCheckTest(unittest.TestCase):
             support_class_template=lambda *args, **kwargs: __file__,
         )
 
-        with self.assertRaisesRegex(RuntimeError, "device resolution does not match configured profile"):
+        with self.assertRaisesRegex(RuntimeError, "device resolution must be 1920x1080"):
             validate_runtime_prerequisites(
-                BattleConfig(device=DeviceConfig(profile="mumu_1920x1080")),
+                BattleConfig(device=DeviceConfig()),
                 resources,  # type: ignore[arg-type]
-                MUMU_1920X1080,
+                FIXED_1920X1080,
                 device_resolution=(1280, 720),
             )
 
@@ -128,14 +128,14 @@ skills: []
                 servants_dir=str(root / "local_data" / "servants"),
             )
             config = BattleConfig(
-                device=DeviceConfig(profile="mumu_1920x1080", serial="emulator-5560")
+                device=DeviceConfig(serial="emulator-5560")
             )
             config.support.servant = "berserker/morgan"
 
             validate_runtime_prerequisites(
                 config,
                 catalog,
-                MUMU_1920X1080,
+                FIXED_1920X1080,
                 device_resolution=(1920, 1080),
             )
 
@@ -177,14 +177,14 @@ skills: []
                 servants_dir=str(root / "local_data" / "servants"),
             )
             config = BattleConfig(
-                device=DeviceConfig(profile="mumu_1920x1080", serial="emulator-5560")
+                device=DeviceConfig(serial="emulator-5560")
             )
 
             with self.assertRaisesRegex(FileNotFoundError, "ap_recovery"):
                 validate_runtime_prerequisites(
                     config,
                     catalog,
-                    MUMU_1920X1080,
+                    FIXED_1920X1080,
                     device_resolution=(1920, 1080),
                 )
 
@@ -197,7 +197,7 @@ skills: []
         )
         config = BattleConfig(
             battle_mode="custom_sequence",
-            device=DeviceConfig(profile="mumu_1920x1080"),
+            device=DeviceConfig(),
         )
         config.smart_battle.enabled = True
         config.smart_battle.frontline = [
@@ -207,7 +207,7 @@ skills: []
         validate_runtime_prerequisites(
             config,
             resources,  # type: ignore[arg-type]
-            MUMU_1920X1080,
+            FIXED_1920X1080,
             device_resolution=(1920, 1080),
         )
 

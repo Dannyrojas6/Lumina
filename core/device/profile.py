@@ -21,8 +21,8 @@ class DeviceProfile:
     target_select_delay: float
 
 
-MUMU_1920X1080 = DeviceProfile(
-    name="mumu_1920x1080",
+FIXED_1920X1080 = DeviceProfile(
+    name="fixed_1920x1080",
     width=1920,
     height=1080,
     device_discovery_timeout=8.0,
@@ -33,11 +33,3 @@ MUMU_1920X1080 = DeviceProfile(
     card_select_delay=0.3,
     target_select_delay=0.3,
 )
-
-
-def resolve_device_profile(profile_name: str) -> DeviceProfile:
-    """解析当前支持的设备 profile。"""
-    normalized = str(profile_name).strip().lower()
-    if normalized == MUMU_1920X1080.name:
-        return MUMU_1920X1080
-    raise ValueError(f"unsupported device profile: {profile_name}")

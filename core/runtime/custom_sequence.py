@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import math
+import time
+
 from core.runtime.session import RuntimeSession
 from core.shared.config_models import CustomSequenceAction, CustomTurnPlan
 
 
 class CustomSequenceExecutor:
     """按录入动作执行自定义战斗步骤。"""
+
+    TARGET_WINDOW_TIMEOUT = 1.0
+    NO_TARGET_WINDOW_TIMEOUT = 0.4
+    TARGET_WINDOW_POLL_INTERVAL = 0.2
 
     def __init__(self, session: RuntimeSession) -> None:
         self.session = session
@@ -50,28 +57,37 @@ class CustomSequenceExecutor:
         target: int | None,
         finish,
     ) -> None:
-        has_target_window = self._has_servant_target_window()
         if target is None:
-            if has_target_window:
+            if self._wait_for_servant_target_window(self.NO_TARGET_WINDOW_TIMEOUT):
                 raise RuntimeError("录入为无己方目标，但技能实际弹出了己方选人界面")
             finish(None)
             return
 
-        if not has_target_window:
+        if not self._wait_for_servant_target_window(self.TARGET_WINDOW_TIMEOUT):
             raise RuntimeError("录入要求选择己方目标，但技能实际没有弹出己方选人界面")
         self.session.battle.select_servant_target(target)
         finish(target)
 
-    def _has_servant_target_window(self) -> bool:
-        self.session.refresh_screen()
-        match = self.session.recognizer.match(
-            self.session.resources.template(
-                "skill_select_servent.png",
-                category="battle",
-            ),
-            self.session.get_latest_screen_image(),
+    def _wait_for_servant_target_window(self, timeout: float) -> bool:
+        attempts = max(
+            1,
+            math.ceil(max(0.0, timeout) / self.TARGET_WINDOW_POLL_INTERVAL),
         )
-        return bool(match)
+        template_path = self.session.resources.template(
+            "skill_select_servent.png",
+            category="battle",
+        )
+        for attempt in range(attempts):
+            self.session.refresh_screen()
+            match = self.session.recognizer.match(
+                template_path,
+                self.session.get_latest_screen_image(),
+            )
+            if match:
+                return True
+            if attempt < attempts - 1:
+                time.sleep(self.TARGET_WINDOW_POLL_INTERVAL)
+        return False
 
     @staticmethod
     def _to_global_servant_skill(actor: int, skill: int) -> int:

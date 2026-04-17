@@ -14,7 +14,7 @@ from core.device.profile import DeviceProfile
 
 def _profile() -> DeviceProfile:
     return DeviceProfile(
-        name="mumu_1920x1080",
+        name="fixed_1920x1080",
         width=1920,
         height=1080,
         device_discovery_timeout=0.1,
@@ -32,6 +32,41 @@ def _entry(serial: str, state: str = "device") -> SimpleNamespace:
 
 
 class AdbControllerStartupRecoveryTest(unittest.TestCase):
+    @patch("core.device.adb_controller.find_adb_path", return_value="adb")
+    @patch("core.device.adb_controller.time.sleep", return_value=None)
+    @patch.object(AdbController, "_validate_resolution")
+    def test_init_treats_loopback_and_emulator_alias_as_same_device(
+        self,
+        _validate_resolution_mock: Mock,
+        _sleep_mock: Mock,
+        _find_adb_path_mock: Mock,
+    ) -> None:
+        fake_device = SimpleNamespace(serial="127.0.0.1:7555")
+        with patch(
+            "core.device.adb_controller.adb.device_list",
+            return_value=[
+                _entry("127.0.0.1:7555", "device"),
+                _entry("emulator-5560", "device"),
+            ],
+        ), patch(
+            "core.device.adb_controller.adb.device",
+            return_value=fake_device,
+        ) as device_mock, patch(
+            "core.device.adb_controller.subprocess.run",
+        ) as run_mock:
+            controller = AdbController(
+                serial=None,
+                connect_targets=["127.0.0.1:7555"],
+                profile=_profile(),
+            )
+
+        self.assertEqual(controller.serial, "127.0.0.1:7555")
+        self.assertEqual(
+            [call.args[0][1] for call in run_mock.call_args_list],
+            ["start-server"],
+        )
+        device_mock.assert_called_once_with(serial="127.0.0.1:7555")
+
     @patch("core.device.adb_controller.find_adb_path", return_value="adb")
     @patch("core.device.adb_controller.time.sleep", return_value=None)
     @patch.object(AdbController, "_validate_resolution")

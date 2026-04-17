@@ -84,6 +84,22 @@ smart_battle:
             with self.assertRaisesRegex(ValueError, "wave_plan.*已废弃|deprecated"):
                 BattleConfig.from_yaml(str(config_path))
 
+    def test_rejects_device_profile_field(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "battle_config.yaml"
+            config_path.write_text(
+                dedent(
+                    """
+                    device:
+                      profile: mumu_1920x1080
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "device.profile.*已废弃|device.profile.*unsupported"):
+                BattleConfig.from_yaml(str(config_path))
+
     def test_resource_catalog_resolves_defaults_from_repo_root(self) -> None:
         previous_cwd = Path.cwd()
         with TemporaryDirectory() as tmp_dir:

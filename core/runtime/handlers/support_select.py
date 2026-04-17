@@ -92,12 +92,7 @@ class SupportSelectHandler:
         if class_pos:
             self.session.adb.click(*class_pos)
             self.waiter.wait_seconds(f"检测到助战选择界面，已切换到职阶={support_class}", 0.5)
-            self.waiter.wait_screen_stable(
-                region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-                stable_frames=2,
-                timeout=self.SUPPORT_STABLE_TIMEOUT,
-                poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
-            )
+            self.session.refresh_screen()
             return
 
         if support_class != "all":
@@ -109,12 +104,7 @@ class SupportSelectHandler:
             if all_class_pos:
                 self.session.adb.click(*all_class_pos)
                 self.waiter.wait_seconds("已回退到全职阶筛选", 0.5)
-                self.waiter.wait_screen_stable(
-                    region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-                    stable_frames=2,
-                    timeout=self.SUPPORT_STABLE_TIMEOUT,
-                    poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
-                )
+                self.session.refresh_screen()
                 return
         log.warning("助战页未识别到目标职阶按钮，将继续尝试默认选择")
 
@@ -151,12 +141,7 @@ class SupportSelectHandler:
             duration=0.2,
         )
         self.waiter.wait_seconds("当前页未命中目标助战，已执行一次助战列表滑动", 0.5)
-        self.waiter.wait_screen_stable(
-            region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-            stable_frames=2,
-            timeout=self.SUPPORT_STABLE_TIMEOUT,
-            poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
-        )
+        self.session.refresh_screen()
 
     def _refresh_support_list(self) -> bool:
         list_update_pos = self.session.recognizer.match(
@@ -181,12 +166,8 @@ class SupportSelectHandler:
 
         self.session.adb.click(*yes_pos)
         log.info("已点击助战列表更新，并确认刷新")
-        self.waiter.wait_screen_stable(
-            region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-            stable_frames=2,
-            timeout=self.SUPPORT_STABLE_TIMEOUT,
-            poll_interval=self.SUPPORT_STABLE_POLL_INTERVAL,
-        )
+        self.waiter.wait_seconds("等待助战刷新结果", 0.5)
+        self.session.refresh_screen()
         return True
 
     def _fallback_pick_support(self, pick_index: int) -> None:
@@ -205,4 +186,4 @@ class SupportSelectHandler:
             poll_interval=self.SUPPORT_TRANSITION_POLL_INTERVAL,
         )
         if detection is None:
-            log.warning("助战点击后未在超时内离开列表，已按当前画面继续")
+            raise RuntimeError("助战点击后未在超时内离开列表，已停止运行。")

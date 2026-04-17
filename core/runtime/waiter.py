@@ -32,8 +32,8 @@ class Waiter:
         if state == GameState.SUPPORT_SELECT:
             return self.wait_screen_stable(
                 region=GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-                stable_frames=2,
-                timeout=1.5,
+                stable_frames=1,
+                timeout=2.5,
                 poll_interval=0.25,
             )
 
@@ -55,6 +55,12 @@ class Waiter:
         watched = set(states)
         deadline = time.time() + max(0.0, timeout)
         while time.time() < deadline:
+            self.session.refresh_screen()
+            screen = self.session.get_latest_screen_image()
+            if self._matches_watched_state(screen, watched):
+                time.sleep(poll_interval)
+                continue
+
             detection = self.state_detector.detect()
             if detection.state not in watched:
                 return detection
@@ -176,3 +182,22 @@ class Waiter:
             if self.session.recognizer.match(template_path, screen):
                 return "battle_result"
         return None
+
+    def _matches_watched_state(
+        self,
+        screen: np.ndarray,
+        watched: set[GameState],
+    ) -> bool:
+        for state in watched:
+            if state == GameState.UNKNOWN:
+                continue
+            template_entry = self.session.resources.state_templates.get(state)
+            if template_entry is None:
+                continue
+            template_paths = (
+                template_entry if isinstance(template_entry, tuple) else (template_entry,)
+            )
+            for template_path in template_paths:
+                if self.session.recognizer.match(template_path, screen):
+                    return True
+        return False

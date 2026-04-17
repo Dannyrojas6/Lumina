@@ -26,6 +26,62 @@ log = logging.getLogger("core.runtime.engine")
 class AutomationEngine:
     """管理一次自动刷本流程的高层状态机。"""
 
+    HOT_STATE_CANDIDATES: dict[GameState, tuple[GameState, ...]] = {
+        GameState.MAIN_MENU: (
+            GameState.MAIN_MENU,
+            GameState.SUPPORT_SELECT,
+            GameState.DIALOG,
+            GameState.LOADING_TIPS,
+        ),
+        GameState.SUPPORT_SELECT: (
+            GameState.SUPPORT_SELECT,
+            GameState.TEAM_CONFIRM,
+            GameState.DIALOG,
+            GameState.LOADING_TIPS,
+        ),
+        GameState.TEAM_CONFIRM: (
+            GameState.TEAM_CONFIRM,
+            GameState.LOADING_TIPS,
+            GameState.BATTLE_READY,
+            GameState.DIALOG,
+        ),
+        GameState.LOADING_TIPS: (
+            GameState.LOADING_TIPS,
+            GameState.BATTLE_READY,
+            GameState.DIALOG,
+            GameState.BATTLE_RESULT,
+        ),
+        GameState.BATTLE_READY: (
+            GameState.BATTLE_READY,
+            GameState.CARD_SELECT,
+            GameState.BATTLE_RESULT,
+            GameState.DIALOG,
+            GameState.LOADING_TIPS,
+        ),
+        GameState.CARD_SELECT: (
+            GameState.CARD_SELECT,
+            GameState.BATTLE_READY,
+            GameState.BATTLE_RESULT,
+            GameState.DIALOG,
+            GameState.LOADING_TIPS,
+        ),
+        GameState.BATTLE_RESULT: (
+            GameState.BATTLE_RESULT,
+            GameState.SUPPORT_SELECT,
+            GameState.MAIN_MENU,
+            GameState.DIALOG,
+            GameState.LOADING_TIPS,
+        ),
+        GameState.DIALOG: (
+            GameState.DIALOG,
+            GameState.SUPPORT_SELECT,
+            GameState.TEAM_CONFIRM,
+            GameState.BATTLE_READY,
+            GameState.BATTLE_RESULT,
+            GameState.MAIN_MENU,
+        ),
+    }
+
     def __init__(self, session: RuntimeSession) -> None:
         self.session = session
         self.state_detector = StateDetector(
@@ -52,7 +108,9 @@ class AutomationEngine:
         log.info("脚本启动，进入主循环")
         max_loops = self.session.config.loop_count
         while max_loops < 0 or self.session.loop_done < max_loops:
-            detection = self.state_detector.detect()
+            detection = self.state_detector.detect(
+                candidates=self._candidate_states(self.session.state)
+            )
             self.session.state = detection.state
             if detection.state != GameState.UNKNOWN:
                 self.session.consecutive_unknown_count = 0
@@ -67,3 +125,6 @@ class AutomationEngine:
             if self.session.stop_requested:
                 log.info("收到停止标记，主循环结束")
                 break
+
+    def _candidate_states(self, current_state: GameState) -> tuple[GameState, ...] | None:
+        return self.HOT_STATE_CANDIDATES.get(current_state)

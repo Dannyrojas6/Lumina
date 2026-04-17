@@ -2,7 +2,7 @@
 
 import logging
 
-from core.device import AdbController, resolve_device_profile
+from core.device import AdbController, FIXED_1920X1080
 from core.battle_runtime import (
     BattleAction,
     BattleSnapshotReader,
@@ -24,6 +24,9 @@ def setup_logging(config: BattleConfig, *, force: bool = False) -> None:
         datefmt="%H:%M:%S",
         force=force,
     )
+    # 屏蔽 Pillow 的 PNG 解析调试噪音，保留项目自身 DEBUG 日志。
+    logging.getLogger("PIL").setLevel(logging.WARNING)
+    logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
     if level_name not in logging.getLevelNamesMapping():
         logging.getLogger("core.app").warning(
             "未知日志级别 %s，已回退到 INFO",
@@ -39,16 +42,15 @@ def run() -> None:
     log.debug("开始初始化资源目录")
     resources = ResourceCatalog()
     log.debug("开始初始化 ADB 控制器")
-    device_profile = resolve_device_profile(config.device.profile)
     adb_ctl = AdbController(
         serial=config.device.serial or None,
         connect_targets=config.device.connect_targets,
-        profile=device_profile,
+        profile=FIXED_1920X1080,
     )
     validate_runtime_prerequisites(
         config,
         resources,
-        device_profile,
+        FIXED_1920X1080,
         device_resolution=adb_ctl.resolution,
     )
     log.debug("开始初始化模板识别")
@@ -78,9 +80,9 @@ def run() -> None:
             skill_interval=config.skill_interval,
             skill_pre_skip_delay=config.skill_pre_skip_delay,
             master_skill_open_delay=config.master_skill_open_delay,
-            attack_button_delay=device_profile.attack_button_delay,
-            card_select_delay=device_profile.card_select_delay,
-            target_select_delay=device_profile.target_select_delay,
+            attack_button_delay=FIXED_1920X1080.attack_button_delay,
+            card_select_delay=FIXED_1920X1080.card_select_delay,
+            target_select_delay=FIXED_1920X1080.target_select_delay,
         ),
         config=config,
         resources=resources,

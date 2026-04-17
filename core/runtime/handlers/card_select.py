@@ -282,7 +282,8 @@ class CardSelectHandler:
         log.info("已执行出卡计划：%s", card_plan)
 
     def _wait_after_card_plan(self) -> None:
-        self.waiter.wait_seconds("已完成出卡，等待战斗动画起步", 1.0)
+        self.waiter.wait_seconds("已完成出卡，等待战斗动画开始", 1.0)
+        log.info("战斗动画处理中，等待重新出现战斗菜单或结算页")
         post_card_state = self.waiter.wait_post_card_battle_end(
             timeout=35.0,
             poll_interval=0.25,
@@ -304,7 +305,7 @@ class CardSelectHandler:
         if detection is not None:
             log.info("战斗动画结束，兜底等待已切换到 %s", detection.state.name)
             return
-        log.warning("战斗动画等待超时，继续后续流程")
+        raise RuntimeError("战斗动画等待超时，已停止运行。")
 
     def _select_noble_card_with_optional_target(self, servant_index: int) -> None:
         self.session.battle.select_noble_card(servant_index)
@@ -442,20 +443,25 @@ class CardSelectHandler:
                 frontline_servants,
                 support_attacker=self.session.support_attacker_servant_name(),
             )
-            image_path, masked_path, json_path = self.session.save_command_card_evidence(
-                prediction,
-                screen_rgb,
-            )
+            image_path = masked_path = json_path = None
+            if self.session.should_save_command_card_evidence(prediction):
+                image_path, masked_path, json_path = (
+                    self.session.save_command_card_evidence(
+                        prediction,
+                        screen_rgb,
+                    )
+                )
             cards = prediction.cards
         except Exception as exc:
             log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
             return None, None
-        log.info(
-            "普通指令卡识别证据：image=%s masked=%s json=%s",
-            image_path,
-            masked_path,
-            json_path,
-        )
+        if image_path is not None:
+            log.info(
+                "普通指令卡识别证据：image=%s masked=%s json=%s",
+                image_path,
+                masked_path,
+                json_path,
+            )
         log.info(
             "普通指令卡识别：%s",
             [

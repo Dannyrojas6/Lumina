@@ -18,9 +18,12 @@ class LoadingHandler:
     def handle(self) -> None:
         log.info("检测到加载提示，等待其消失")
         tips_template = self.session.resources.template("tips.png", category="battle")
-        self.waiter.wait_template_disappear(
+        disappeared = self.waiter.wait_template_disappear(
             tips_template,
             timeout=60.0,
             poll_interval=1.0,
         )
+        if not disappeared:
+            raise RuntimeError("加载提示在超时内未消失，已停止运行。")
+
         self.waiter.wait_screen_stable(timeout=1.0, poll_interval=0.25)

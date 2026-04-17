@@ -56,7 +56,6 @@ class CustomSequenceBattleConfig:
 class DeviceConfig:
     """描述当前固定运行环境。"""
 
-    profile: str = "mumu_1920x1080"
     serial: str = ""
     connect_targets: list[str] = field(default_factory=lambda: ["127.0.0.1:7555"])
 

@@ -6,7 +6,7 @@
 ## 项目一句话状态
 
 - Lumina 是一个面向 `FGO` 的固定环境自动刷本项目。
-- 当前唯一主目标环境是 `MuMu + 1920x1080`。
+- 当前唯一主目标环境是可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备。
 - 当前最重要的事不是扩功能，而是继续补稳主链路，尤其是战斗 `OCR` 和界面状态识别。
 
 ## 当前已经稳定到什么程度
@@ -33,7 +33,7 @@
 - 前排九个技能位可用性判断
 - 五张普通卡的归属识别、颜色识别和基础连携选卡
 - 可选的 `custom_sequence` 战斗链路：按 `wave + turn` 执行录入动作，并按录入时机释放宝具
-- 普通卡每回合留证，低置信度时立即停止等待人工确认
+- 普通卡默认只在低置信度或显式调试时留证，低置信度时立即停止等待人工确认
 - 启动前固定环境与关键资源自检
 - `tests/replay/` 静态回放回归
 
@@ -77,8 +77,8 @@
 ### 固定环境优先
 
 - 项目当前不追求通用化
-- 坐标、裁图、模板和资源都围绕 `MuMu + 1920x1080`
-- [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 里的 `device.profile` 当前只允许 `mumu_1920x1080`
+- 坐标、裁图、模板和资源都围绕 `1920x1080`
+- [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 不再提供设备档位切换；项目直接固定为 `1920x1080`
 - `device.serial` 留空时，只允许当前 `adb` 只有一台可用设备
 - `device.connect_targets` 只用于启动前自动 `adb connect`
 - 启动阶段若 `adb` 状态不对，会先执行一次 `kill-server -> start-server -> adb connect`
@@ -124,7 +124,7 @@
   - `battle_mode=custom_sequence`
   - 按 `(wave, turn)` 执行录入好的从者技能、通用御主技能、敌方目标切换和宝具时机
   - 当前具体序列内容不再内联写在 `battle_config.yaml`，而是单独放在 `config/custom_sequences/*.yaml`
-  - 进入攻击阶段后只按普通卡颜色连携出卡，不做从者归属识别
+  - 进入攻击阶段后会优先使用普通卡归属识别；归属低置信度时再回退为只按颜色连携出卡
 
 ### 普通卡当前只做到什么程度
 

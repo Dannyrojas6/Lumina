@@ -31,8 +31,10 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     if isinstance(device_data, DeviceConfig):
         device = device_data
     else:
+        if not isinstance(device_data, dict):
+            raise TypeError("device must be a mapping")
+        _ensure_no_deprecated_device_fields(device_data)
         device = DeviceConfig(
-            profile=str(device_data.get("profile", "mumu_1920x1080")),
             serial=str(device_data.get("serial", "")),
             connect_targets=parse_connect_targets(
                 device_data.get("connect_targets", ["127.0.0.1:7555"])
@@ -266,6 +268,12 @@ def parse_connect_targets(data: Any) -> list[str]:
     if not isinstance(data, list):
         raise TypeError("device.connect_targets must be a list")
     return [str(item).strip() for item in data if str(item).strip()]
+
+
+def _ensure_no_deprecated_device_fields(raw: dict[str, Any]) -> None:
+    """拒绝当前已废弃但仍可能出现在旧 YAML 里的设备字段。"""
+    if "profile" in raw:
+        raise ValueError("device.profile 已废弃；Lumina 当前直接固定为 1920x1080")
 
 
 def parse_default_skill_target(data: Any) -> int:

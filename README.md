@@ -1,6 +1,6 @@
 # Lumina
 
-Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1080` 这一套固定环境，目标是先把刷本主链路做稳，而不是做通用多端方案。
+Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备，目标是先把刷本主链路做稳，而不是做通用多端方案。
 
 ## 当前范围
 
@@ -14,7 +14,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 - `battle_mode=main` 下支持固定开局动作和保守版 `smart_battle`
 - 支持按 `wave + turn` 执行自定义操作序列，并在攻击阶段按录入时机释放宝具
 - 识别五张普通卡的归属和颜色，并按基础连携优先补满出卡
-- 普通卡每回合保存识别证据；任一张卡低置信度时直接停止等待人工确认
+- 普通卡默认只在低置信度或显式调试时保存识别证据；任一张卡低置信度时直接停止等待人工确认
 
 ## 当前限制
 
@@ -29,9 +29,8 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务 `MuMu + 1920x1
 
 - `Python 3.12`
 - 可用的 `adb`
-- `MuMu + 1920x1080`
+- 可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备
 - Python 依赖使用 `uv` 管理
-- `battle_config.yaml` 中的 `device.profile` 固定为 `mumu_1920x1080`
 - `battle_config.yaml` 中的 `device.serial` 可留空；留空时只允许当前只有一台可用设备
 
 依赖定义见 [pyproject.toml](/D:/VSCodeRepository/Lumina/pyproject.toml)。
@@ -57,7 +56,7 @@ uv run .\main.py
 - `loop_count`：刷本次数，`-1` 为无限循环
 - `match_threshold`：界面模板识别阈值
 - `log_level`：排查时建议用 `DEBUG`
-- `device`：固定环境档位、可选目标设备序列号、启动前自动连接地址
+- `device`：可选目标设备序列号、启动前自动连接地址
 - `support`：助战职阶、目标从者、回退位、头像核验参数
 - `ocr`：战斗文字读取参数
 - `smart_battle`：主链路下的保守智能战斗开关、前排角色和出卡优先级
@@ -71,14 +70,14 @@ uv run .\main.py
   - `smart_battle.enabled=false`：首回合按 `skill_sequence` 释放开局技能，后续回合直接攻击
   - `smart_battle.enabled=true`：进入当前保守版 `smart_battle`，宝具和普通卡优先助战，且一场战斗结算后直接停止
 - `custom_sequence`：按 `custom_sequence_battle.sequence` 指向的独立 YAML 执行录入动作
-- `custom_sequence` 模式下，攻击阶段仍沿用现有出卡层，但只按普通卡颜色连携，不做从者归属识别
+- `custom_sequence` 模式下，攻击阶段会优先使用普通卡归属识别；归属低置信度时再回退为只按颜色连携出卡
 - `custom_sequence` 模式下，宝具只按当前回合录入的 `nobles` 释放；未录入时不自动放宝具
 - 自定义操作序列文件统一放在 `config/custom_sequences/*.yaml`
 - `smart_battle.wave_plan` 已废弃，配置中不再允许出现
 
 `device` 当前规则：
 
-- `device.profile` 只支持 `mumu_1920x1080`
+- 项目直接固定为 `1920x1080`
 - `device.serial` 留空时，启动阶段会在恢复后自动绑定唯一可用设备
 - `device.connect_targets` 只用于启动前执行 `adb connect`，当前默认示例是 `127.0.0.1:7555`
 - 启动阶段若找不到可用设备，会先执行一次 `kill-server -> start-server -> adb connect`

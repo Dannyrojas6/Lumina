@@ -41,6 +41,14 @@ class BattleSnapshot:
     skill_availability: dict[int, SkillAvailability]
 
 
+@dataclass(frozen=True)
+class WaveTurnSnapshot:
+    """自定义操作序列使用的最小战斗快照。"""
+
+    wave_index: Optional[int]
+    current_turn: Optional[int]
+
+
 class BattleSnapshotReader:
     """把战斗画面拆成波次、敌人数、前排 NP 和技能可用性。"""
 
@@ -74,6 +82,16 @@ class BattleSnapshotReader:
             current_turn=current_turn,
             frontline_np=frontline_np,
             skill_availability=skill_availability,
+        )
+
+    def read_wave_and_turn(self, screen: np.ndarray) -> WaveTurnSnapshot:
+        """只读取自定义操作序列真正需要的波次和回合。"""
+        normalized = self._normalize_screen(screen)
+        wave_index = self._read_wave_index(normalized)
+        current_turn = self._read_current_turn(normalized)
+        return WaveTurnSnapshot(
+            wave_index=wave_index,
+            current_turn=current_turn,
         )
 
     def read_snapshot_from_path(self, image_path: str | Path) -> BattleSnapshot:

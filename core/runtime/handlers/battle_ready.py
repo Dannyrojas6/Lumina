@@ -46,7 +46,7 @@ class BattleReadyHandler:
         if self.session.battle_snapshot_reader is None:
             raise RuntimeError("自定义操作序列模式未初始化战斗快照读取器")
 
-        raw_snapshot = self.session.battle_snapshot_reader.read_snapshot(
+        raw_snapshot = self.session.battle_snapshot_reader.read_wave_and_turn(
             self.session.get_latest_screen_rgb()
         )
         wave = raw_snapshot.wave_index

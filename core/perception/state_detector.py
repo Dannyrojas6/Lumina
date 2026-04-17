@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 import numpy as np
 
@@ -43,13 +43,43 @@ class StateDetector:
         self.screen_array_callback = screen_array_callback
         self.resources = resources
 
-    def detect(self) -> StateDetectionResult:
+    def detect(
+        self,
+        *,
+        candidates: Optional[Iterable[GameState]] = None,
+    ) -> StateDetectionResult:
         """刷新截图并返回当前识别到的状态。"""
         started_at = time.perf_counter()
         screen_path = self.screen_callback()
         screen_image: str | np.ndarray = screen_path
         if self.screen_array_callback is not None:
             screen_image = self.screen_array_callback()
+        detection_result = self._detect_from_states(
+            screen_path=screen_path,
+            screen_image=screen_image,
+            states=candidates,
+            started_at=started_at,
+            allow_unknown=False,
+        )
+        if detection_result is not None:
+            return detection_result
+        return self._detect_from_states(
+            screen_path=screen_path,
+            screen_image=screen_image,
+            states=None,
+            started_at=started_at,
+            allow_unknown=True,
+        )
+
+    def _detect_from_states(
+        self,
+        *,
+        screen_path: str,
+        screen_image: str | np.ndarray,
+        states: Optional[Iterable[GameState]],
+        started_at: float,
+        allow_unknown: bool,
+    ) -> Optional[StateDetectionResult]:
         best_match_state: Optional[GameState] = None
         best_score = 0.0
         best_template: Optional[str] = None
@@ -57,7 +87,8 @@ class StateDetector:
         matched_score = 0.0
         matched_template: Optional[str] = None
         missing_templates: list[str] = []
-        for state, template_entry in self.resources.state_templates.items():
+        state_entries = self._resolve_state_entries(states)
+        for state, template_entry in state_entries:
             template_paths = (
                 list(template_entry)
                 if isinstance(template_entry, tuple)
@@ -100,6 +131,9 @@ class StateDetector:
                 missing_templates=missing_templates,
             )
 
+        if not allow_unknown:
+            return None
+
         elapsed = time.perf_counter() - started_at
         if best_match_state is not None:
             log.debug(
@@ -120,3 +154,21 @@ class StateDetector:
             matched_template=best_template,
             missing_templates=missing_templates,
         )
+
+    def _resolve_state_entries(
+        self,
+        states: Optional[Iterable[GameState]],
+    ) -> list[tuple[GameState, str | tuple[str, ...]]]:
+        if states is None:
+            return list(self.resources.state_templates.items())
+        entries: list[tuple[GameState, str | tuple[str, ...]]] = []
+        seen: set[GameState] = set()
+        for state in states:
+            if state in seen:
+                continue
+            template_entry = self.resources.state_templates.get(state)
+            if template_entry is None:
+                continue
+            entries.append((state, template_entry))
+            seen.add(state)
+        return entries

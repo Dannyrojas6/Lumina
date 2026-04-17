@@ -12,11 +12,124 @@ from core.shared import GameCoordinates, GameState
 log = logging.getLogger("core.runtime.handlers.battle_result")
 
 
+def wait_for_template(
+    session: RuntimeSession,
+    waiter: Waiter,
+    filename: str,
+    *,
+    category: str = "common",
+    timeout: float,
+    poll_interval: float,
+) -> tuple[int, int] | None:
+    template_path = session.resources.template(filename, category=category)
+    attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
+    for attempt in range(attempts):
+        match = session.recognizer.match(
+            template_path,
+            session.get_latest_screen_image(),
+        )
+        if match:
+            return match
+        if attempt < attempts - 1:
+            waiter.wait_seconds(f"等待模板出现：{filename}", poll_interval)
+            session.refresh_screen()
+    return None
+
+
+def handle_ap_recovery_prompt(
+    session: RuntimeSession,
+    waiter: Waiter,
+    *,
+    appear_timeout: float,
+    appear_poll_interval: float,
+    template_timeout: float,
+    template_poll_interval: float,
+    destination_timeout: float,
+    destination_poll_interval: float,
+) -> bool:
+    ap_recovery_pos = wait_for_template(
+        session,
+        waiter,
+        "ap_recovery.png",
+        category="ap",
+        timeout=appear_timeout,
+        poll_interval=appear_poll_interval,
+    )
+    if not ap_recovery_pos:
+        return False
+
+    session.adb.click_raw(*GameCoordinates.AP_RECOVERY_SCROLL_POSITION)
+    waiter.wait_seconds("已将行动力恢复列表滚到底部", 0.5)
+
+    bronze_pos = wait_for_template(
+        session,
+        waiter,
+        "bronzed_cobalt_fruit.png",
+        category="ap",
+        timeout=template_timeout,
+        poll_interval=template_poll_interval,
+    )
+    if not bronze_pos:
+        raise RuntimeError("已识别到行动力恢复界面，但未识别到青铜果实。")
+    session.adb.click_raw(*bronze_pos)
+    waiter.wait_seconds("已点击青铜果实", 0.5)
+
+    confirm_pos = wait_for_template(
+        session,
+        waiter,
+        "confirm.png",
+        category="ap",
+        timeout=template_timeout,
+        poll_interval=template_poll_interval,
+    )
+    if not confirm_pos:
+        raise RuntimeError("青铜果实数量不足，未能进入确认界面。")
+    session.adb.click_raw(*confirm_pos)
+    waiter.wait_seconds("已确认行动力恢复", 0.5)
+    wait_for_post_ap_recovery_destination(
+        session,
+        waiter,
+        timeout=destination_timeout,
+        poll_interval=destination_poll_interval,
+    )
+    return True
+
+
+def wait_for_post_ap_recovery_destination(
+    session: RuntimeSession,
+    waiter: Waiter,
+    *,
+    timeout: float,
+    poll_interval: float,
+) -> None:
+    support_select_template = session.resources.state_templates[GameState.SUPPORT_SELECT]
+    loading_tips_template = session.resources.state_templates[GameState.LOADING_TIPS]
+    attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
+    for attempt in range(attempts):
+        session.refresh_screen()
+        screen = session.get_latest_screen_image()
+        if session.recognizer.match(support_select_template, screen):
+            log.info("行动力恢复后已进入助战选择界面")
+            return
+        if session.recognizer.match(loading_tips_template, screen):
+            log.info("行动力恢复后已进入加载界面")
+            return
+        if attempt < attempts - 1:
+            waiter.wait_seconds("等待行动力恢复后续界面", poll_interval)
+    raise RuntimeError("行动力恢复确认后未在超时内进入下一轮界面，已停止运行。")
+
+
 class BattleResultHandler:
+    AP_APPEAR_TIMEOUT = 0.5
+    AP_APPEAR_POLL_INTERVAL = 0.25
     AP_TEMPLATE_TIMEOUT = 10.0
     AP_TEMPLATE_POLL_INTERVAL = 0.5
-    RESULT_TRANSITION_TIMEOUT = 1.2
-    RESULT_TRANSITION_POLL_INTERVAL = 0.2
+    AP_DESTINATION_TIMEOUT = 45.0
+    AP_DESTINATION_POLL_INTERVAL = 0.5
+    POST_CONTINUE_TIMEOUT = 45.0
+    POST_CONTINUE_POLL_INTERVAL = 0.5
+    RESULT_TRANSITION_TIMEOUT = 45.0
+    RESULT_TRANSITION_POLL_INTERVAL = 0.5
 
     def __init__(self, session: RuntimeSession, waiter: Waiter) -> None:
         self.session = session
@@ -80,7 +193,7 @@ class BattleResultHandler:
         if self.session.config.continue_battle:
             self.session.adb.click_raw(*continue_pos)
             self.waiter.wait_seconds("已点击连续出击", 0.5)
-            self._handle_ap_recovery_prompt()
+            self._wait_for_continue_battle_destination()
             return True
 
         close_pos = self.session.recognizer.match(
@@ -116,65 +229,64 @@ class BattleResultHandler:
                     return
             if attempt < attempts - 1:
                 self.waiter.wait_seconds(
-                    "等待结算页进入下一段",
+                    "等待结算页后续界面",
                     self.RESULT_TRANSITION_POLL_INTERVAL,
                 )
-        log.warning("结算页第 %s 段点击后未快速进入下一段，已按当前画面继续", current_stage)
+        raise RuntimeError(
+            f"结算页第 {current_stage} 段点击后未进入下一段，已停止运行。"
+        )
 
     def _handle_ap_recovery_prompt(self) -> None:
         self.session.refresh_screen()
-        ap_recovery_pos = self.session.recognizer.match(
-            self.session.resources.template("ap_recovery.png", category="ap"),
-            self.session.get_latest_screen_image(),
+        handle_ap_recovery_prompt(
+            self.session,
+            self.waiter,
+            appear_timeout=self.AP_APPEAR_TIMEOUT,
+            appear_poll_interval=self.AP_APPEAR_POLL_INTERVAL,
+            template_timeout=self.AP_TEMPLATE_TIMEOUT,
+            template_poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
+            destination_timeout=self.AP_DESTINATION_TIMEOUT,
+            destination_poll_interval=self.AP_DESTINATION_POLL_INTERVAL,
         )
-        if not ap_recovery_pos:
-            return
 
-        self.session.adb.click_raw(*GameCoordinates.AP_RECOVERY_SCROLL_POSITION)
-        self.waiter.wait_seconds("已将行动力恢复列表滚到底部", 0.5)
-
-        bronze_pos = self._wait_for_template(
-            "bronzed_cobalt_fruit.png",
-            category="ap",
-            timeout=self.AP_TEMPLATE_TIMEOUT,
-            poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
+    def _wait_for_continue_battle_destination(self) -> None:
+        support_select_template = self.session.resources.state_templates[
+            GameState.SUPPORT_SELECT
+        ]
+        attempts = max(
+            1,
+            math.ceil(
+                self.POST_CONTINUE_TIMEOUT
+                / max(self.POST_CONTINUE_POLL_INTERVAL, 0.1)
+            ),
         )
-        if not bronze_pos:
-            raise RuntimeError("已识别到行动力恢复界面，但未识别到青铜果实。")
-        self.session.adb.click_raw(*bronze_pos)
-        self.waiter.wait_seconds("已点击青铜果实", 0.5)
-
-        confirm_pos = self._wait_for_template(
-            "confirm.png",
-            category="ap",
-            timeout=self.AP_TEMPLATE_TIMEOUT,
-            poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
-        )
-        if not confirm_pos:
-            raise RuntimeError("青铜果实数量不足，未能进入确认界面。")
-        self.session.adb.click_raw(*confirm_pos)
-        self.waiter.wait_seconds("已确认行动力恢复", 0.5)
-
-    def _wait_for_template(
-        self,
-        filename: str,
-        *,
-        category: str = "common",
-        timeout: float,
-        poll_interval: float,
-    ) -> tuple[int, int] | None:
-        template_path = self.session.resources.template(filename, category=category)
-        attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
-        for _ in range(attempts):
-            match = self.session.recognizer.match(
-                template_path,
-                self.session.get_latest_screen_image(),
-            )
-            if match:
-                return match
-            self.waiter.wait_seconds(f"等待模板出现：{filename}", poll_interval)
+        for attempt in range(attempts):
             self.session.refresh_screen()
-        return None
+            screen = self.session.get_latest_screen_image()
+            if self.session.recognizer.match(support_select_template, screen):
+                log.info("连续出击后已进入助战选择界面")
+                return
+            if self.session.recognizer.match(
+                self.session.resources.template("ap_recovery.png", category="ap"),
+                screen,
+            ):
+                handle_ap_recovery_prompt(
+                    self.session,
+                    self.waiter,
+                    appear_timeout=0.0,
+                    appear_poll_interval=self.AP_APPEAR_POLL_INTERVAL,
+                    template_timeout=self.AP_TEMPLATE_TIMEOUT,
+                    template_poll_interval=self.AP_TEMPLATE_POLL_INTERVAL,
+                    destination_timeout=self.AP_DESTINATION_TIMEOUT,
+                    destination_poll_interval=self.AP_DESTINATION_POLL_INTERVAL,
+                )
+                return
+            if attempt < attempts - 1:
+                self.waiter.wait_seconds(
+                    "等待连续出击后续界面",
+                    self.POST_CONTINUE_POLL_INTERVAL,
+                )
+        raise RuntimeError("连续出击后未在超时内进入助战选择或行动力恢复界面，已停止运行。")
 
     @staticmethod
     def _result_progress_templates(current_stage: int) -> tuple[str, ...]:

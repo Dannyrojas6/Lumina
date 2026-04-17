@@ -16,11 +16,12 @@ from adbutils import AdbDevice, adb
 from adbutils.errors import AdbError
 from PIL import Image
 
-from core.device.profile import DeviceProfile, MUMU_1920X1080
+from core.device.profile import DeviceProfile, FIXED_1920X1080
 
 log = logging.getLogger("core.adb_controller")
 
 DEFAULT_SCREENSHOT_TIMEOUT = 10.0
+EMULATOR_SERIAL_PATTERN = re.compile(r"emulator-\d+$")
 
 
 def find_adb_path() -> str:
@@ -62,7 +63,7 @@ class AdbController:
         serial: Optional[str] = None,
         *,
         connect_targets: Optional[list[str]] = None,
-        profile: DeviceProfile = MUMU_1920X1080,
+        profile: DeviceProfile = FIXED_1920X1080,
     ) -> None:
         self.profile = profile
         self.device_discovery_timeout = profile.device_discovery_timeout
@@ -120,6 +121,36 @@ class AdbController:
             self._attempted_connect_targets.append(target)
             self._run_adb_command("connect", target)
 
+    @staticmethod
+    def _is_loopback_target(serial: str) -> bool:
+        """判断序列号是否为本机回环 adb connect 目标。"""
+        return serial.startswith("127.0.0.1:") or serial.startswith("localhost:")
+
+    def _collapse_ready_aliases(
+        self,
+        ready: list[str],
+        serial: Optional[str],
+    ) -> list[str]:
+        """将同一模拟器的 loopback 和 emulator 别名折叠为一个 ready 设备。"""
+        unique_ready = list(dict.fromkeys(ready))
+        preferred_loopback: str | None = None
+        if serial and self._is_loopback_target(serial) and serial in unique_ready:
+            preferred_loopback = serial
+        else:
+            for target in self.connect_targets:
+                if self._is_loopback_target(target) and target in unique_ready:
+                    preferred_loopback = target
+                    break
+        if preferred_loopback is None:
+            return unique_ready
+
+        other_ready = [item for item in unique_ready if item != preferred_loopback]
+        if not other_ready:
+            return unique_ready
+        if all(EMULATOR_SERIAL_PATTERN.fullmatch(item) for item in other_ready):
+            return [preferred_loopback]
+        return unique_ready
+
     def _full_startup_recover(self) -> dict[str, list[str]]:
         """启动阶段执行一次完整 adb 恢复。"""
         self._run_adb_command("kill-server")
@@ -133,7 +164,7 @@ class AdbController:
         entries: dict[str, list[str]],
     ) -> str:
         """从当前设备状态里选出可用设备。"""
-        ready = entries.get("device", [])
+        ready = self._collapse_ready_aliases(entries.get("device", []), serial)
         offline = entries.get("offline", [])
         unauthorized = entries.get("unauthorized", [])
         if serial:
@@ -186,10 +217,9 @@ class AdbController:
         log.info("current resolution: %sx%s", w, h)
         if (w, h) != (self.profile.width, self.profile.height):
             raise RuntimeError(
-                "device resolution does not match configured profile "
-                f"{self.profile.name}: expected {self.profile.width}x{self.profile.height}, got {w}x{h}"
+                f"device resolution must be {self.profile.width}x{self.profile.height}, got {w}x{h}"
             )
-        log.info("device profile matched: %s", self.profile.name)
+        log.info("device resolution matched: %sx%s", self.profile.width, self.profile.height)
 
     def _read_resolution(self) -> tuple[int, int]:
         """尽量从稳定来源读取设备分辨率。"""

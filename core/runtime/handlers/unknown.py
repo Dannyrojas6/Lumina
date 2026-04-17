@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from core.perception import StateDetectionResult
+from core.runtime.handlers.battle_result import handle_ap_recovery_prompt
 from core.runtime.session import RuntimeSession
 from core.runtime.waiter import Waiter
 from core.shared import GameState
@@ -13,6 +14,12 @@ log = logging.getLogger("core.runtime.handlers.unknown")
 
 
 class UnknownHandler:
+    FALLBACK_MIN_SCORE = 0.75
+    AP_RECOVERY_BLOCKING_STATES = {
+        GameState.LOADING_TIPS,
+        GameState.SUPPORT_SELECT,
+    }
+
     def __init__(self, session: RuntimeSession, waiter: Waiter) -> None:
         self.session = session
         self.waiter = waiter
@@ -29,10 +36,24 @@ class UnknownHandler:
     def handle(self, detection: StateDetectionResult) -> None:
         missing_count = len(detection.missing_templates)
         if detection.state == GameState.UNKNOWN:
+            if self._should_attempt_ap_recovery_fallback(detection) and handle_ap_recovery_prompt(
+                self.session,
+                self.waiter,
+                appear_timeout=0.0,
+                appear_poll_interval=0.25,
+                template_timeout=10.0,
+                template_poll_interval=0.5,
+                destination_timeout=45.0,
+                destination_poll_interval=0.5,
+            ):
+                self.session.consecutive_unknown_count = 0
+                self.session.unknown_snapshot_saved = False
+                log.info("未知状态已识别为行动力恢复界面，已完成恢复流程")
+                return
             self.session.consecutive_unknown_count += 1
             if (
                 self.session.consecutive_unknown_count >= 2
-                and self._handle_unknown_fallback()
+                and self._handle_unknown_fallback(detection)
             ):
                 self.session.consecutive_unknown_count = 0
                 self.session.unknown_snapshot_saved = False
@@ -72,8 +93,13 @@ class UnknownHandler:
             detection.screen_path,
         )
 
-    def _handle_unknown_fallback(self) -> bool:
+    def _handle_unknown_fallback(self, detection: StateDetectionResult) -> bool:
+        best_state = detection.best_match_state
+        if best_state is None or detection.best_score < self.FALLBACK_MIN_SCORE:
+            return False
         for template_name, message in self.fallback_templates:
+            if not self._fallback_allowed_for_state(template_name, best_state):
+                continue
             pos = self.session.recognizer.match(
                 self.session.resources.template(template_name),
                 self.session.get_latest_screen_image(),
@@ -84,4 +110,21 @@ class UnknownHandler:
             self.waiter.wait_seconds(message, 0.5)
             log.info(message)
             return True
+        return False
+
+    def _should_attempt_ap_recovery_fallback(
+        self,
+        detection: StateDetectionResult,
+    ) -> bool:
+        return detection.best_match_state not in self.AP_RECOVERY_BLOCKING_STATES
+
+    @staticmethod
+    def _fallback_allowed_for_state(
+        template_name: str,
+        best_state: GameState,
+    ) -> bool:
+        if template_name == "next.png":
+            return best_state == GameState.BATTLE_RESULT
+        if template_name in {"close_upper_left.png", "close.png"}:
+            return best_state == GameState.DIALOG
         return False

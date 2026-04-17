@@ -83,6 +83,7 @@ class BattleAction:
         """切换当前敌方目标。"""
         self.adb.click(*GameCoordinates.ENEMY_TARGET_POSITIONS[target])
         time.sleep(self.target_select_delay)
+        log.info(f"已切换敌方目标={target}")
 
     def finish_servant_skill(
         self,

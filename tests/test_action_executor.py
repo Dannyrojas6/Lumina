@@ -32,6 +32,21 @@ class BattleActionTimingTest(unittest.TestCase):
             [0.7, 0.2, 0.2, 0.2, 0.2, 0.15, 0.15],
         )
 
+    @patch("core.battle_runtime.action_executor.time.sleep")
+    def test_select_enemy_target_logs_target_switch(
+        self,
+        sleep_mock,
+    ) -> None:
+        adb = Mock()
+        action = BattleAction(adb, target_select_delay=0.2)
+
+        with self.assertLogs("core.battle_actions", level="INFO") as captured:
+            action.select_enemy_target(2)
+
+        adb.click.assert_called_once()
+        self.assertEqual(sleep_mock.call_args_list[0].args[0], 0.2)
+        self.assertIn("已切换敌方目标=2", captured.output[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

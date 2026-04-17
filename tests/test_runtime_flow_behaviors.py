@@ -12,6 +12,7 @@ from core.command_card_recognition import (
 )
 from core.perception.battle_ocr import ServantNpStatus
 from core.perception.image_recognizer import TemplateMatchResult
+from core.perception.image_recognizer import TemplateMatchResult
 from core.perception.state_detector import StateDetectionResult, StateDetector
 from core.runtime.handlers.battle_ready import BattleReadyHandler
 from core.runtime.handlers.battle_result import BattleResultHandler
@@ -33,6 +34,9 @@ class DummyWaiter:
         self.confirm_calls: list[GameState] = []
         self.template_disappear_calls: list[dict[str, object]] = []
         self.state_exit_calls: list[dict[str, object]] = []
+        self.confirm_state_entry_result = True
+        self.stable_result = True
+        self.template_disappear_result = True
         self.state_exit_result = None
         self.post_card_wait_calls: list[dict[str, object]] = []
         self.post_card_wait_result = None
@@ -42,7 +46,7 @@ class DummyWaiter:
 
     def confirm_state_entry(self, state: GameState) -> bool:
         self.confirm_calls.append(state)
-        return True
+        return self.confirm_state_entry_result
 
     def wait_screen_stable(
         self,
@@ -60,7 +64,7 @@ class DummyWaiter:
                 "poll_interval": poll_interval,
             }
         )
-        return True
+        return self.stable_result
 
     def wait_template_disappear(
         self,
@@ -76,7 +80,7 @@ class DummyWaiter:
                 "poll_interval": poll_interval,
             }
         )
-        return True
+        return self.template_disappear_result
 
     def wait_state_exit(
         self,
@@ -194,13 +198,15 @@ class DummyCustomBattleReadySession:
         self.config.battle_mode = "custom_sequence"
         self.config.custom_sequence_battle.find_turn_plan.return_value = plan
         self.battle_snapshot_reader = Mock()
-        self.battle_snapshot_reader.read_snapshot.return_value = SimpleNamespace(
+        self.battle_snapshot_reader.read_wave_and_turn.return_value = SimpleNamespace(
             wave_index=wave,
             current_turn=turn,
         )
         self.battle = Mock()
         self.recognizer = Mock()
-        self.recognizer.match.side_effect = recognizer_matches or []
+        self._recognizer_matches = list(recognizer_matches or [])
+        self._recognizer_index = 0
+        self.recognizer.match.side_effect = self._next_recognizer_match
         self.resources = Mock()
         self.resources.template.side_effect = lambda name, category="ui": name
         self.latest_screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
@@ -222,6 +228,13 @@ class DummyCustomBattleReadySession:
 
     def get_latest_screen_rgb(self) -> np.ndarray:
         return self.latest_screen_rgb
+
+    def _next_recognizer_match(self, *args, **kwargs):
+        if self._recognizer_index >= len(self._recognizer_matches):
+            return None
+        value = self._recognizer_matches[self._recognizer_index]
+        self._recognizer_index += 1
+        return value
 
 
 class DummyCustomBattleReadyHandler(BattleReadyHandler):
@@ -253,6 +266,10 @@ class DummyBattleSession:
         self.recognizer = Mock()
         self.resources = Mock()
         self.resources.template.side_effect = lambda name, category="ui": name
+        self.resources.state_templates = {
+            GameState.SUPPORT_SELECT: "support_select.png",
+            GameState.LOADING_TIPS: "tips.png",
+        }
         self.config = SimpleNamespace(
             continue_battle=continue_battle,
             battle_mode="main",
@@ -318,6 +335,7 @@ class DummyCardSelectSession:
         self.config.battle_mode = "main"
         self.config.ocr = Mock()
         self.config.ocr.retry_once_on_low_confidence = False
+        self.config.save_debug_screenshots = False
         self._prediction = prediction
         self.saved_predictions: list[CommandCardPrediction] = []
         self.saved_rgb_frames: list[np.ndarray] = []
@@ -366,6 +384,12 @@ class DummyCardSelectSession:
         self.saved_rgb_frames.append(screen_rgb)
         return ("frame.png", "frame_masked.png", "frame.json")
 
+    def should_save_command_card_evidence(
+        self,
+        prediction: CommandCardPrediction,
+    ) -> bool:
+        return bool(self.config.save_debug_screenshots or prediction.has_low_confidence)
+
 
 class DummyLoadingSession:
     def __init__(self) -> None:
@@ -374,21 +398,55 @@ class DummyLoadingSession:
 
 
 class DummyUnknownSession:
-    def __init__(self, *, click_result: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        template_positions: dict[str, tuple[int, int] | None] | None = None,
+    ) -> None:
         self.recognizer = Mock()
         self.resources = Mock()
         self.resources.template.side_effect = lambda name, category="ui": name
+        self.resources.state_templates = {
+            GameState.SUPPORT_SELECT: "support_select.png",
+            GameState.LOADING_TIPS: "tips.png",
+        }
         self._screen = np.zeros((10, 10), dtype=np.uint8)
         self.adb = Mock()
-        self.recognizer.match.return_value = (321, 654) if click_result else None
+        self.config = SimpleNamespace(continue_battle=True)
+        self._template_positions = template_positions or {}
+        self.recognizer.match.side_effect = self._match
         self.unknown_snapshot_saved = False
         self.consecutive_unknown_count = 0
 
     def get_latest_screen_image(self) -> np.ndarray:
         return self._screen
 
+    def refresh_screen(self) -> str:
+        return "screen.png"
+
     def save_unknown_snapshot(self) -> str:
         return "unknown.png"
+
+    def _match(self, template_path: str, screen: np.ndarray):
+        return self._template_positions.get(template_path)
+
+
+class RecordingRecognizer:
+    def __init__(self, scores: dict[str, tuple[float, tuple[int, int] | None]]) -> None:
+        self.scores = scores
+        self.calls: list[str] = []
+
+    def match_with_score(
+        self,
+        template_path: str,
+        screen,
+        threshold=None,
+        *,
+        log_debug: bool = False,
+    ) -> TemplateMatchResult:
+        self.calls.append(template_path)
+        score, position = self.scores.get(template_path, (0.0, None))
+        return TemplateMatchResult(score=score, position=position)
 
 
 class DummyCardSelectHandler(CardSelectHandler):
@@ -630,6 +688,11 @@ class DummyLoadingHandler(LoadingHandler):
 class DummySupportTimingHandler(SupportSelectHandler):
     def __init__(self) -> None:
         self.waiter = DummyWaiter()
+        self.waiter.state_exit_result = StateDetectionResult(
+            state=GameState.TEAM_CONFIRM,
+            screen_path="screen.png",
+            elapsed=0.01,
+        )
         self.session = DummySupportSession()
         self._support_pos = (111, 222)
         self.scroll_calls = 0
@@ -674,6 +737,59 @@ class DummyPostCardWaitSession:
         if self._frame_index < 0:
             return None
         return self._frames[self._frame_index].get(template_path)
+
+
+class DummyStateExitSession:
+    def __init__(self, frames: list[dict[str, tuple[int, int] | None]]) -> None:
+        self._frames = frames
+        self._frame_index = -1
+        self.recognizer = Mock()
+        self.recognizer.match.side_effect = self._match
+        self.resources = SimpleNamespace(
+            state_templates={
+                GameState.SUPPORT_SELECT: "support_select.png",
+            }
+        )
+        self._screen = np.zeros((10, 10), dtype=np.uint8)
+
+    def refresh_screen(self) -> str:
+        if self._frame_index < len(self._frames) - 1:
+            self._frame_index += 1
+        return "screen.png"
+
+    def get_latest_screen_image(self) -> np.ndarray:
+        return self._screen
+
+    def _match(self, template_path: str, screen: np.ndarray):
+        if self._frame_index < 0:
+            return None
+        return self._frames[self._frame_index].get(template_path)
+
+
+class DummySupportInteractionSession(DummySupportSession):
+    def __init__(self) -> None:
+        super().__init__()
+        self.recognizer = Mock()
+        self.resources = Mock()
+        self.resources.support_class_template.side_effect = (
+            lambda class_name: f"{class_name}.png"
+        )
+        self.resources.template.side_effect = lambda name, category="ui": name
+        self._screen = np.zeros((10, 10), dtype=np.uint8)
+        self.refresh_count = 0
+
+    def get_latest_screen_image(self) -> np.ndarray:
+        return self._screen
+
+    def refresh_screen(self) -> str:
+        self.refresh_count += 1
+        return "screen.png"
+
+
+class DummySupportInteractionHandler(SupportSelectHandler):
+    def __init__(self) -> None:
+        self.waiter = DummyWaiter()
+        self.session = DummySupportInteractionSession()
 
 
 class RecordingStateEntryWaiter(Waiter):
@@ -749,11 +865,13 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             wave=1,
             turn=1,
             plan=plan,
-            recognizer_matches=[None, (200, 300)],
+            recognizer_matches=[None, None, None, None, (200, 300)],
         )
 
         handler.handle()
 
+        handler.session.battle_snapshot_reader.read_wave_and_turn.assert_called_once()
+        handler.session.battle_snapshot_reader.read_snapshot.assert_not_called()
         handler.session.battle.select_enemy_target.assert_called_once_with(2)
         handler.session.battle.click_servant_skill.assert_any_call(1)
         handler.session.battle.finish_servant_skill.assert_any_call(1)
@@ -764,11 +882,50 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertIs(handler.session.active_custom_turn_plan, plan)
         self.assertEqual(handler.session.last_processed_custom_turn, (1, 1))
 
+    def test_custom_sequence_battle_ready_waits_briefly_for_required_target_window(
+        self,
+    ) -> None:
+        plan = SimpleNamespace(
+            actions=[SimpleNamespace(type="servant_skill", actor=2, skill=3, target=1)],
+            nobles=[],
+        )
+        handler = DummyCustomBattleReadyHandler(
+            wave=1,
+            turn=1,
+            plan=plan,
+            recognizer_matches=[None, (200, 300)],
+        )
+
+        handler.handle()
+
+        handler.session.battle.click_servant_skill.assert_called_once_with(6)
+        handler.session.battle.select_servant_target.assert_called_once_with(1)
+        handler.session.battle.finish_servant_skill.assert_called_once_with(6, target=1)
+
+    def test_custom_sequence_battle_ready_stops_when_unexpected_target_window_appears(
+        self,
+    ) -> None:
+        plan = SimpleNamespace(
+            actions=[SimpleNamespace(type="servant_skill", actor=1, skill=1, target=None)],
+            nobles=[],
+        )
+        handler = DummyCustomBattleReadyHandler(
+            wave=1,
+            turn=1,
+            plan=plan,
+            recognizer_matches=[None, (200, 300)],
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "无己方目标"):
+            handler.handle()
+
     def test_custom_sequence_battle_ready_without_plan_attacks_directly(self) -> None:
         handler = DummyCustomBattleReadyHandler(wave=1, turn=2, plan=None)
 
         handler.handle()
 
+        handler.session.battle_snapshot_reader.read_wave_and_turn.assert_called_once()
+        handler.session.battle_snapshot_reader.read_snapshot.assert_not_called()
         handler.session.battle.select_enemy_target.assert_not_called()
         handler.session.battle.click_servant_skill.assert_not_called()
         handler.session.battle.attack.assert_called_once_with()
@@ -816,6 +973,44 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertTrue(handler.session.battle_actions_done)
         self.assertEqual(handler.session.used_servant_skills, {1, 2, 3})
 
+    def test_battle_result_stage_one_stops_when_result_stage_does_not_progress(self) -> None:
+        handler = DummyBattleResultHandler(stage=1)
+        handler.session.recognizer.match.return_value = None
+        handler.RESULT_TRANSITION_TIMEOUT = 1.0
+        handler.RESULT_TRANSITION_POLL_INTERVAL = 0.5
+
+        with self.assertRaisesRegex(RuntimeError, "结算页第 1 段点击后未进入下一段"):
+            handler.handle()
+
+    def test_battle_result_stage_two_waits_for_delayed_next_stage(self) -> None:
+        handler = DummyBattleResultHandler(stage=2)
+        checks = {"count": 0}
+
+        def _match(template_path, screen):
+            if template_path == "fight_result_3.png":
+                checks["count"] += 1
+                return None if checks["count"] < 4 else (321, 654)
+            if template_path == "next.png":
+                return None
+            return (321, 654)
+
+        handler.session.recognizer.match.side_effect = _match
+        handler.RESULT_TRANSITION_TIMEOUT = 3.0
+        handler.RESULT_TRANSITION_POLL_INTERVAL = 0.5
+
+        handler.handle()
+
+        handler.session.adb.click.assert_called_once_with(*GameCoordinates.RESULT_CONTINUE)
+        self.assertEqual(
+            handler.waiter.calls,
+            [
+                ("已点击结算页第 2 段继续", 0.5),
+                ("等待结算页后续界面", 0.5),
+                ("等待结算页后续界面", 0.5),
+                ("等待结算页后续界面", 0.5),
+            ],
+        )
+
     def test_battle_result_stage_three_clicks_next_and_marks_battle_complete(self) -> None:
         handler = DummyBattleResultHandler(stage=3)
         handler.session.recognizer.match.side_effect = (
@@ -853,12 +1048,18 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
 
     def test_battle_result_stage_three_clicks_continue_battle_when_enabled(self) -> None:
         handler = DummyBattleResultHandler(stage=3, continue_battle=True)
-        handler.session.recognizer.match.side_effect = (
-            lambda template_path, screen: {
+        support_checks = {"count": 0}
+
+        def _match(template_path, screen):
+            if template_path == "support_select.png":
+                support_checks["count"] += 1
+                return (100, 200) if support_checks["count"] >= 2 else None
+            return {
                 "next.png": (321, 654),
                 "continue_battle.png": (777, 888),
             }.get(template_path)
-        )
+
+        handler.session.recognizer.match.side_effect = _match
 
         handler.handle()
 
@@ -875,6 +1076,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 ("已点击结算页下一步", 0.5),
                 ("等待结算完成收尾", 1.0),
                 ("已点击连续出击", 0.5),
+                ("等待连续出击后续界面", 0.5),
             ],
         )
         self.assertEqual(handler.session.loop_done, 1)
@@ -903,15 +1105,24 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
 
     def test_battle_result_stage_three_handles_ap_recovery_after_continue_battle(self) -> None:
         handler = DummyBattleResultHandler(stage=3, continue_battle=True)
-        handler.session.recognizer.match.side_effect = (
-            lambda template_path, screen: {
+        support_ready = {"enabled": False}
+
+        def _match(template_path, screen):
+            if template_path == "support_select.png":
+                return (100, 200) if support_ready["enabled"] else None
+            mapping = {
                 "next.png": (321, 654),
                 "continue_battle.png": (777, 888),
                 "ap_recovery.png": (500, 500),
                 "bronzed_cobalt_fruit.png": (620, 710),
                 "confirm.png": (1100, 720),
-            }.get(template_path)
-        )
+            }
+            value = mapping.get(template_path)
+            if template_path == "confirm.png" and value:
+                support_ready["enabled"] = True
+            return value
+
+        handler.session.recognizer.match.side_effect = _match
 
         handler.handle()
 
@@ -936,6 +1147,51 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 ("已确认行动力恢复", 0.5),
             ],
         )
+        self.assertEqual(handler.session.loop_done, 1)
+
+    def test_battle_result_stage_three_waits_briefly_for_delayed_ap_recovery_prompt(self) -> None:
+        handler = DummyBattleResultHandler(stage=3, continue_battle=True)
+        ap_checks = {"count": 0}
+        support_checks = {"count": 0}
+        support_ready = {"enabled": False}
+
+        def _match(template_path, screen):
+            if template_path == "ap_recovery.png":
+                ap_checks["count"] += 1
+                return None if ap_checks["count"] == 1 else (500, 500)
+            if template_path == "support_select.png":
+                support_checks["count"] += 1
+                return (
+                    (100, 200)
+                    if support_ready["enabled"] and support_checks["count"] >= 2
+                    else None
+                )
+            mapping = {
+                "next.png": (321, 654),
+                "continue_battle.png": (777, 888),
+                "bronzed_cobalt_fruit.png": (620, 710),
+                "confirm.png": (1100, 720),
+            }
+            value = mapping.get(template_path)
+            if template_path == "confirm.png" and value:
+                support_ready["enabled"] = True
+            return value
+
+        handler.session.recognizer.match.side_effect = _match
+
+        handler.handle()
+
+        self.assertEqual(
+            handler.session.adb.click_raw.call_args_list,
+            [
+                unittest.mock.call(321, 654),
+                unittest.mock.call(777, 888),
+                unittest.mock.call(1525, 747),
+                unittest.mock.call(620, 710),
+                unittest.mock.call(1100, 720),
+            ],
+        )
+        self.assertIn(("等待连续出击后续界面", 0.5), handler.waiter.calls)
         self.assertEqual(handler.session.loop_done, 1)
 
     def test_battle_result_stage_three_stops_when_bronze_fruit_cannot_confirm(self) -> None:
@@ -1024,6 +1280,14 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 "wait_after_plan",
             ],
         )
+        self.assertEqual(handler.session.saved_predictions, [])
+
+    def test_card_select_saves_evidence_when_debug_screenshots_enabled(self) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+        handler.session.config.save_debug_screenshots = True
+
+        handler.handle()
+
         self.assertEqual(len(handler.session.saved_predictions), 1)
         self.assertEqual(handler.session.saved_predictions[0].owners[3], "berserker/morgan")
 
@@ -1243,6 +1507,24 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 }
             ],
         )
+
+    def test_loading_handler_stops_when_tips_do_not_disappear(self) -> None:
+        handler = DummyLoadingHandler()
+        handler.waiter.template_disappear_result = False
+
+        with self.assertRaisesRegex(RuntimeError, "加载提示在超时内未消失"):
+            handler.handle()
+        self.assertEqual(handler.waiter.stable_calls, [])
+
+    def test_loading_handler_continues_when_screen_does_not_stabilize_after_tips_disappear(
+        self,
+    ) -> None:
+        handler = DummyLoadingHandler()
+        handler.waiter.stable_result = False
+
+        with self.assertLogs("core.runtime.handlers.loading", level="INFO") as logs:
+            handler.handle()
+
         self.assertEqual(
             handler.waiter.stable_calls,
             [
@@ -1254,6 +1536,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 }
             ],
         )
+        self.assertFalse(any("画面未在超时内稳定" in message for message in logs.output))
 
     def test_support_search_clicks_target_then_waits_for_state_exit(self) -> None:
         handler = DummySupportTimingHandler()
@@ -1278,6 +1561,13 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         )
         self.assertEqual(handler.scroll_calls, 0)
 
+    def test_support_search_stops_when_state_does_not_exit(self) -> None:
+        handler = DummySupportTimingHandler()
+        handler.waiter.state_exit_result = None
+
+        with self.assertRaisesRegex(RuntimeError, "助战点击后未在超时内离开列表"):
+            handler._search_and_pick_support("berserker/morgan", max_scroll_pages=3)
+
     def test_support_fallback_pick_waits_for_state_exit(self) -> None:
         handler = DummySupportTimingHandler()
 
@@ -1301,15 +1591,69 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ],
         )
 
+    def test_support_fallback_pick_stops_when_state_does_not_exit(self) -> None:
+        handler = DummySupportTimingHandler()
+        handler.waiter.state_exit_result = None
+
+        with self.assertRaisesRegex(RuntimeError, "助战点击后未在超时内离开列表"):
+            handler._fallback_pick_support(1)
+
+    def test_support_select_class_skips_redundant_stability_wait(self) -> None:
+        handler = DummySupportInteractionHandler()
+        handler.session.recognizer.match.return_value = (321, 654)
+
+        handler._select_support_class("berserker")
+
+        handler.session.adb.click.assert_called_once_with(321, 654)
+        self.assertEqual(
+            handler.waiter.calls,
+            [("检测到助战选择界面，已切换到职阶=berserker", 0.5)],
+        )
+        self.assertEqual(handler.session.refresh_count, 1)
+        self.assertEqual(handler.waiter.stable_calls, [])
+
+    def test_support_scroll_skips_redundant_stability_wait(self) -> None:
+        handler = DummySupportInteractionHandler()
+
+        handler._scroll_support_list()
+
+        handler.session.adb.swipe.assert_called_once()
+        self.assertEqual(
+            handler.waiter.calls,
+            [("当前页未命中目标助战，已执行一次助战列表滑动", 0.5)],
+        )
+        self.assertEqual(handler.session.refresh_count, 1)
+        self.assertEqual(handler.waiter.stable_calls, [])
+
+    def test_support_refresh_skips_redundant_stability_wait(self) -> None:
+        handler = DummySupportInteractionHandler()
+        handler.session.recognizer.match.side_effect = (
+            lambda template_path, screen: {
+                "list_update.png": (100, 200),
+                "yes.png": (300, 400),
+            }.get(template_path)
+        )
+
+        refreshed = handler._refresh_support_list()
+
+        self.assertTrue(refreshed)
+        self.assertEqual(
+            handler.waiter.calls,
+            [("已点击助战列表更新", 0.5), ("等待助战刷新结果", 0.5)],
+        )
+        self.assertEqual(handler.session.refresh_count, 2)
+        self.assertEqual(handler.waiter.stable_calls, [])
+
     def test_card_select_wait_after_plan_uses_post_card_signal_when_available(self) -> None:
         handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
         handler.waiter.post_card_wait_result = GameState.BATTLE_READY
 
-        CardSelectHandler._wait_after_card_plan(handler)
+        with self.assertLogs("core.runtime.handlers.card_select", level="INFO") as logs:
+            CardSelectHandler._wait_after_card_plan(handler)
 
         self.assertEqual(
             handler.waiter.calls,
-            [("已完成出卡，等待战斗动画起步", 1.0)],
+            [("已完成出卡，等待战斗动画开始", 1.0)],
         )
         self.assertEqual(
             handler.waiter.post_card_wait_calls,
@@ -1322,13 +1666,17 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ],
         )
         self.assertEqual(handler.waiter.state_exit_calls, [])
+        self.assertTrue(
+            any("战斗动画处理中，等待重新出现战斗菜单或结算页" in message for message in logs.output)
+        )
 
     def test_card_select_wait_after_plan_falls_back_when_post_card_signal_times_out(
         self,
     ) -> None:
         handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
 
-        CardSelectHandler._wait_after_card_plan(handler)
+        with self.assertRaisesRegex(RuntimeError, "战斗动画等待超时"):
+            CardSelectHandler._wait_after_card_plan(handler)
 
         self.assertEqual(
             handler.waiter.state_exit_calls,
@@ -1341,8 +1689,8 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ],
         )
 
-    def test_unknown_handler_defers_fallback_until_second_unknown(self) -> None:
-        session = DummyUnknownSession(click_result=True)
+    def test_unknown_handler_defers_fallback_for_untrusted_page_family(self) -> None:
+        session = DummyUnknownSession(template_positions={"next.png": (321, 654)})
         handler = UnknownHandler(session, DummyWaiter())
         unknown = StateDetectionResult(
             state=GameState.UNKNOWN,
@@ -1362,14 +1710,110 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
 
         handler.handle(unknown)
 
-        session.recognizer.match.assert_called()
+        session.adb.click_raw.assert_not_called()
+        self.assertEqual(session.consecutive_unknown_count, 2)
+        self.assertTrue(session.unknown_snapshot_saved)
+
+    def test_unknown_handler_allows_next_fallback_for_battle_result_family(self) -> None:
+        session = DummyUnknownSession(template_positions={"next.png": (321, 654)})
+        handler = UnknownHandler(session, DummyWaiter())
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=GameState.BATTLE_RESULT,
+            best_score=0.88,
+            matched_template="fight_result_3.png",
+            missing_templates=[],
+        )
+
+        handler.handle(unknown)
+        handler.handle(unknown)
+
         session.adb.click_raw.assert_called_once_with(321, 654)
+        self.assertEqual(handler.waiter.calls, [("未知状态兜底：已点击下一步", 0.5)])
+        self.assertEqual(session.consecutive_unknown_count, 0)
+        self.assertFalse(session.unknown_snapshot_saved)
+
+    def test_unknown_handler_recovers_ap_recovery_prompt_when_detected(self) -> None:
+        session = DummyUnknownSession(
+            template_positions={
+                "ap_recovery.png": (500, 500),
+                "bronzed_cobalt_fruit.png": (620, 710),
+                "confirm.png": (1100, 720),
+            }
+        )
+        support_checks = {"count": 0}
+
+        def _match(template_path, screen):
+            if template_path == "support_select.png":
+                support_checks["count"] += 1
+                return (100, 200) if support_checks["count"] >= 2 else None
+            return session._template_positions.get(template_path)
+
+        session.recognizer.match.side_effect = _match
+        waiter = DummyWaiter()
+        handler = UnknownHandler(session, waiter)
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=None,
+            best_score=0.0,
+            matched_template=None,
+            missing_templates=[],
+        )
+
+        handler.handle(unknown)
+
         self.assertEqual(
-            handler.waiter.calls,
-            [("未知状态兜底：已点击左上角关闭", 0.5)],
+            session.adb.click_raw.call_args_list,
+            [
+                unittest.mock.call(1525, 747),
+                unittest.mock.call(620, 710),
+                unittest.mock.call(1100, 720),
+            ],
+        )
+        self.assertEqual(
+            waiter.calls,
+            [
+                ("已将行动力恢复列表滚到底部", 0.5),
+                ("已点击青铜果实", 0.5),
+                ("已确认行动力恢复", 0.5),
+                ("等待行动力恢复后续界面", 0.5),
+            ],
         )
         self.assertEqual(session.consecutive_unknown_count, 0)
         self.assertFalse(session.unknown_snapshot_saved)
+
+    def test_unknown_handler_does_not_reenter_ap_recovery_when_loading_is_best_candidate(
+        self,
+    ) -> None:
+        session = DummyUnknownSession(
+            template_positions={
+                "ap_recovery.png": (500, 500),
+                "bronzed_cobalt_fruit.png": (620, 710),
+                "confirm.png": (1100, 720),
+            }
+        )
+        waiter = DummyWaiter()
+        handler = UnknownHandler(session, waiter)
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=GameState.LOADING_TIPS,
+            best_score=0.48,
+            matched_template="tips.png",
+            missing_templates=[],
+        )
+
+        handler.handle(unknown)
+
+        session.adb.click_raw.assert_not_called()
+        self.assertEqual(waiter.calls, [])
+        self.assertEqual(session.consecutive_unknown_count, 1)
+        self.assertTrue(session.unknown_snapshot_saved)
 
     def test_engine_unknown_retry_wait_is_shorter(self) -> None:
         from core.runtime.engine import AutomationEngine
@@ -1410,6 +1854,48 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             [("等待下一次状态识别", 0.5)],
         )
 
+    def test_engine_uses_hot_state_candidates_from_previous_state(self) -> None:
+        from core.runtime.engine import AutomationEngine
+
+        session = SimpleNamespace(
+            config=SimpleNamespace(loop_count=1),
+            loop_done=0,
+            state=GameState.BATTLE_READY,
+            consecutive_unknown_count=0,
+            unknown_snapshot_saved=False,
+            stop_requested=False,
+        )
+        waiter = DummyWaiter()
+        state_detector = Mock()
+        state_detector.detect.return_value = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+        )
+        unknown_handler = Mock()
+        unknown_handler.handle.side_effect = lambda detection: setattr(session, "loop_done", 1)
+
+        engine = AutomationEngine.__new__(AutomationEngine)
+        engine.session = session
+        engine.waiter = waiter
+        engine.state_detector = state_detector
+        engine.handlers = {}
+        engine.unknown_handler = unknown_handler
+
+        engine.run()
+
+        _, kwargs = state_detector.detect.call_args
+        self.assertEqual(
+            kwargs["candidates"],
+            (
+                GameState.BATTLE_READY,
+                GameState.CARD_SELECT,
+                GameState.BATTLE_RESULT,
+                GameState.DIALOG,
+                GameState.LOADING_TIPS,
+            ),
+        )
+
 
 class WaiterStateEntryTest(unittest.TestCase):
     def test_confirm_state_entry_support_select_adds_buffer_and_stability_check(
@@ -1426,8 +1912,8 @@ class WaiterStateEntryTest(unittest.TestCase):
             [
                 {
                     "region": GameCoordinates.SUPPORT_PORTRAIT_STRIP,
-                    "stable_frames": 2,
-                    "timeout": 1.5,
+                    "stable_frames": 1,
+                    "timeout": 2.5,
                     "poll_interval": 0.25,
                 }
             ],
@@ -1441,6 +1927,45 @@ class WaiterStateEntryTest(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(waiter.calls, [])
         self.assertEqual(waiter.stable_calls, [])
+
+
+class WaiterStateExitTest(unittest.TestCase):
+    @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
+    def test_wait_state_exit_avoids_full_state_detection_while_watched_state_visible(
+        self,
+        _sleep_mock,
+    ) -> None:
+        session = DummyStateExitSession(
+            [
+                {"support_select.png": (100, 100)},
+                {"support_select.png": (100, 100)},
+                {},
+            ]
+        )
+        detector = Mock()
+        detector.detect.return_value = StateDetectionResult(
+            state=GameState.TEAM_CONFIRM,
+            screen_path="screen.png",
+            elapsed=0.01,
+        )
+        waiter = Waiter(session, detector)
+
+        result = waiter.wait_state_exit(
+            {GameState.SUPPORT_SELECT, GameState.UNKNOWN},
+            timeout=1.0,
+            poll_interval=0.01,
+        )
+
+        self.assertEqual(result.state, GameState.TEAM_CONFIRM)
+        self.assertEqual(
+            session.recognizer.match.call_args_list,
+            [
+                unittest.mock.call("support_select.png", session.get_latest_screen_image()),
+                unittest.mock.call("support_select.png", session.get_latest_screen_image()),
+                unittest.mock.call("support_select.png", session.get_latest_screen_image()),
+            ],
+        )
+        detector.detect.assert_called_once()
 
 
 class WaiterPostCardBattleEndTest(unittest.TestCase):
@@ -1485,6 +2010,53 @@ class WaiterPostCardBattleEndTest(unittest.TestCase):
         )
 
         self.assertEqual(result, GameState.BATTLE_RESULT)
+
+
+class StateDetectorCandidateTest(unittest.TestCase):
+    def test_detect_prefers_candidate_subset_when_match_is_found(self) -> None:
+        resources = ResourceCatalog()
+        recognizer = RecordingRecognizer(
+            {
+                resources.state_templates[GameState.BATTLE_READY]: (0.95, (100, 100)),
+            }
+        )
+        detector = StateDetector(
+            recognizer=recognizer,
+            screen_callback=lambda: "screen.png",
+            resources=resources,
+            screen_array_callback=lambda: np.zeros((10, 10), dtype=np.uint8),
+        )
+
+        result = detector.detect(candidates=[GameState.BATTLE_READY, GameState.CARD_SELECT])
+
+        self.assertEqual(result.state, GameState.BATTLE_READY)
+        self.assertEqual(
+            recognizer.calls,
+            [
+                resources.state_templates[GameState.BATTLE_READY],
+                resources.state_templates[GameState.CARD_SELECT],
+            ],
+        )
+
+    def test_detect_falls_back_to_full_scan_when_candidates_miss(self) -> None:
+        resources = ResourceCatalog()
+        main_menu_template = resources.state_templates[GameState.MAIN_MENU]
+        recognizer = RecordingRecognizer(
+            {
+                main_menu_template: (0.96, (100, 100)),
+            }
+        )
+        detector = StateDetector(
+            recognizer=recognizer,
+            screen_callback=lambda: "screen.png",
+            resources=resources,
+            screen_array_callback=lambda: np.zeros((10, 10), dtype=np.uint8),
+        )
+
+        result = detector.detect(candidates=[GameState.BATTLE_READY, GameState.CARD_SELECT])
+
+        self.assertEqual(result.state, GameState.MAIN_MENU)
+        self.assertIn(main_menu_template, recognizer.calls)
 
 
 if __name__ == "__main__":

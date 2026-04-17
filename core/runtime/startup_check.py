@@ -78,8 +78,8 @@ def _validate_device_resolution(
     width, height = device_resolution
     if (width, height) != (profile.width, profile.height):
         raise RuntimeError(
-            "device resolution does not match configured profile "
-            f"{profile.name}: expected {profile.width}x{profile.height}, got {width}x{height}"
+            "device resolution must be 1920x1080: "
+            f"got {width}x{height}"
         )
 
 

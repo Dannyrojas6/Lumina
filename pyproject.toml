@@ -1,7 +1,7 @@
 [project]
 name = "lumina"
 version = "0.1.0"
-description = "基于 adbutils 与 OpenCV 的 FGO 自动化脚本，当前优先适配 MuMu 模拟器"
+description = "基于 adbutils 与 OpenCV 的 FGO 自动化脚本，当前固定支持可通过 ADB 控制的 1920x1080 设备"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -173,6 +173,13 @@ class RuntimeSession:
         )
         return str(image_path), str(masked_path), str(json_path)
 
+    def should_save_command_card_evidence(
+        self,
+        prediction: CommandCardPrediction,
+    ) -> bool:
+        """判断当前回合是否需要落盘普通卡识别证据。"""
+        return bool(self.config.save_debug_screenshots or prediction.has_low_confidence)
+
     def command_card_priority(self) -> list[str]:
         """返回当前普通卡从者优先顺序。"""
         raw_priority = getattr(
