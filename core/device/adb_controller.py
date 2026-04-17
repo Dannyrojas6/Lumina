@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import platform
 import re
@@ -18,6 +19,8 @@ from PIL import Image
 from core.device.profile import DeviceProfile, MUMU_1920X1080
 
 log = logging.getLogger("core.adb_controller")
+
+DEFAULT_SCREENSHOT_TIMEOUT = 10.0
 
 
 def find_adb_path() -> str:
@@ -66,6 +69,7 @@ class AdbController:
         self.device_discovery_interval = profile.device_discovery_interval
         self.operation_retry_count = profile.operation_retry_count
         self.operation_retry_delay = profile.operation_retry_delay
+        self.screenshot_timeout = DEFAULT_SCREENSHOT_TIMEOUT
         self.adb_path = find_adb_path()
         self.connect_targets = [target for target in (connect_targets or []) if target]
         self._attempted_connect_targets: list[str] = []
@@ -266,13 +270,13 @@ class AdbController:
     def screenshot(self, save_path: str) -> str:
         """截图后保存，返回保存后的路径。"""
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-        image: Image.Image = self._run_with_retry("screenshot", lambda: self.device.screenshot())
+        image: Image.Image = self._run_with_retry("screenshot", self._capture_screenshot)
         image.save(save_path)
         return save_path
 
     def screenshot_array(self, save_path: Optional[str] = None) -> Image.Image:
         """截图；可选保存到磁盘。"""
-        image: Image.Image = self._run_with_retry("screenshot", lambda: self.device.screenshot())
+        image: Image.Image = self._run_with_retry("screenshot", self._capture_screenshot)
         if save_path is not None:
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
             image.save(save_path)
@@ -292,3 +296,16 @@ class AdbController:
     def serial(self) -> str:
         """返回当前连接设备的序列号。"""
         return self.device.serial
+
+    def _capture_screenshot(self) -> Image.Image:
+        """使用短超时 screencap 截图，避免底层连接长期挂住。"""
+        png_bytes = self.device.shell(
+            ["screencap", "-p"],
+            encoding=None,
+            timeout=getattr(self, "screenshot_timeout", DEFAULT_SCREENSHOT_TIMEOUT),
+        )
+        image = Image.open(io.BytesIO(png_bytes))
+        image.load()
+        if image.mode == "RGBA":
+            image = image.convert("RGB")
+        return image

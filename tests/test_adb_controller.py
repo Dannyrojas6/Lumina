@@ -1,10 +1,12 @@
 import unittest
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from adbutils.errors import AdbError
+from PIL import Image
 
 from core.device.adb_controller import AdbController
 from core.device.profile import DeviceProfile
@@ -168,6 +170,7 @@ class AdbControllerRuntimeFailureTest(unittest.TestCase):
         controller.device_discovery_interval = 0.0
         controller.operation_retry_count = 2
         controller.operation_retry_delay = 0.0
+        controller.screenshot_timeout = 10.0
         controller.device = device
         controller._device_serial = device.serial
         return controller
@@ -175,7 +178,7 @@ class AdbControllerRuntimeFailureTest(unittest.TestCase):
     def test_runtime_screenshot_failure_stops_without_recovery(self) -> None:
         device = SimpleNamespace(
             serial="emulator-5560",
-            screenshot=Mock(side_effect=AdbError("device disconnected")),
+            shell=Mock(side_effect=AdbError("device disconnected")),
         )
         controller = self._make_runtime_controller(device)
 
@@ -188,6 +191,24 @@ class AdbControllerRuntimeFailureTest(unittest.TestCase):
             controller.screenshot(str(Path(tmp_dir) / "screen.png"))
 
         run_mock.assert_not_called()
+
+    def test_runtime_screenshot_uses_short_shell_timeout(self) -> None:
+        buffer = BytesIO()
+        Image.new("RGB", (2, 2), (255, 0, 0)).save(buffer, format="PNG")
+        device = SimpleNamespace(
+            serial="emulator-5560",
+            shell=Mock(return_value=buffer.getvalue()),
+        )
+        controller = self._make_runtime_controller(device)
+
+        image = controller.screenshot_array()
+
+        self.assertEqual(image.size, (2, 2))
+        device.shell.assert_called_once_with(
+            ["screencap", "-p"],
+            encoding=None,
+            timeout=10.0,
+        )
 
     def test_runtime_click_failure_stops_without_recovery(self) -> None:
         device = SimpleNamespace(
