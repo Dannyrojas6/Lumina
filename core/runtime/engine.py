@@ -112,6 +112,9 @@ class AutomationEngine:
                 candidates=self._candidate_states(self.session.state)
             )
             self.session.state = detection.state
+            state_changed_callback = getattr(self.session, "on_state_changed", None)
+            if state_changed_callback is not None:
+                state_changed_callback(detection.state)
             if detection.state != GameState.UNKNOWN:
                 self.session.consecutive_unknown_count = 0
                 self.session.unknown_snapshot_saved = False

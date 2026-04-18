@@ -18,7 +18,10 @@ def annotate_support_screen(screen_rgb: np.ndarray, analysis) -> np.ndarray:
             if analysis.best_slot and item.slot_index == analysis.best_slot.slot_index
             else (0, 128, 255)
         )
-        x1, y1, x2, y2 = item.region
+        x1, y1, x2, y2 = GameCoordinates.SUPPORT_PORTRAIT_SLOT_REGIONS.get(
+            item.slot_index,
+            item.region,
+        )
         cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
         cv2.putText(
             annotated,

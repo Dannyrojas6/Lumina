@@ -305,6 +305,8 @@ class CardSelectHandler:
         if detection is not None:
             log.info("战斗动画结束，兜底等待已切换到 %s", detection.state.name)
             return
+        if getattr(self.session, "stop_requested", False):
+            return
         raise RuntimeError("战斗动画等待超时，已停止运行。")
 
     def _select_noble_card_with_optional_target(self, servant_index: int) -> None:

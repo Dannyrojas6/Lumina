@@ -91,6 +91,7 @@
 - [core/runtime/session.py](/D:/VSCodeRepository/Lumina/core/runtime/session.py) 保存运行期状态
 - [core/runtime/waiter.py](/D:/VSCodeRepository/Lumina/core/runtime/waiter.py) 统一页面级等待
 - [core/runtime/handlers](/D:/VSCodeRepository/Lumina/core/runtime/handlers) 按页面拆分处理逻辑
+- [core/gui](/D:/VSCodeRepository/Lumina/core/gui) 提供 Qt 主程序、运行页和工具页
 
 ### 助战识别
 
@@ -181,6 +182,7 @@ uv run .\scripts\analyze_command_cards.py --help
 
 ```powershell
 uv run .\main.py
+uv run python .\gui_main.py
 ```
 
 至少要确认：
@@ -190,6 +192,7 @@ uv run .\main.py
 - 启动前若未直接发现设备，会先尝试一次自动恢复
 - 主流程能进入页面识别
 - 日志不会在启动阶段直接断掉
+- Qt 主程序能正常打开主窗口
 
 ## 最近优先级
 

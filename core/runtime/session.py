@@ -6,7 +6,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -61,6 +61,8 @@ class RuntimeSession:
     consecutive_unknown_count: int = 0
     support_verifiers: dict[str, SupportPortraitVerifier] = field(default_factory=dict)
     command_card_recognizer: Optional[CommandCardRecognizer] = None
+    on_state_changed: Callable[[GameState], None] | None = None
+    on_screen_rgb_updated: Callable[[np.ndarray], None] | None = None
 
     @property
     def smart_battle_enabled(self) -> bool:
@@ -85,6 +87,8 @@ class RuntimeSession:
         self.latest_screen_image = cv2.cvtColor(
             self.latest_screen_rgb, cv2.COLOR_RGB2GRAY
         )
+        if self.on_screen_rgb_updated is not None:
+            self.on_screen_rgb_updated(np.array(self.latest_screen_rgb, copy=True))
         return self.resources.screen_path
 
     def get_latest_screen_image(self) -> np.ndarray:

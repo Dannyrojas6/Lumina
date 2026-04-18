@@ -24,6 +24,8 @@ class LoadingHandler:
             poll_interval=1.0,
         )
         if not disappeared:
+            if getattr(self.session, "stop_requested", False):
+                return
             raise RuntimeError("加载提示在超时内未消失，已停止运行。")
 
         self.waiter.wait_screen_stable(timeout=1.0, poll_interval=0.25)

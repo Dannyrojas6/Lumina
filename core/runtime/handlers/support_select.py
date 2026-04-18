@@ -186,4 +186,6 @@ class SupportSelectHandler:
             poll_interval=self.SUPPORT_TRANSITION_POLL_INTERVAL,
         )
         if detection is None:
+            if getattr(self.session, "stop_requested", False):
+                return
             raise RuntimeError("助战点击后未在超时内离开列表，已停止运行。")

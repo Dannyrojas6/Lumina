@@ -25,7 +25,7 @@ class Waiter:
 
     def wait_seconds(self, reason: str, seconds: float) -> None:
         log.info("%s，等待 %.1f 秒", reason, seconds)
-        time.sleep(seconds)
+        self._sleep_interruptibly(seconds)
 
     def confirm_state_entry(self, state: GameState) -> bool:
         """在处理高风险页面前，先确认页面内容已经稳定。"""
@@ -55,16 +55,18 @@ class Waiter:
         watched = set(states)
         deadline = time.time() + max(0.0, timeout)
         while time.time() < deadline:
+            if self._stop_requested():
+                return None
             self.session.refresh_screen()
             screen = self.session.get_latest_screen_image()
             if self._matches_watched_state(screen, watched):
-                time.sleep(poll_interval)
+                self._sleep_interruptibly(poll_interval)
                 continue
 
             detection = self.state_detector.detect()
             if detection.state not in watched:
                 return detection
-            time.sleep(poll_interval)
+            self._sleep_interruptibly(poll_interval)
         return None
 
     def wait_post_card_battle_end(
@@ -83,6 +85,8 @@ class Waiter:
         previous_family: str | None = None
         consecutive_hits = 0
         while time.time() < deadline:
+            if self._stop_requested():
+                return None
             self.session.refresh_screen()
             screen = self.session.get_latest_screen_image()
             current_family = self._detect_post_card_family(
@@ -93,7 +97,7 @@ class Waiter:
             if current_family is None:
                 previous_family = None
                 consecutive_hits = 0
-                time.sleep(poll_interval)
+                self._sleep_interruptibly(poll_interval)
                 continue
 
             if current_family == previous_family:
@@ -108,7 +112,7 @@ class Waiter:
                 if current_family == "battle_result":
                     return GameState.BATTLE_RESULT
 
-            time.sleep(poll_interval)
+            self._sleep_interruptibly(poll_interval)
         return None
 
     def wait_template_disappear(
@@ -120,12 +124,14 @@ class Waiter:
     ) -> bool:
         deadline = time.time() + max(0.0, timeout)
         while time.time() < deadline:
+            if self._stop_requested():
+                return False
             if not self.session.recognizer.match(
                 template_path,
                 self.session.get_latest_screen_image(),
             ):
                 return True
-            time.sleep(poll_interval)
+            self._sleep_interruptibly(poll_interval)
             self.session.refresh_screen()
         return False
 
@@ -141,7 +147,9 @@ class Waiter:
         previous = self._extract_region(self.session.get_latest_screen_image(), region)
         stable_count = 0
         while time.time() < deadline:
-            time.sleep(poll_interval)
+            if self._stop_requested():
+                return False
+            self._sleep_interruptibly(poll_interval)
             self.session.refresh_screen()
             current = self._extract_region(self.session.get_latest_screen_image(), region)
             if self._is_stable(previous, current):
@@ -152,6 +160,18 @@ class Waiter:
                 stable_count = 0
             previous = current
         return False
+
+    def _sleep_interruptibly(self, seconds: float) -> None:
+        remaining = max(0.0, seconds)
+        while remaining > 0:
+            if self._stop_requested():
+                return
+            chunk = min(0.05, remaining)
+            time.sleep(chunk)
+            remaining -= chunk
+
+    def _stop_requested(self) -> bool:
+        return bool(getattr(self.session, "stop_requested", False))
 
     def _extract_region(
         self,

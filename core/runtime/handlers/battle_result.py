@@ -24,6 +24,8 @@ def wait_for_template(
     template_path = session.resources.template(filename, category=category)
     attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
     for attempt in range(attempts):
+        if getattr(session, "stop_requested", False):
+            return None
         match = session.recognizer.match(
             template_path,
             session.get_latest_screen_image(),
@@ -32,6 +34,8 @@ def wait_for_template(
             return match
         if attempt < attempts - 1:
             waiter.wait_seconds(f"等待模板出现：{filename}", poll_interval)
+            if getattr(session, "stop_requested", False):
+                return None
             session.refresh_screen()
     return None
 
@@ -70,6 +74,8 @@ def handle_ap_recovery_prompt(
         poll_interval=template_poll_interval,
     )
     if not bronze_pos:
+        if getattr(session, "stop_requested", False):
+            return True
         raise RuntimeError("已识别到行动力恢复界面，但未识别到青铜果实。")
     session.adb.click_raw(*bronze_pos)
     waiter.wait_seconds("已点击青铜果实", 0.5)
@@ -83,6 +89,8 @@ def handle_ap_recovery_prompt(
         poll_interval=template_poll_interval,
     )
     if not confirm_pos:
+        if getattr(session, "stop_requested", False):
+            return True
         raise RuntimeError("青铜果实数量不足，未能进入确认界面。")
     session.adb.click_raw(*confirm_pos)
     waiter.wait_seconds("已确认行动力恢复", 0.5)
@@ -106,6 +114,8 @@ def wait_for_post_ap_recovery_destination(
     loading_tips_template = session.resources.state_templates[GameState.LOADING_TIPS]
     attempts = max(1, math.ceil(max(0.0, timeout) / max(poll_interval, 0.1)))
     for attempt in range(attempts):
+        if getattr(session, "stop_requested", False):
+            return
         session.refresh_screen()
         screen = session.get_latest_screen_image()
         if session.recognizer.match(support_select_template, screen):
@@ -116,6 +126,8 @@ def wait_for_post_ap_recovery_destination(
             return
         if attempt < attempts - 1:
             waiter.wait_seconds("等待行动力恢复后续界面", poll_interval)
+            if getattr(session, "stop_requested", False):
+                return
     raise RuntimeError("行动力恢复确认后未在超时内进入下一轮界面，已停止运行。")
 
 
@@ -219,6 +231,8 @@ class BattleResultHandler:
             ),
         )
         for attempt in range(attempts):
+            if getattr(self.session, "stop_requested", False):
+                return
             self.session.refresh_screen()
             screen = self.session.get_latest_screen_image()
             for filename in candidate_templates:
@@ -232,6 +246,10 @@ class BattleResultHandler:
                     "等待结算页后续界面",
                     self.RESULT_TRANSITION_POLL_INTERVAL,
                 )
+                if getattr(self.session, "stop_requested", False):
+                    return
+        if getattr(self.session, "stop_requested", False):
+            return
         raise RuntimeError(
             f"结算页第 {current_stage} 段点击后未进入下一段，已停止运行。"
         )
@@ -261,6 +279,8 @@ class BattleResultHandler:
             ),
         )
         for attempt in range(attempts):
+            if getattr(self.session, "stop_requested", False):
+                return
             self.session.refresh_screen()
             screen = self.session.get_latest_screen_image()
             if self.session.recognizer.match(support_select_template, screen):
@@ -286,6 +306,10 @@ class BattleResultHandler:
                     "等待连续出击后续界面",
                     self.POST_CONTINUE_POLL_INTERVAL,
                 )
+                if getattr(self.session, "stop_requested", False):
+                    return
+        if getattr(self.session, "stop_requested", False):
+            return
         raise RuntimeError("连续出击后未在超时内进入助战选择或行动力恢复界面，已停止运行。")
 
     @staticmethod

@@ -46,6 +46,7 @@
 - `core/runtime/session.py`：运行时共享状态
 - `core/runtime/waiter.py`：页面级等待与同步
 - `core/runtime/handlers/`：按页面拆开的状态处理器
+- `core/gui/`：Qt 主程序、运行页、自定义操作序列页、坐标工具页和遮挡工具页
 
 后续改动默认以“不破坏这条链路”为前提。
 

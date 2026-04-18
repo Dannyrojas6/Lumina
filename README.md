@@ -47,6 +47,12 @@ uv sync
 uv run .\main.py
 ```
 
+Qt 主程序入口：
+
+```bash
+uv run python .\gui_main.py
+```
+
 ## 配置入口
 
 主配置文件在 [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml)。
@@ -103,6 +109,8 @@ uv run .\main.py
 ## 目录入口
 
 - [main.py](/D:/VSCodeRepository/Lumina/main.py)：程序入口
+- [gui_main.py](/D:/VSCodeRepository/Lumina/gui_main.py)：Qt 主程序入口
+- [core/gui](/D:/VSCodeRepository/Lumina/core/gui)：Qt GUI 主程序、运行页与工具页
 - [core/perception](/D:/VSCodeRepository/Lumina/core/perception)：模板识别与战斗 OCR
 - [core/support_recognition](/D:/VSCodeRepository/Lumina/core/support_recognition)：助战头像识别
 - [core/shared](/D:/VSCodeRepository/Lumina/core/shared)：配置、资源、坐标与基础类型
@@ -126,6 +134,7 @@ uv run .\main.py
 - [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
 - [analyze_command_cards.py](/D:/VSCodeRepository/Lumina/scripts/analyze_command_cards.py)：普通卡单图分析
 - [custom_sequence_recorder.py](/D:/VSCodeRepository/Lumina/scripts/custom_sequence_recorder.py)：自定义操作序列 GUI 录入器
+- [gui_main.py](/D:/VSCodeRepository/Lumina/gui_main.py)：统一 Qt 主程序入口
 - [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
 - [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
 - [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证

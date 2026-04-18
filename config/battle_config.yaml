@@ -2,8 +2,8 @@
 # 修改这个文件来调整每次刷本的策略，无需改代码
 
 loop_count: 10 # 刷本次数（-1 为无限循环）
-battle_mode: custom_sequence # main=主链路；custom_sequence=自定义操作序列战斗
-continue_battle: true # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
+battle_mode: main # main=主链路；custom_sequence=自定义操作序列战斗
+continue_battle: false # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
 default_skill_target: 3 # 技能释放后若出现选人界面，且动作本身没写 target，则默认选择该目标位
 match_threshold: 0.70 # 图像识别置信度阈值（0~1，越高越严格）
 log_level: DEBUG # 日志级别，可选 DEBUG/INFO/WARNING

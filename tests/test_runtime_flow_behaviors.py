@@ -395,6 +395,7 @@ class DummyLoadingSession:
     def __init__(self) -> None:
         self.resources = Mock()
         self.resources.template.return_value = "tips-template"
+        self.stop_requested = False
 
 
 class DummyUnknownSession:
@@ -724,6 +725,7 @@ class DummyPostCardWaitSession:
             }
         )
         self._screen = np.zeros((10, 10), dtype=np.uint8)
+        self.stop_requested = False
 
     def refresh_screen(self) -> str:
         if self._frame_index < len(self._frames) - 1:
@@ -751,6 +753,7 @@ class DummyStateExitSession:
             }
         )
         self._screen = np.zeros((10, 10), dtype=np.uint8)
+        self.stop_requested = False
 
     def refresh_screen(self) -> str:
         if self._frame_index < len(self._frames) - 1:
@@ -777,6 +780,7 @@ class DummySupportInteractionSession(DummySupportSession):
         self.resources.template.side_effect = lambda name, category="ui": name
         self._screen = np.zeros((10, 10), dtype=np.uint8)
         self.refresh_count = 0
+        self.stop_requested = False
 
     def get_latest_screen_image(self) -> np.ndarray:
         return self._screen
@@ -1896,6 +1900,37 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ),
         )
 
+    def test_support_click_returns_cleanly_when_manual_stop_requested(self) -> None:
+        handler = DummySupportTimingHandler()
+        handler.waiter.state_exit_result = None
+        handler.session.stop_requested = True
+
+        handler._wait_after_support_click("已点击助战")
+
+    def test_card_select_wait_after_plan_returns_cleanly_when_manual_stop_requested(
+        self,
+    ) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+        handler.session.stop_requested = True
+
+        CardSelectHandler._wait_after_card_plan(handler)
+
+    def test_loading_handler_returns_cleanly_when_manual_stop_requested(self) -> None:
+        handler = DummyLoadingHandler()
+        handler.waiter.template_disappear_result = False
+        handler.session.stop_requested = True
+
+        handler.handle()
+
+    def test_battle_result_stage_progress_returns_cleanly_when_manual_stop_requested(
+        self,
+    ) -> None:
+        handler = DummyBattleResultHandler(stage=2)
+        handler.session.stop_requested = True
+        handler.session.recognizer.match.return_value = None
+
+        handler._wait_for_result_stage_progress(2)
+
 
 class WaiterStateEntryTest(unittest.TestCase):
     def test_confirm_state_entry_support_select_adds_buffer_and_stability_check(
@@ -1967,6 +2002,25 @@ class WaiterStateExitTest(unittest.TestCase):
         )
         detector.detect.assert_called_once()
 
+    @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
+    def test_wait_state_exit_returns_none_immediately_when_stop_requested(
+        self,
+        _sleep_mock,
+    ) -> None:
+        session = DummyStateExitSession([{"support_select.png": (100, 100)}])
+        session.stop_requested = True
+        detector = Mock()
+        waiter = Waiter(session, detector)
+
+        result = waiter.wait_state_exit(
+            {GameState.SUPPORT_SELECT, GameState.UNKNOWN},
+            timeout=1.0,
+            poll_interval=0.01,
+        )
+
+        self.assertIsNone(result)
+        detector.detect.assert_not_called()
+
 
 class WaiterPostCardBattleEndTest(unittest.TestCase):
     @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
@@ -2010,6 +2064,23 @@ class WaiterPostCardBattleEndTest(unittest.TestCase):
         )
 
         self.assertEqual(result, GameState.BATTLE_RESULT)
+
+    @unittest.mock.patch("core.runtime.waiter.time.sleep", return_value=None)
+    def test_wait_post_card_battle_end_returns_none_immediately_when_stop_requested(
+        self,
+        _sleep_mock,
+    ) -> None:
+        session = DummyPostCardWaitSession([{"fight_menu.png": (100, 100)}])
+        session.stop_requested = True
+        waiter = Waiter(session, Mock())
+
+        result = waiter.wait_post_card_battle_end(
+            timeout=1.0,
+            poll_interval=0.01,
+            stable_hits=2,
+        )
+
+        self.assertIsNone(result)
 
 
 class StateDetectorCandidateTest(unittest.TestCase):
