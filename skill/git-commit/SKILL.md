@@ -33,12 +33,14 @@ Read [project-commit-policy.md](./references/project-commit-policy.md) before ac
    - support files
    - suggested verification commands
    - suggested Conventional commit title
+   - whether a commit body is recommended
 7. Ask for explicit confirmation on one group at a time.
 8. After a group is confirmed:
    - stage only that group's files
    - rerun the inspection to ensure the scope has not drifted
    - rerun the suggested verification commands
    - show the final Conventional commit title
+   - if the group is large or spans multiple subareas under one topic, also show the final commit body
    - wait for explicit confirmation again before `git commit`
 9. After one group is committed, inspect the remaining working tree again and continue with the next group if any remain.
 
@@ -51,7 +53,7 @@ Refuse to continue when any of these is true:
 - Any file is partially staged and partially unstaged
 - A file still cannot be assigned after the review-candidate pass
 - A group has no reliable verification command and is not docs-only
-- The suggested title cannot describe the group in one clear line
+- The final title, plus body when needed, still cannot describe the group clearly
 
 `review_candidates` are not a hard stop by themselves. They require an agent review pass and human confirmation before staging.
 
@@ -78,7 +80,7 @@ Refuse to continue when any of these is true:
 
 ## Commit Title Rules
 
-Use a one-line Conventional commit title:
+Default to a one-line Conventional commit title:
 
 - `feat`: new behavior or new capability
 - `fix`: user-visible bug fix
@@ -90,9 +92,11 @@ Use a one-line Conventional commit title:
 Requirements:
 
 - Keep it in English
-- Keep it short
 - Describe one commit group only
+- Keep the title concise but specific enough to identify the main scope and effect
 - Never merge unrelated themes into one title
+- When a group is large or touches multiple subareas under one topic, add a short commit body that lists the major changes
+- If the title plus body still feels vague, split the commit instead of hiding complexity
 
 ## Resources
 

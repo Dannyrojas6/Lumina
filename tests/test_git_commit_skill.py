@@ -40,11 +40,23 @@ class GitCommitSkillStructureTest(unittest.TestCase):
         self.assertIn("Do not attempt hunk splitting", content)
         self.assertIn("review_candidates", content)
 
+    def test_skill_allows_commit_body_for_large_groups(self) -> None:
+        content = SKILL_FILE.read_text(encoding="utf-8")
+        self.assertIn("whether a commit body is recommended", content)
+        self.assertIn("add a short commit body", content)
+        self.assertIn("split the commit instead of hiding complexity", content)
+
     def test_openai_yaml_mentions_grouped_workflow(self) -> None:
         content = OPENAI_YAML.read_text(encoding="utf-8")
         self.assertIn("full working tree", content)
         self.assertIn("commit groups", content)
         self.assertIn("review candidates", content)
+
+    def test_reference_policy_requires_detail_for_large_changes(self) -> None:
+        content = REFERENCE_FILE.read_text(encoding="utf-8")
+        self.assertIn("大改动或同一主题下覆盖多个子区域时", content)
+        self.assertIn("必要时补提交正文", content)
+        self.assertIn("标题加正文仍说不清", content)
 
 
 class GitCommitScopeInspectorTest(unittest.TestCase):
