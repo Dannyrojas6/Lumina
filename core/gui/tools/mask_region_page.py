@@ -220,8 +220,10 @@ class MaskCanvas(QWidget):
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#0b1015"))
+        painter.fillRect(self.rect(), QColor("#141414"))
         if self.image.isNull():
+            painter.setPen(QColor("#2a2a2a"))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "选择图片后拖拽添加遮挡块")
             return
         target = QRectF(
             self.offset.x(),
@@ -369,71 +371,99 @@ class MaskRegionToolPage(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(10)
 
-        toolbar = QHBoxLayout()
+        toolbar_frame = QFrame()
+        toolbar_frame.setProperty("panelRole", "card")
+        toolbar_frame.setProperty("layoutRole", "toolbar")
+        toolbar_layout = QHBoxLayout(toolbar_frame)
+        toolbar_layout.setContentsMargins(10, 7, 10, 7)
+        toolbar_layout.setSpacing(5)
         open_button = QPushButton("选择图片")
+        open_button.setObjectName("primaryButton")
         copy_export = QPushButton("复制导出文本")
-        remove_last = QPushButton("删除最后遮挡")
+        remove_last = QPushButton("撤销最后")
+        remove_last.setObjectName("warningButton")
         clear_masks = QPushButton("清空遮挡")
+        clear_masks.setObjectName("dangerButton")
         clear_all = QPushButton("清空全部")
+        clear_all.setObjectName("dangerButton")
         for button in (open_button, copy_export, remove_last, clear_masks, clear_all):
-            toolbar.addWidget(button)
-        toolbar.addStretch(1)
-        root.addLayout(toolbar)
+            toolbar_layout.addWidget(button)
+        toolbar_layout.addStretch(1)
+        badge_label = QLabel("遮挡块")
+        badge_label.setProperty("textRole", "muted")
+        toolbar_layout.addWidget(badge_label)
+        self.mask_count_badge = QLabel("0")
+        self.mask_count_badge.setProperty("textRole", "badge")
+        toolbar_layout.addWidget(self.mask_count_badge)
+        root.addWidget(toolbar_frame, stretch=0)
 
         content_row = QHBoxLayout()
-        content_row.setSpacing(12)
+        content_row.setSpacing(10)
         root.addLayout(content_row, stretch=1)
 
+        canvas_frame = QFrame()
+        canvas_frame.setProperty("panelRole", "surface")
+        canvas_frame.setProperty("layoutRole", "canvasPanel")
+        canvas_layout = QVBoxLayout(canvas_frame)
+        canvas_layout.setContentsMargins(10, 10, 10, 10)
+        canvas_layout.setSpacing(8)
+        overlay_row = QHBoxLayout()
+        overlay_row.setSpacing(6)
+        crop_title = QLabel("裁剪区")
+        crop_title.setProperty("textRole", "muted")
+        overlay_row.addWidget(crop_title)
+        self.crop_overlay_value = QLabel("—")
+        self.crop_overlay_value.setProperty("textRole", "mono")
+        overlay_row.addWidget(self.crop_overlay_value)
+        overlay_row.addStretch(1)
+        canvas_layout.addLayout(overlay_row)
         self.canvas = MaskCanvas()
         self.canvas.setObjectName("maskToolCanvas")
-        content_row.addWidget(self.canvas, stretch=1)
+        self.canvas.setMinimumHeight(440)
+        canvas_layout.addWidget(self.canvas, stretch=1)
+        content_row.addWidget(canvas_frame, stretch=1)
 
         side_panel = QFrame()
         side_panel.setObjectName("maskToolSidePanel")
-        side_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        side_panel.setFixedWidth(340)
+        side_panel.setProperty("panelRole", "card")
+        side_panel.setProperty("layoutRole", "sidePanel")
+        side_panel.setFixedWidth(210)
         side_layout = QVBoxLayout(side_panel)
-        side_layout.setContentsMargins(12, 12, 12, 12)
+        side_layout.setContentsMargins(10, 10, 10, 10)
         side_layout.setSpacing(10)
 
-        summary_row = QHBoxLayout()
-        self.crop_label = QLabel("裁剪区：-")
-        self.mask_count_label = QLabel("遮挡块数量：0")
-        summary_row.addWidget(self.crop_label, stretch=1)
-        summary_row.addWidget(self.mask_count_label, stretch=0)
-        side_layout.addLayout(summary_row)
+        self.crop_label = self._value_label("裁剪区：-")
+        self.mask_count_label = self._value_label("遮挡块数量：0")
+        side_layout.addWidget(self.crop_label)
+        side_layout.addWidget(self.mask_count_label)
 
-        side_layout.addWidget(QLabel("裁剪预览"))
+        side_layout.addWidget(self._section_label("裁剪预览"))
         self.crop_preview = QLabel()
-        self.crop_preview.setFixedHeight(180)
+        self.crop_preview.setProperty("previewRole", "toolPreview")
+        self.crop_preview.setFixedHeight(96)
         self.crop_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.crop_preview.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
-        self.crop_preview.setStyleSheet(
-            "background:#121920;border:1px solid #2d3946;"
-        )
         side_layout.addWidget(self.crop_preview)
 
-        side_layout.addWidget(QLabel("遮挡预览"))
+        side_layout.addWidget(self._section_label("遮挡预览"))
         self.mask_preview = QLabel()
-        self.mask_preview.setFixedHeight(180)
+        self.mask_preview.setProperty("previewRole", "toolPreview")
+        self.mask_preview.setFixedHeight(96)
         self.mask_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.mask_preview.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
-        self.mask_preview.setStyleSheet(
-            "background:#121920;border:1px solid #2d3946;"
-        )
         side_layout.addWidget(self.mask_preview)
 
-        side_layout.addWidget(QLabel("导出文本"))
+        side_layout.addWidget(self._section_label("导出文本"))
         self.export_edit = QTextEdit()
-        self.export_edit.setFixedHeight(220)
-        side_layout.addWidget(self.export_edit)
-        side_layout.addStretch(1)
+        self.export_edit.setProperty("editorRole", "export")
+        self.export_edit.setMinimumHeight(160)
+        side_layout.addWidget(self.export_edit, stretch=1)
         content_row.addWidget(side_panel, stretch=0)
 
         open_button.clicked.connect(self._choose_image)
@@ -443,12 +473,8 @@ class MaskRegionToolPage(QWidget):
         remove_last.clicked.connect(self.canvas.remove_last_mask)
         clear_masks.clicked.connect(self.canvas.clear_masks)
         clear_all.clicked.connect(self.canvas.clear_all)
-        self.canvas.crop_changed.connect(
-            lambda text: self.crop_label.setText(f"裁剪区：{text}")
-        )
-        self.canvas.mask_count_changed.connect(
-            lambda text: self.mask_count_label.setText(f"遮挡块数量：{text}")
-        )
+        self.canvas.crop_changed.connect(self._on_crop_changed)
+        self.canvas.mask_count_changed.connect(self._on_mask_count_changed)
         self.canvas.export_changed.connect(self.export_edit.setPlainText)
         self.canvas.previews_changed.connect(self._set_previews)
 
@@ -478,3 +504,22 @@ class MaskRegionToolPage(QWidget):
                 Qt.TransformationMode.SmoothTransformation,
             )
         )
+
+    def _on_crop_changed(self, text: str) -> None:
+        self.crop_label.setText(f"裁剪区：{text}")
+        self.crop_overlay_value.setText(text)
+
+    def _on_mask_count_changed(self, text: str) -> None:
+        self.mask_count_label.setText(f"遮挡块数量：{text}")
+        self.mask_count_badge.setText(text)
+
+    def _section_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("textRole", "section")
+        return label
+
+    def _value_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setProperty("textRole", "muted")
+        return label

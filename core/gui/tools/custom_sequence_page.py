@@ -6,16 +6,15 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QDialog,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QPushButton,
-    QSplitter,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -42,8 +41,13 @@ class TargetDialog(QDialog):
         self.setWindowTitle(title)
         self.selected_target: int | None | object = TARGET_CANCEL
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel(title))
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+        label = QLabel(title)
+        label.setWordWrap(True)
+        layout.addWidget(label)
         row = QHBoxLayout()
+        row.setSpacing(6)
         for index in (1, 2, 3):
             button = QPushButton(f"从者 {index}")
             button.clicked.connect(
@@ -81,10 +85,11 @@ class CustomSequencePage(QWidget):
         self._store_current_turn_state()
         self.wave_spin.blockSignals(True)
         self.turn_spin.blockSignals(True)
-        self.wave_spin.setValue(max(wave, 1))
+        self.wave_spin.setValue(max(min(wave, 3), 1))
         self.turn_spin.setValue(max(turn, 1))
         self.wave_spin.blockSignals(False)
         self.turn_spin.blockSignals(False)
+        self._sync_wave_buttons()
         self._load_current_turn_state()
 
     def add_enemy_target_action(self, target: int) -> None:
@@ -92,6 +97,7 @@ class CustomSequencePage(QWidget):
             CustomSequenceAction(type="enemy_target", target=target)
         )
         self._refresh_lists()
+        self._refresh_side_summary()
 
     def save_sequence(self) -> None:
         self._store_current_turn_state()
@@ -102,167 +108,211 @@ class CustomSequencePage(QWidget):
         )
         self.status_label.setText("已保存当前操作序列")
         self._refresh_side_summary()
+        self._refresh_history_and_overview()
 
     def _build_ui(self) -> None:
-        root = QVBoxLayout(self)
+        root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(10)
 
-        content_row = QHBoxLayout()
-        content_row.setSpacing(10)
-        root.addLayout(content_row, stretch=1)
+        left_panel = self._make_card("customSequenceInputPanel", layout_role="sidePanel")
+        left_panel.setFixedWidth(230)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(10, 10, 10, 10)
+        left_layout.setSpacing(10)
 
-        main_panel = QWidget()
-        main_layout = QVBoxLayout(main_panel)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(10)
-
-        top_row = QHBoxLayout()
-        top_row.addWidget(QLabel("序列文件"))
-        self.sequence_name_edit = QLineEdit()
-        top_row.addWidget(self.sequence_name_edit, stretch=1)
-        load_button = QPushButton("加载")
-        top_row.addWidget(load_button)
-        main_layout.addLayout(top_row)
-
-        turn_row = QHBoxLayout()
-        turn_row.addWidget(QLabel("Wave"))
+        left_layout.addWidget(self._section_label("Wave"))
         self.wave_spin = QSpinBox()
         self.wave_spin.setMinimum(1)
-        turn_row.addWidget(self.wave_spin)
-        turn_row.addWidget(QLabel("Turn"))
+        self.wave_spin.setMaximum(3)
+        self.wave_button_group = QButtonGroup(self)
+        self.wave_button_group.setExclusive(True)
+        wave_row = QHBoxLayout()
+        wave_row.setSpacing(0)
+        self.wave_buttons: dict[int, QPushButton] = {}
+        for value in (1, 2, 3):
+            button = self._pill_button(f"W{value}", checked=value == 1)
+            button.clicked.connect(
+                lambda _checked=False, current=value: self._set_wave_from_button(current)
+            )
+            self.wave_button_group.addButton(button, value)
+            self.wave_buttons[value] = button
+            wave_row.addWidget(button)
+        left_layout.addLayout(wave_row)
+
+        left_layout.addWidget(self._section_label("Turn"))
         self.turn_spin = QSpinBox()
         self.turn_spin.setMinimum(1)
-        turn_row.addWidget(self.turn_spin)
-        turn_row.addStretch(1)
-        main_layout.addLayout(turn_row)
+        self.turn_spin.setMaximum(99)
+        left_layout.addWidget(self.turn_spin)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._build_action_panel())
-        splitter.addWidget(self._build_list_panel())
-        splitter.setSizes([620, 520])
-        main_layout.addWidget(splitter, stretch=1)
-        content_row.addWidget(main_panel, stretch=1)
+        left_layout.addWidget(self._divider())
 
-        side_panel = QFrame()
-        side_panel.setObjectName("customSequenceSidePanel")
-        side_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        side_panel.setMaximumWidth(360)
-        side_panel.setMinimumWidth(300)
+        left_layout.addWidget(self._section_label("敌方目标"))
+        enemy_row = QHBoxLayout()
+        enemy_row.setSpacing(5)
+        for index in (1, 2, 3):
+            button = QPushButton(f"敌方 {index}")
+            button.clicked.connect(
+                lambda _checked=False, value=index: self.add_enemy_target_action(value)
+            )
+            enemy_row.addWidget(button)
+        left_layout.addLayout(enemy_row)
+
+        left_layout.addWidget(self._divider())
+        left_layout.addWidget(self._section_label("从者技能"))
+        servant_grid = QGridLayout()
+        servant_grid.setHorizontalSpacing(4)
+        servant_grid.setVerticalSpacing(4)
+        for servant in (1, 2, 3):
+            servant_tag = QLabel(f"从{servant}")
+            servant_tag.setProperty("textRole", "muted")
+            servant_grid.addWidget(servant_tag, servant - 1, 0)
+            for skill in (1, 2, 3):
+                button = QPushButton(f"技{skill}")
+                button.clicked.connect(
+                    lambda _checked=False, actor=servant, value=skill: self._add_servant_skill(actor, value)
+                )
+                servant_grid.addWidget(button, servant - 1, skill)
+            noble_button = QPushButton("NP")
+            noble_button.setObjectName("primaryButton")
+            noble_button.clicked.connect(
+                lambda _checked=False, index=servant: self._add_noble(index)
+            )
+            servant_grid.addWidget(noble_button, servant - 1, 4)
+        left_layout.addLayout(servant_grid)
+
+        left_layout.addWidget(self._divider())
+        left_layout.addWidget(self._section_label("御主技能"))
+        master_row = QHBoxLayout()
+        master_row.setSpacing(5)
+        for skill in (1, 2):
+            button = QPushButton(f"御主 {skill}")
+            button.clicked.connect(
+                lambda _checked=False, value=skill: self._add_master_skill(value)
+            )
+            master_row.addWidget(button)
+        left_layout.addLayout(master_row)
+        disabled = QPushButton("御主 3 (未支持)")
+        disabled.setEnabled(False)
+        left_layout.addWidget(disabled)
+
+        left_layout.addStretch(1)
+        history_card = self._make_card(layout_role="editorPanel")
+        history_layout = QVBoxLayout(history_card)
+        history_layout.setContentsMargins(8, 8, 8, 8)
+        history_layout.setSpacing(6)
+        history_layout.addWidget(self._section_label("最近操作"))
+        self.history_list = QListWidget()
+        self.history_list.setMinimumHeight(120)
+        history_layout.addWidget(self.history_list)
+        left_layout.addWidget(history_card, stretch=1)
+        root.addWidget(left_panel, stretch=0)
+
+        center_panel = QWidget()
+        center_layout = QVBoxLayout(center_panel)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(8)
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
+        top_row.addWidget(self._build_list_panel("当前回合 · 动作", noble_panel=False), stretch=1)
+        top_row.addWidget(self._build_list_panel("当前回合 · 宝具", noble_panel=True), stretch=1)
+        center_layout.addLayout(top_row, stretch=1)
+
+        bottom_card = self._make_card(layout_role="toolbar")
+        bottom_layout = QHBoxLayout(bottom_card)
+        bottom_layout.setContentsMargins(10, 8, 10, 8)
+        bottom_layout.setSpacing(6)
+        sequence_label = QLabel("序列文件")
+        sequence_label.setProperty("textRole", "muted")
+        bottom_layout.addWidget(sequence_label)
+        self.sequence_name_edit = QLineEdit()
+        bottom_layout.addWidget(self.sequence_name_edit, stretch=1)
+        load_button = QPushButton("加载")
+        bottom_layout.addWidget(load_button)
+        center_layout.addWidget(bottom_card, stretch=0)
+        root.addWidget(center_panel, stretch=1)
+
+        side_panel = self._make_card("customSequenceSidePanel", layout_role="sidePanel")
+        side_panel.setFixedWidth(200)
         side_layout = QVBoxLayout(side_panel)
-        side_layout.setContentsMargins(12, 12, 12, 12)
+        side_layout.setContentsMargins(10, 10, 10, 10)
         side_layout.setSpacing(10)
-        side_layout.addWidget(QLabel("当前摘要"))
-        self.summary_sequence_label = QLabel("序列：-")
-        self.summary_turn_label = QLabel("回合：-")
-        self.summary_actions_label = QLabel("动作数：0")
-        self.summary_nobles_label = QLabel("宝具数：0")
+        side_layout.addWidget(self._section_label("当前摘要"))
+        self.summary_sequence_label = self._value_label("序列：-")
+        self.summary_turn_label = self._value_label("回合：-")
+        self.summary_actions_label = self._value_label("动作数：0")
+        self.summary_nobles_label = self._value_label("宝具数：0")
         for label in (
             self.summary_sequence_label,
             self.summary_turn_label,
             self.summary_actions_label,
             self.summary_nobles_label,
         ):
-            label.setWordWrap(True)
             side_layout.addWidget(label)
-        self.save_button = QPushButton("保存")
+
+        self.save_button = QPushButton("保存当前配置")
+        self.save_button.setObjectName("successButton")
         side_layout.addWidget(self.save_button)
-        self.status_label = QLabel("等待编辑")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.status_label.setWordWrap(True)
+
+        side_layout.addWidget(self._section_label("Wave 总览"))
+        self.wave_overview_list = QListWidget()
+        self.wave_overview_list.setMinimumHeight(140)
+        side_layout.addWidget(self.wave_overview_list, stretch=1)
+
+        self.status_label = self._value_label("等待编辑")
         side_layout.addWidget(self.status_label)
-        side_layout.addStretch(1)
-        content_row.addWidget(side_panel, stretch=0)
+        root.addWidget(side_panel, stretch=0)
 
         load_button.clicked.connect(self._load_selected_sequence)
         self.save_button.clicked.connect(self.save_sequence)
-        self.wave_spin.valueChanged.connect(self._load_current_turn_state)
-        self.turn_spin.valueChanged.connect(self._load_current_turn_state)
+        self.wave_spin.valueChanged.connect(self._on_turn_selector_changed)
+        self.turn_spin.valueChanged.connect(self._on_turn_selector_changed)
 
-    def _build_action_panel(self) -> QWidget:
-        panel = QWidget()
+    def _build_list_panel(self, title: str, *, noble_panel: bool) -> QWidget:
+        panel = self._make_card(layout_role="editorPanel")
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(0)
 
-        enemy_group = QGroupBox("敌方目标")
-        enemy_layout = QHBoxLayout(enemy_group)
-        for index in (1, 2, 3):
-            button = QPushButton(f"敌方 {index}")
-            button.clicked.connect(
-                lambda _checked=False, value=index: self.add_enemy_target_action(value)
-            )
-            enemy_layout.addWidget(button)
-        layout.addWidget(enemy_group)
+        header = QHBoxLayout()
+        header.setContentsMargins(10, 8, 10, 8)
+        header.addWidget(self._section_label(title))
+        header.addStretch(1)
+        count = QLabel("0 项")
+        count.setProperty("textRole", "badge")
+        header.addWidget(count)
+        layout.addLayout(header)
 
-        servant_group = QGroupBox("从者技能")
-        servant_layout = QGridLayout(servant_group)
-        for servant in (1, 2, 3):
-            servant_layout.addWidget(QLabel(f"从者 {servant}"), servant - 1, 0)
-            for skill in (1, 2, 3):
-                button = QPushButton(f"技{skill}")
-                button.clicked.connect(
-                    lambda _checked=False, actor=servant, value=skill: self._add_servant_skill(actor, value)
-                )
-                servant_layout.addWidget(button, servant - 1, skill)
-            noble_button = QPushButton("NP")
-            noble_button.clicked.connect(
-                lambda _checked=False, index=servant: self._add_noble(index)
-            )
-            servant_layout.addWidget(noble_button, servant - 1, 4)
-        layout.addWidget(servant_group)
+        body = QVBoxLayout()
+        body.setContentsMargins(8, 0, 8, 8)
+        body.setSpacing(8)
+        list_widget = QListWidget()
+        body.addWidget(list_widget, stretch=1)
+        buttons = QHBoxLayout()
+        buttons.setSpacing(4)
+        remove_button = QPushButton("删除")
+        move_up = QPushButton("↑ 上移")
+        move_down = QPushButton("↓ 下移")
+        buttons.addWidget(remove_button)
+        buttons.addWidget(move_up)
+        buttons.addWidget(move_down)
+        body.addLayout(buttons)
+        layout.addLayout(body, stretch=1)
 
-        master_group = QGroupBox("御主技能")
-        master_layout = QHBoxLayout(master_group)
-        for skill in (1, 2):
-            button = QPushButton(f"御主 {skill}")
-            button.clicked.connect(
-                lambda _checked=False, value=skill: self._add_master_skill(value)
-            )
-            master_layout.addWidget(button)
-        disabled = QPushButton("御主 3（未支持）")
-        disabled.setEnabled(False)
-        master_layout.addWidget(disabled)
-        layout.addWidget(master_group)
-        layout.addStretch(1)
-        return panel
-
-    def _build_list_panel(self) -> QWidget:
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-
-        layout.addWidget(QLabel("当前回合动作"))
-        self.actions_list = QListWidget()
-        layout.addWidget(self.actions_list, stretch=1)
-        action_buttons = QHBoxLayout()
-        remove_action = QPushButton("删除动作")
-        move_action_up = QPushButton("动作上移")
-        move_action_down = QPushButton("动作下移")
-        action_buttons.addWidget(remove_action)
-        action_buttons.addWidget(move_action_up)
-        action_buttons.addWidget(move_action_down)
-        layout.addLayout(action_buttons)
-
-        layout.addWidget(QLabel("当前回合宝具"))
-        self.nobles_list = QListWidget()
-        layout.addWidget(self.nobles_list, stretch=1)
-        noble_buttons = QHBoxLayout()
-        remove_noble = QPushButton("删除宝具")
-        move_noble_up = QPushButton("宝具上移")
-        move_noble_down = QPushButton("宝具下移")
-        noble_buttons.addWidget(remove_noble)
-        noble_buttons.addWidget(move_noble_up)
-        noble_buttons.addWidget(move_noble_down)
-        layout.addLayout(noble_buttons)
-
-        remove_action.clicked.connect(self._remove_selected_action)
-        move_action_up.clicked.connect(lambda: self._move_action(-1))
-        move_action_down.clicked.connect(lambda: self._move_action(1))
-        remove_noble.clicked.connect(self._remove_selected_noble)
-        move_noble_up.clicked.connect(lambda: self._move_noble(-1))
-        move_noble_down.clicked.connect(lambda: self._move_noble(1))
+        if noble_panel:
+            self.nobles_list = list_widget
+            self.nobles_count_label = count
+            remove_button.clicked.connect(self._remove_selected_noble)
+            move_up.clicked.connect(lambda: self._move_noble(-1))
+            move_down.clicked.connect(lambda: self._move_noble(1))
+        else:
+            self.actions_list = list_widget
+            self.actions_count_label = count
+            remove_button.clicked.connect(self._remove_selected_action)
+            move_up.clicked.connect(lambda: self._move_action(-1))
+            move_down.clicked.connect(lambda: self._move_action(1))
         return panel
 
     def _load_selected_sequence(self) -> None:
@@ -274,6 +324,7 @@ class CustomSequencePage(QWidget):
         self._load_current_turn_state()
         self.status_label.setText(f"已加载序列：{selected}")
         self._refresh_side_summary()
+        self._refresh_history_and_overview()
 
     def _current_turn_key(self) -> tuple[int, int]:
         return (self.wave_spin.value(), self.turn_spin.value())
@@ -291,6 +342,7 @@ class CustomSequencePage(QWidget):
         self._current_turn_state = self.turn_map.get(key, TurnEditorState()).clone()
         self._refresh_lists()
         self._refresh_side_summary()
+        self._refresh_history_and_overview()
 
     def _refresh_lists(self) -> None:
         self.actions_list.clear()
@@ -299,11 +351,13 @@ class CustomSequencePage(QWidget):
         self.nobles_list.clear()
         for noble in self._current_turn_state.nobles:
             self.nobles_list.addItem(format_noble_text(noble))
+        self.actions_count_label.setText(f"{len(self._current_turn_state.actions)} 项")
+        self.nobles_count_label.setText(f"{len(self._current_turn_state.nobles)} 项")
 
     def _refresh_side_summary(self) -> None:
         self.summary_sequence_label.setText(f"序列：{self.current_sequence_name() or '-'}")
         self.summary_turn_label.setText(
-            f"回合：Wave {self.wave_spin.value()} / Turn {self.turn_spin.value()}"
+            f"当前：Wave {self.wave_spin.value()} / Turn {self.turn_spin.value()}"
         )
         self.summary_actions_label.setText(
             f"动作数：{len(self._current_turn_state.actions)}"
@@ -311,6 +365,29 @@ class CustomSequencePage(QWidget):
         self.summary_nobles_label.setText(
             f"宝具数：{len(self._current_turn_state.nobles)}"
         )
+
+    def _refresh_history_and_overview(self) -> None:
+        self.history_list.clear()
+        if not self.turn_map:
+            self.history_list.addItem("待配置…")
+        else:
+            for (wave, turn), state in sorted(self.turn_map.items())[-6:]:
+                action_count = len(state.actions)
+                noble_count = len(state.nobles)
+                self.history_list.addItem(
+                    f"W{wave}T{turn} · 技能×{action_count} · 宝具×{noble_count}"
+                )
+
+        self.wave_overview_list.clear()
+        if not self.turn_map:
+            self.wave_overview_list.addItem("未配置")
+            return
+        for (wave, turn), state in sorted(self.turn_map.items()):
+            action_count = len(state.actions)
+            noble_count = len(state.nobles)
+            self.wave_overview_list.addItem(
+                f"W{wave} T{turn} · 技能×{action_count} · 宝具×{noble_count}"
+            )
 
     def _ask_target(self, title: str) -> int | None | object:
         dialog = TargetDialog(title, self)
@@ -389,3 +466,54 @@ class CustomSequencePage(QWidget):
         self._refresh_lists()
         self.nobles_list.setCurrentRow(target)
         self._refresh_side_summary()
+
+    def _on_turn_selector_changed(self, *_args) -> None:
+        self._sync_wave_buttons()
+        self._load_current_turn_state()
+
+    def _set_wave_from_button(self, wave: int) -> None:
+        self.wave_spin.setValue(wave)
+
+    def _sync_wave_buttons(self) -> None:
+        current = self.wave_spin.value()
+        for value, button in self.wave_buttons.items():
+            button.setChecked(value == current)
+
+    def _pill_button(self, text: str, *, checked: bool = False) -> QPushButton:
+        button = QPushButton(text)
+        button.setProperty("buttonRole", "pillToggle")
+        button.setCheckable(True)
+        button.setChecked(checked)
+        return button
+
+    def _make_card(
+        self,
+        object_name: str | None = None,
+        *,
+        layout_role: str | None = None,
+    ) -> QFrame:
+        frame = QFrame()
+        if object_name:
+            frame.setObjectName(object_name)
+        frame.setProperty("panelRole", "card")
+        if layout_role:
+            frame.setProperty("layoutRole", layout_role)
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
+        return frame
+
+    def _section_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("textRole", "section")
+        return label
+
+    def _value_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setProperty("textRole", "muted")
+        return label
+
+    def _divider(self) -> QFrame:
+        divider = QFrame()
+        divider.setProperty("separatorRole", "divider")
+        divider.setFixedHeight(1)
+        return divider

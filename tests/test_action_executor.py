@@ -47,6 +47,26 @@ class BattleActionTimingTest(unittest.TestCase):
         self.assertEqual(sleep_mock.call_args_list[0].args[0], 0.2)
         self.assertIn("已切换敌方目标=2", captured.output[-1])
 
+    @patch("core.battle_runtime.action_executor.time.sleep")
+    def test_interruptible_wait_stops_mid_skill_delay(
+        self,
+        sleep_mock,
+    ) -> None:
+        adb = Mock()
+        stop_states = iter([False, False, True])
+        action = BattleAction(
+            adb,
+            skill_interval=0.5,
+            stop_requested=lambda: next(stop_states, True),
+        )
+
+        action.finish_servant_skill(1)
+
+        self.assertEqual(
+            [call.args[0] for call in sleep_mock.call_args_list],
+            [0.1, 0.1],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

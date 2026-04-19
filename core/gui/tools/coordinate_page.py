@@ -147,8 +147,10 @@ class CoordinateCanvas(QWidget):
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#0b1015"))
+        painter.fillRect(self.rect(), QColor("#141414"))
         if self.image.isNull():
+            painter.setPen(QColor("#2a2a2a"))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "选择图片后在此处操作")
             return
         target = QRectF(
             self.offset.x(),
@@ -161,14 +163,8 @@ class CoordinateCanvas(QWidget):
         if self.latest_point is not None:
             horizontal, vertical = self.crosshair_segments(self.latest_point)
             painter.setPen(QPen(QColor("#f7d24b"), 2))
-            painter.drawLine(
-                QPointF(*horizontal[0]),
-                QPointF(*horizontal[1]),
-            )
-            painter.drawLine(
-                QPointF(*vertical[0]),
-                QPointF(*vertical[1]),
-            )
+            painter.drawLine(QPointF(*horizontal[0]), QPointF(*horizontal[1]))
+            painter.drawLine(QPointF(*vertical[0]), QPointF(*vertical[1]))
         rect_to_draw = self.active_rect_to_draw()
         if rect_to_draw is not None:
             x1, y1, x2, y2 = rect_to_draw
@@ -255,49 +251,70 @@ class CoordinateToolPage(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(10)
 
-        toolbar = QHBoxLayout()
+        toolbar_frame = QFrame()
+        toolbar_frame.setProperty("panelRole", "card")
+        toolbar_frame.setProperty("layoutRole", "toolbar")
+        toolbar_layout = QHBoxLayout(toolbar_frame)
+        toolbar_layout.setContentsMargins(10, 7, 10, 7)
+        toolbar_layout.setSpacing(6)
         open_button = QPushButton("选择图片")
-        toolbar.addWidget(open_button)
-        toolbar.addStretch(1)
-        root.addLayout(toolbar)
+        open_button.setObjectName("primaryButton")
+        toolbar_layout.addWidget(open_button)
+        toolbar_layout.addStretch(1)
+        self.toolbar_file_label = QLabel("未选择文件")
+        self.toolbar_file_label.setProperty("textRole", "mono")
+        toolbar_layout.addWidget(self.toolbar_file_label)
+        root.addWidget(toolbar_frame, stretch=0)
 
         content_row = QHBoxLayout()
         content_row.setSpacing(10)
         root.addLayout(content_row, stretch=1)
 
+        canvas_frame = QFrame()
+        canvas_frame.setObjectName("coordinateCanvasFrame")
+        canvas_frame.setProperty("panelRole", "surface")
+        canvas_frame.setProperty("layoutRole", "canvasPanel")
+        canvas_layout = QVBoxLayout(canvas_frame)
+        canvas_layout.setContentsMargins(10, 10, 10, 10)
+        canvas_layout.setSpacing(8)
+        overlay_bar = QHBoxLayout()
+        overlay_bar.setSpacing(10)
+        overlay_bar.addWidget(self._overlay_item("倍率", "—", "overlayScaleValue"))
+        overlay_bar.addWidget(self._overlay_item("X", "—", "overlayXValue"))
+        overlay_bar.addWidget(self._overlay_item("Y", "—", "overlayYValue"))
+        overlay_bar.addStretch(1)
+        canvas_layout.addLayout(overlay_bar)
         self.canvas = CoordinateCanvas()
-        content_row.addWidget(self.canvas, stretch=1)
+        self.canvas.setObjectName("coordinateCanvas")
+        self.canvas.setMinimumHeight(420)
+        canvas_layout.addWidget(self.canvas, stretch=1)
+        content_row.addWidget(canvas_frame, stretch=1)
 
         info_frame = QFrame()
         info_frame.setObjectName("coordinateToolSidePanel")
-        info_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        info_frame.setMaximumWidth(360)
-        info_frame.setMinimumWidth(300)
+        info_frame.setProperty("panelRole", "card")
+        info_frame.setProperty("layoutRole", "sidePanel")
+        info_frame.setFixedWidth(210)
         info_layout = QVBoxLayout(info_frame)
-        info_layout.setContentsMargins(12, 12, 12, 12)
+        info_layout.setContentsMargins(10, 10, 10, 10)
         info_layout.setSpacing(10)
 
-        self.file_label = QLabel("文件：未选择")
-        self.scale_label = QLabel("倍率：-")
-        self.cursor_label = QLabel("当前坐标：-")
-        self.point_label = QLabel("最新点：-")
-        self.rect_label = QLabel("最新矩形：-")
-        labels = [
+        info_layout.addWidget(self._section_label("坐标记录"))
+        self.file_label = self._value_label("文件：未选择")
+        self.scale_label = self._value_label("倍率：-")
+        self.cursor_label = self._value_label("当前坐标：-")
+        self.point_label = self._value_label("最新点：-")
+        self.rect_label = self._value_label("最新矩形：-")
+        for label in (
             self.file_label,
             self.scale_label,
             self.cursor_label,
             self.point_label,
             self.rect_label,
-        ]
-        for label in labels:
-            label.setWordWrap(True)
+        ):
+            info_layout.addWidget(label)
 
-        info_layout.addWidget(self.file_label)
-        info_layout.addWidget(self.scale_label)
-        info_layout.addWidget(self.cursor_label)
-        info_layout.addWidget(self.point_label)
-        info_layout.addWidget(self.rect_label)
-
+        info_layout.addWidget(self._section_label("复制"))
         self.copy_point_button = QPushButton("复制点坐标")
         self.copy_rect_button = QPushButton("复制矩形坐标")
         info_layout.addWidget(self.copy_point_button)
@@ -316,18 +333,14 @@ class CoordinateToolPage(QWidget):
                 self.rect_label.text().split("：", 1)[-1]
             )
         )
-        self.canvas.cursor_changed.connect(
-            lambda text: self.cursor_label.setText(f"当前坐标：{text}")
-        )
+        self.canvas.cursor_changed.connect(self._on_cursor_changed)
         self.canvas.point_changed.connect(
             lambda text: self.point_label.setText(f"最新点：{text}")
         )
         self.canvas.rect_changed.connect(
             lambda text: self.rect_label.setText(f"最新矩形：{text}")
         )
-        self.canvas.scale_changed.connect(
-            lambda text: self.scale_label.setText(f"倍率：{text}")
-        )
+        self.canvas.scale_changed.connect(self._on_scale_changed)
 
     def _choose_image(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -340,4 +353,53 @@ class CoordinateToolPage(QWidget):
             return
         path = Path(file_path)
         self.file_label.setText(f"文件：{path}")
+        self.toolbar_file_label.setText(path.name)
         self.canvas.set_image(path)
+
+    def _on_cursor_changed(self, text: str) -> None:
+        self.cursor_label.setText(f"当前坐标：{text}")
+        x_text, y_text = self._split_point_text(text)
+        self.overlay_x_value.setText(x_text)
+        self.overlay_y_value.setText(y_text)
+
+    def _on_scale_changed(self, text: str) -> None:
+        self.scale_label.setText(f"倍率：{text}")
+        self.overlay_scale_value.setText(text)
+
+    def _overlay_item(self, label: str, value: str, object_name: str) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        key = QLabel(label)
+        key.setProperty("textRole", "muted")
+        layout.addWidget(key)
+        value_label = QLabel(value)
+        value_label.setObjectName(object_name)
+        value_label.setProperty("textRole", "mono")
+        layout.addWidget(value_label)
+        if object_name == "overlayScaleValue":
+            self.overlay_scale_value = value_label
+        elif object_name == "overlayXValue":
+            self.overlay_x_value = value_label
+        else:
+            self.overlay_y_value = value_label
+        return container
+
+    def _section_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("textRole", "section")
+        return label
+
+    def _value_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setProperty("textRole", "muted")
+        return label
+
+    def _split_point_text(self, text: str) -> tuple[str, str]:
+        if not text.startswith("(") or "," not in text:
+            return ("—", "—")
+        body = text.strip("() ")
+        left, right = body.split(",", 1)
+        return (left.strip(), right.strip())

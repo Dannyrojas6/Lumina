@@ -108,6 +108,9 @@ class AutomationEngine:
         log.info("脚本启动，进入主循环")
         max_loops = self.session.config.loop_count
         while max_loops < 0 or self.session.loop_done < max_loops:
+            if self.session.stop_requested:
+                log.info("收到停止标记，主循环结束")
+                break
             detection = self.state_detector.detect(
                 candidates=self._candidate_states(self.session.state)
             )
@@ -122,7 +125,9 @@ class AutomationEngine:
             handler = self.handlers.get(self.session.state)
             if handler is None:
                 self.unknown_handler.handle(detection)
-                self.waiter.wait_seconds("等待下一次状态识别", 0.5)
+                if self.session.stop_requested:
+                    log.info("收到停止标记，主循环结束")
+                    break
                 continue
             handler.handle()
             if self.session.stop_requested:

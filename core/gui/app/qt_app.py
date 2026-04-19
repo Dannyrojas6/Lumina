@@ -6,6 +6,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+from core.gui.app.style import build_app_stylesheet
+
 
 def ensure_qt_application() -> QApplication:
     """返回当前进程唯一的 QApplication。"""
@@ -15,4 +17,5 @@ def ensure_qt_application() -> QApplication:
         app.setApplicationName("Lumina")
         app.setOrganizationName("Lumina")
         app.setStyle("Fusion")
+        app.setStyleSheet(build_app_stylesheet())
     return app

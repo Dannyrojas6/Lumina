@@ -21,9 +21,15 @@ class CustomSequenceExecutor:
 
     def execute_turn_plan(self, plan: CustomTurnPlan) -> None:
         for action in plan.actions:
+            if getattr(self.session, "stop_requested", False):
+                return
             self.execute_action(action)
+            if getattr(self.session, "stop_requested", False):
+                return
 
     def execute_action(self, action: CustomSequenceAction) -> None:
+        if getattr(self.session, "stop_requested", False):
+            return
         if action.type == "enemy_target":
             assert action.target is not None
             self.session.battle.select_enemy_target(action.target)
@@ -57,6 +63,8 @@ class CustomSequenceExecutor:
         target: int | None,
         finish,
     ) -> None:
+        if getattr(self.session, "stop_requested", False):
+            return
         if target is None:
             if self._wait_for_servant_target_window(self.NO_TARGET_WINDOW_TIMEOUT):
                 raise RuntimeError("录入为无己方目标，但技能实际弹出了己方选人界面")
@@ -64,8 +72,12 @@ class CustomSequenceExecutor:
             return
 
         if not self._wait_for_servant_target_window(self.TARGET_WINDOW_TIMEOUT):
+            if getattr(self.session, "stop_requested", False):
+                return
             raise RuntimeError("录入要求选择己方目标，但技能实际没有弹出己方选人界面")
         self.session.battle.select_servant_target(target)
+        if getattr(self.session, "stop_requested", False):
+            return
         finish(target)
 
     def _wait_for_servant_target_window(self, timeout: float) -> bool:
@@ -78,6 +90,8 @@ class CustomSequenceExecutor:
             category="battle",
         )
         for attempt in range(attempts):
+            if getattr(self.session, "stop_requested", False):
+                return False
             self.session.refresh_screen()
             match = self.session.recognizer.match(
                 template_path,
@@ -86,7 +100,7 @@ class CustomSequenceExecutor:
             if match:
                 return True
             if attempt < attempts - 1:
-                time.sleep(self.TARGET_WINDOW_POLL_INTERVAL)
+                self._sleep_interruptibly(self.TARGET_WINDOW_POLL_INTERVAL)
         return False
 
     @staticmethod
@@ -104,3 +118,12 @@ class CustomSequenceExecutor:
             self.session.battle.finish_master_skill(skill)
             return
         self.session.battle.finish_master_skill(skill, target=target)
+
+    def _sleep_interruptibly(self, seconds: float) -> None:
+        remaining = max(0.0, seconds)
+        while remaining > 0:
+            if getattr(self.session, "stop_requested", False):
+                return
+            chunk = min(0.05, remaining)
+            time.sleep(chunk)
+            remaining -= chunk

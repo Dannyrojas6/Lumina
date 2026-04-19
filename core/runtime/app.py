@@ -112,6 +112,7 @@ def build_runtime(
             debug_dir=resources.ocr_debug_dir,
         )
     log.debug("开始组装主流程")
+    session: RuntimeSession | None = None
     session = RuntimeSession(
         adb=adb_ctl,
         recognizer=recognizer,
@@ -123,6 +124,7 @@ def build_runtime(
             attack_button_delay=FIXED_1920X1080.attack_button_delay,
             card_select_delay=FIXED_1920X1080.card_select_delay,
             target_select_delay=FIXED_1920X1080.target_select_delay,
+            stop_requested=lambda: bool(session and session.stop_requested),
         ),
         config=config,
         resources=resources,

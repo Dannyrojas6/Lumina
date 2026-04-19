@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from core.device.adb_controller import AdbController
 from core.shared.screen_coordinates import GameCoordinates
@@ -22,6 +22,7 @@ class BattleAction:
         attack_button_delay: float = 0.5,
         card_select_delay: float = 0.3,
         target_select_delay: float = 0.3,
+        stop_requested: Callable[[], bool] | None = None,
     ) -> None:
         self.adb = adb_ctl
         self.skill_interval = skill_interval
@@ -30,6 +31,7 @@ class BattleAction:
         self.attack_button_delay = attack_button_delay
         self.card_select_delay = card_select_delay
         self.target_select_delay = target_select_delay
+        self.stop_requested = stop_requested
 
     def use_servant_skill(self, skill_num: int, target: Optional[int] = None) -> None:
         """释放指定从者技能，可选带目标。"""
@@ -50,20 +52,22 @@ class BattleAction:
     def attack(self) -> None:
         """点击攻击按钮，进入选卡流程。"""
         self.adb.click_region(GameCoordinates.ATTACK_BUTTON)
-        time.sleep(self.attack_button_delay)
+        if not self._wait(self.attack_button_delay):
+            return
         log.info("进入攻击选卡")
 
     def select_cards(self, card_indices: list[int]) -> None:
         """按传入顺序选择前三张卡。"""
         for idx in card_indices[:3]:
             self.adb.click(*GameCoordinates.CARD_POSITIONS[idx])
-            time.sleep(self.card_select_delay)
+            if not self._wait(self.card_select_delay):
+                return
         log.info(f"已选卡：{card_indices[:3]}")
 
     def select_noble_card(self, servant_index: int) -> None:
         """点击指定从者的宝具卡。"""
         self.adb.click(*GameCoordinates.NOBLE_CARD_POSITIONS[servant_index])
-        time.sleep(self.card_select_delay)
+        self._wait(self.card_select_delay)
 
     def speed_skip(self) -> None:
         """点击战斗加速/跳过区域。"""
@@ -72,17 +76,18 @@ class BattleAction:
     def click_servant_skill(self, skill_num: int) -> None:
         """点击从者技能按钮，进入技能后续处理。"""
         self.adb.click(*GameCoordinates.SERVANT_SKILLS[skill_num])
-        time.sleep(self.skill_pre_skip_delay)
+        self._wait(self.skill_pre_skip_delay)
 
     def select_servant_target(self, target: int) -> None:
         """在技能目标选择界面中选择目标从者。"""
         self.adb.click(*GameCoordinates.TARGET_POSITIONS[target])
-        time.sleep(self.target_select_delay)
+        self._wait(self.target_select_delay)
 
     def select_enemy_target(self, target: int) -> None:
         """切换当前敌方目标。"""
         self.adb.click(*GameCoordinates.ENEMY_TARGET_POSITIONS[target])
-        time.sleep(self.target_select_delay)
+        if not self._wait(self.target_select_delay):
+            return
         log.info(f"已切换敌方目标={target}")
 
     def finish_servant_skill(
@@ -92,7 +97,8 @@ class BattleAction:
     ) -> None:
         """完成从者技能释放后的跳过与等待。"""
         self.adb.click(*GameCoordinates.SPEED_SKIP)
-        time.sleep(self.skill_interval)
+        if not self._wait(self.skill_interval):
+            return
         if target is None:
             log.info(f"技能 {skill_num} 释放完毕")
             return
@@ -101,9 +107,10 @@ class BattleAction:
     def click_master_skill(self, skill_num: int) -> None:
         """打开御主技能栏并点击指定技能。"""
         self.adb.click_region(GameCoordinates.MASTER_SKILL)
-        time.sleep(self.master_skill_open_delay)
+        if not self._wait(self.master_skill_open_delay):
+            return
         self.adb.click(*GameCoordinates.MASTER_SKILL_POSITIONS[skill_num])
-        time.sleep(self.skill_pre_skip_delay)
+        self._wait(self.skill_pre_skip_delay)
 
     def finish_master_skill(
         self,
@@ -112,8 +119,27 @@ class BattleAction:
     ) -> None:
         """完成御主技能释放后的等待。"""
         self.adb.click(*GameCoordinates.SPEED_SKIP)
-        time.sleep(self.skill_interval)
+        if not self._wait(self.skill_interval):
+            return
         if target is None:
             log.info(f"御主技能 {skill_num} 释放完毕")
             return
         log.info(f"御主技能 {skill_num} 释放完毕，默认目标={target}")
+
+    def _wait(self, seconds: float) -> bool:
+        if seconds <= 0:
+            return not self._is_stop_requested()
+        if self.stop_requested is None:
+            time.sleep(seconds)
+            return True
+        remaining = seconds
+        while remaining > 0:
+            if self._is_stop_requested():
+                return False
+            chunk = min(0.1, remaining)
+            time.sleep(chunk)
+            remaining -= chunk
+        return not self._is_stop_requested()
+
+    def _is_stop_requested(self) -> bool:
+        return bool(self.stop_requested and self.stop_requested())

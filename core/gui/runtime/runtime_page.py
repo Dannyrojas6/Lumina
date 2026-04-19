@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtCore import QRectF, QSize, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox,
+    QAbstractButton,
     QComboBox,
-    QFormLayout,
+    QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QListView,
     QPushButton,
     QSizePolicy,
+    QSplitter,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -20,6 +23,78 @@ from PySide6.QtWidgets import (
 
 from core.gui.runtime.controller import RuntimeController
 from core.gui.services.runtime_config_service import RuntimeEditableConfig
+
+
+class _RuntimeToggleSwitch(QAbstractButton):
+    """运行页使用的滑动开关。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFixedSize(54, 28)
+
+    def sizeHint(self) -> QSize:  # type: ignore[override]
+        return QSize(54, 28)
+
+    def minimumSizeHint(self) -> QSize:  # type: ignore[override]
+        return QSize(54, 28)
+
+    def paintEvent(self, _event) -> None:  # type: ignore[override]
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        checked = self.isChecked()
+        enabled = self.isEnabled()
+        track_rect = QRectF(0, 2, 50, 24)
+        knob_diameter = 18
+        knob_margin = 3
+
+        track_color = QColor("#26c281" if checked else "#34383e")
+        text_color = QColor("#26c281" if checked else "#7a7f87")
+        knob_color = QColor("#f5f7fa" if enabled else "#c0c5cb")
+
+        if not enabled:
+            track_color.setAlpha(130)
+            text_color.setAlpha(120)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(track_color)
+        painter.drawRoundedRect(track_rect, 12, 12)
+
+        knob_x = (
+            track_rect.right() - knob_diameter - knob_margin
+            if checked
+            else track_rect.left() + knob_margin
+        )
+        knob_rect = QRectF(
+            knob_x,
+            track_rect.top() + 3,
+            knob_diameter,
+            knob_diameter,
+        )
+        painter.setBrush(knob_color)
+        painter.drawEllipse(knob_rect)
+
+
+class _RuntimeComboBox(QComboBox):
+    """运行页使用的深色下拉框。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setProperty("controlRole", "formCombo")
+
+    def showPopup(self) -> None:  # type: ignore[override]
+        view = self.view()
+        if view is not None and self.model() is not None:
+            metrics = view.fontMetrics()
+            width = self.width()
+            for index in range(self.count()):
+                text = self.itemText(index)
+                width = max(width, metrics.horizontalAdvance(text) + 36)
+            view.setMinimumWidth(width)
+        super().showPopup()
 
 
 class RuntimePage(QWidget):
@@ -39,153 +114,152 @@ class RuntimePage(QWidget):
         def minimumSizeHint(self) -> QSize:  # type: ignore[override]
             return QSize(self._minimum_hint)
 
-    TOGGLE_CHECKBOX_STYLE = """
-    QCheckBox {
-        spacing: 0px;
-        color: #d7dde5;
-    }
-    QCheckBox::indicator {
-        width: 16px;
-        height: 16px;
-        border-radius: 5px;
-        border: 1px solid #66788a;
-        background: #111821;
-        image: none;
-    }
-    QCheckBox::indicator:hover {
-        border-color: #8ca0b3;
-        background: #1a2430;
-    }
-    QCheckBox::indicator:checked {
-        border: 1px solid #8b5cf6;
-        background: #8b5cf6;
-        image: none;
-    }
-    QCheckBox::indicator:checked:hover {
-        border-color: #7c3aed;
-        background: #7c3aed;
-    }
-    """
-
-    def __init__(self, runtime_controller: RuntimeController) -> None:
+    def __init__(
+        self,
+        runtime_controller: RuntimeController,
+    ) -> None:
         super().__init__()
         self.runtime_controller = runtime_controller
         self._summary_text = getattr(runtime_controller, "current_summary", "") or "等待读取配置"
         self._saved_config = runtime_controller.load_editable_config()
         self._suppress_config_signals = False
         self._is_running = False
+        self._log_dialog: QDialog | None = None
+        self._log_dialog_output: QTextEdit | None = None
         self._build_ui()
         self._bind_controller()
         self._load_config_controls(self._saved_config)
         self._apply_summary(self._summary_text)
+        self._update_lifecycle_visuals("空闲")
 
     def _build_ui(self) -> None:
-        root = QVBoxLayout(self)
+        root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(10)
 
-        content_row = QHBoxLayout()
-        content_row.setSpacing(10)
-        root.addLayout(content_row, stretch=1)
-
-        self.left_card = QFrame()
-        self.left_card.setFrameShape(QFrame.Shape.StyledPanel)
-        self.left_card.setFixedWidth(340)
+        self.left_card = self._make_card("runtimeLeftCard", layout_role="sidePanel")
+        self.left_card.setFixedWidth(210)
         left_layout = QVBoxLayout(self.left_card)
-        left_layout.setContentsMargins(14, 14, 14, 14)
+        left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
 
         button_row = QHBoxLayout()
-        self.start_button = QPushButton("开始")
-        self.stop_button = QPushButton("停止")
+        button_row.setSpacing(6)
+        self.start_button = QPushButton("▶ 开始")
+        self.start_button.setObjectName("successButton")
+        self.start_button.setFixedHeight(30)
+        self.stop_button = QPushButton("■ 停止")
         self.stop_button.setEnabled(False)
+        self.stop_button.setFixedHeight(30)
         button_row.addWidget(self.start_button)
         button_row.addWidget(self.stop_button)
-        button_row.addStretch(1)
         left_layout.addLayout(button_row)
 
-        config_card = QFrame()
-        config_card.setFrameShape(QFrame.Shape.StyledPanel)
+        config_card = self._make_card()
         config_layout = QVBoxLayout(config_card)
-        config_layout.setContentsMargins(12, 10, 12, 10)
-        config_layout.setSpacing(8)
-        config_layout.addWidget(QLabel("运行前配置"))
+        config_layout.setContentsMargins(10, 8, 10, 8)
+        config_layout.setSpacing(7)
+        config_layout.addWidget(self._section_label("运行前配置"))
 
-        config_form = QFormLayout()
-        config_form.setContentsMargins(0, 0, 0, 0)
-        config_form.setSpacing(8)
-        self.mode_combo = QComboBox()
+        self.mode_combo = _RuntimeComboBox()
         self.mode_combo.addItems(["main", "custom_sequence"])
-        self.smart_battle_checkbox = QCheckBox()
-        self.continue_battle_checkbox = QCheckBox()
-        self.smart_battle_checkbox.setStyleSheet(self.TOGGLE_CHECKBOX_STYLE)
-        self.continue_battle_checkbox.setStyleSheet(self.TOGGLE_CHECKBOX_STYLE)
-        self.log_level_combo = QComboBox()
+        self.mode_combo.setView(self._create_combo_view())
+        self.smart_battle_checkbox = _RuntimeToggleSwitch()
+        self.continue_battle_checkbox = _RuntimeToggleSwitch()
+        self.log_level_combo = _RuntimeComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING"])
-        config_form.addRow("模式", self.mode_combo)
-        config_form.addRow("智能战斗", self.smart_battle_checkbox)
-        config_form.addRow("连续出击", self.continue_battle_checkbox)
-        config_form.addRow("日志级别", self.log_level_combo)
-        config_layout.addLayout(config_form)
+        self.log_level_combo.setView(self._create_combo_view())
+
+        config_grid = QGridLayout()
+        config_grid.setHorizontalSpacing(8)
+        config_grid.setVerticalSpacing(7)
+        config_grid.addWidget(self._muted_label("模式"), 0, 0)
+        config_grid.addWidget(self.mode_combo, 0, 1)
+        config_grid.addWidget(self._muted_label("智能战斗"), 1, 0)
+        config_grid.addWidget(self.smart_battle_checkbox, 1, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("连续出击"), 2, 0)
+        config_grid.addWidget(self.continue_battle_checkbox, 2, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("日志级别"), 3, 0)
+        config_grid.addWidget(self.log_level_combo, 3, 1)
+        config_layout.addLayout(config_grid)
 
         config_buttons = QHBoxLayout()
+        config_buttons.setSpacing(5)
         self.apply_button = QPushButton("应用")
+        self.apply_button.setObjectName("primaryButton")
         self.reset_button = QPushButton("恢复")
         config_buttons.addWidget(self.apply_button)
         config_buttons.addWidget(self.reset_button)
-        config_buttons.addStretch(1)
         config_layout.addLayout(config_buttons)
 
-        self.config_status_label = QLabel("已保存配置")
-        self.config_status_label.setWordWrap(True)
-        config_layout.addWidget(self.config_status_label)
+        self.config_status_label = QLabel()
+        self._set_config_status_saved()
+        config_layout.addWidget(self.config_status_label, alignment=Qt.AlignmentFlag.AlignHCenter)
         left_layout.addWidget(config_card)
 
-        status_card = QFrame()
-        status_card.setFrameShape(QFrame.Shape.StyledPanel)
+        status_card = self._make_card()
         status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(12, 10, 12, 10)
-        status_layout.setSpacing(4)
-        status_layout.addWidget(QLabel("当前状态"))
+        status_layout.setContentsMargins(10, 8, 10, 8)
+        status_layout.setSpacing(8)
+        status_layout.addWidget(self._section_label("当前状态"))
+        status_row = QHBoxLayout()
+        status_row.setSpacing(7)
+        status_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.status_dot = QLabel()
+        self.status_dot.setObjectName("runtimeStatusDot")
+        self.status_dot.setFixedSize(8, 8)
+        status_row.addWidget(self.status_dot, alignment=Qt.AlignmentFlag.AlignVCenter)
         self.status_value = QLabel("空闲")
         self.status_value.setObjectName("runtimeStatusValue")
-        self.status_value.setStyleSheet("font-size:18px;font-weight:600;")
+        self.status_value.setProperty("statusState", "idle")
         self.status_value.setWordWrap(True)
-        status_layout.addWidget(self.status_value)
+        self.status_value.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        status_row.addWidget(self.status_value, stretch=1)
+        status_layout.addLayout(status_row)
         left_layout.addWidget(status_card)
 
-        summary_card = QFrame()
-        summary_card.setFrameShape(QFrame.Shape.StyledPanel)
-        summary_layout = QFormLayout(summary_card)
-        summary_layout.setContentsMargins(12, 10, 12, 10)
-        summary_layout.setSpacing(8)
+        summary_card = self._make_card()
+        summary_layout = QVBoxLayout(summary_card)
+        summary_layout.setContentsMargins(10, 8, 10, 8)
+        summary_layout.setSpacing(6)
+        summary_layout.addWidget(self._section_label("当前已保存配置"))
         self.mode_value = QLabel("-")
         self.smart_value = QLabel("-")
         self.continue_value = QLabel("-")
         self.log_level_value = QLabel("-")
         self.support_value = QLabel("-")
         self.sequence_value = QLabel("-")
-        self.support_value.setWordWrap(True)
-        self.sequence_value.setWordWrap(True)
-        summary_layout.addRow("模式", self.mode_value)
-        summary_layout.addRow("智能战斗", self.smart_value)
-        summary_layout.addRow("连续出击", self.continue_value)
-        summary_layout.addRow("日志级别", self.log_level_value)
-        summary_layout.addRow("助战目标", self.support_value)
-        summary_layout.addRow("操作序列", self.sequence_value)
+        self.support_value.setWordWrap(False)
+        self.sequence_value.setWordWrap(False)
+        self.support_value.setMaximumWidth(120)
+        self.sequence_value.setMaximumWidth(120)
+        self.support_value.setTextFormat(Qt.TextFormat.PlainText)
+        self.sequence_value.setTextFormat(Qt.TextFormat.PlainText)
+        for key, value in (
+            ("模式", self.mode_value),
+            ("智能战斗", self.smart_value),
+            ("连续出击", self.continue_value),
+            ("日志级别", self.log_level_value),
+            ("助战目标", self.support_value),
+            ("操作序列", self.sequence_value),
+        ):
+            summary_layout.addLayout(self._kv_row(key, value))
         left_layout.addWidget(summary_card)
         left_layout.addStretch(1)
-        content_row.addWidget(self.left_card, stretch=0)
+        root.addWidget(self.left_card, stretch=0)
 
-        self.preview_card = QFrame()
-        self.preview_card.setFrameShape(QFrame.Shape.StyledPanel)
+        right_column = QWidget()
+        right_layout = QVBoxLayout(right_column)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+
+        self.preview_card = self._make_surface(layout_role="canvasPanel")
         preview_layout = QVBoxLayout(self.preview_card)
-        preview_layout.setContentsMargins(12, 12, 12, 12)
-        preview_layout.setSpacing(8)
-        preview_layout.addWidget(QLabel("当前截图"))
+        preview_layout.setContentsMargins(0, 0, 0, 0)
+        preview_layout.setSpacing(0)
         self.preview_label = self._StablePreviewLabel(
-            preferred_size=QSize(760, 480),
-            minimum_hint=QSize(640, 360),
+            preferred_size=QSize(760, 380),
+            minimum_hint=QSize(620, 320),
         )
         self.preview_label.setText("等待画面")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -193,37 +267,53 @@ class RuntimePage(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        self.preview_label.setMinimumSize(640, 360)
-        self.preview_label.setStyleSheet(
-            "background:#10151b;border:1px solid #2d3946;"
-        )
+        self.preview_label.setMinimumSize(620, 320)
+        self.preview_label.setObjectName("runtimePreviewViewport")
         preview_layout.addWidget(self.preview_label, stretch=1)
-        content_row.addWidget(self.preview_card, stretch=1)
+        right_layout.addWidget(self.preview_card, stretch=1)
 
-        self.log_frame = QFrame()
-        self.log_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        log_layout = QVBoxLayout(self.log_frame)
-        log_layout.setContentsMargins(12, 8, 12, 10)
-        log_layout.setSpacing(6)
-        header_row = QHBoxLayout()
-        header_row.addWidget(QLabel("运行日志"))
-        header_row.addStretch(1)
-        self.log_toggle_button = QPushButton("展开")
-        self.log_toggle_button.setFixedWidth(72)
-        header_row.addWidget(self.log_toggle_button)
-        log_layout.addLayout(header_row)
+        self.log_card = self._make_surface(layout_role="canvasPanel")
+        log_layout = QVBoxLayout(self.log_card)
+        log_layout.setContentsMargins(0, 0, 0, 0)
+        log_layout.setSpacing(0)
+        self.log_head_widget = QWidget()
+        self.log_head_widget.setProperty("headerRole", "panel")
+        self.log_head_widget.setFixedHeight(34)
+        log_head = QHBoxLayout(self.log_head_widget)
+        log_head.setContentsMargins(10, 4, 10, 4)
+        self.log_title_label = QLabel("运行日志")
+        self.log_title_label.setProperty("textRole", "panelTitle")
+        log_head.addWidget(self.log_title_label)
+        log_head.addStretch(1)
+        self.log_clear_button = QPushButton("清空")
+        self.log_clear_button.setProperty("buttonRole", "headerAction")
+        self.log_clear_button.setFixedWidth(54)
+        self.log_clear_button.setFixedHeight(26)
+        self.log_popout_button = QPushButton("全屏")
+        self.log_popout_button.setProperty("buttonRole", "headerAction")
+        self.log_popout_button.setFixedWidth(54)
+        self.log_popout_button.setFixedHeight(26)
+        log_head.addWidget(self.log_clear_button)
+        log_head.addWidget(self.log_popout_button)
+        log_layout.addWidget(self.log_head_widget)
         self.log_output = QTextEdit()
+        self.log_output.setObjectName("runtimeLogOutput")
         self.log_output.setReadOnly(True)
-        self.log_output.setMinimumHeight(160)
-        self.log_output.setMaximumHeight(240)
-        self.log_output.setVisible(False)
+        self.log_output.setMinimumHeight(140)
         log_layout.addWidget(self.log_output)
-        self.log_frame.setMaximumHeight(44)
-        root.addWidget(self.log_frame, stretch=0)
+        self.right_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.right_splitter.setChildrenCollapsible(False)
+        self.right_splitter.setHandleWidth(6)
+        self.right_splitter.addWidget(self.preview_card)
+        self.right_splitter.addWidget(self.log_card)
+        self.right_splitter.setSizes([430, 180])
+        right_layout.addWidget(self.right_splitter, stretch=1)
+        root.addWidget(right_column, stretch=1)
 
         self.start_button.clicked.connect(self._handle_start_clicked)
         self.stop_button.clicked.connect(self._handle_stop_clicked)
-        self.log_toggle_button.clicked.connect(self._toggle_log_panel)
+        self.log_clear_button.clicked.connect(self.log_output.clear)
+        self.log_popout_button.clicked.connect(self._show_log_dialog)
         self.mode_combo.currentTextChanged.connect(self._on_config_value_changed)
         self.smart_battle_checkbox.toggled.connect(self._on_config_value_changed)
         self.continue_battle_checkbox.toggled.connect(self._on_config_value_changed)
@@ -246,7 +336,11 @@ class RuntimePage(QWidget):
 
     def set_status_text(self, text: str) -> None:
         self.status_value.setText(text)
+        self._update_lifecycle_visuals(text)
         if text == "启动中":
+            self.start_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
+        if text == "停止中":
             self.start_button.setEnabled(False)
             self.stop_button.setEnabled(False)
         self._refresh_config_controls_enabled()
@@ -262,6 +356,7 @@ class RuntimePage(QWidget):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.preview_label.setPixmap(pixmap)
+        self.preview_label.setText("")
 
     def _handle_start_clicked(self) -> None:
         self.set_status_text("启动中")
@@ -275,26 +370,38 @@ class RuntimePage(QWidget):
         self.runtime_controller.apply_editable_config(config)
         self._saved_config = config
         self._load_config_controls(config)
-        self.config_status_label.setText("已保存配置")
+        self._set_config_status_saved()
         self._refresh_config_controls_enabled()
 
     def _handle_reset_clicked(self) -> None:
         self._saved_config = self.runtime_controller.load_editable_config()
         self._load_config_controls(self._saved_config)
-        self.config_status_label.setText("已保存配置")
+        self._set_config_status_saved()
         self._refresh_config_controls_enabled()
 
     def append_log(self, message: str) -> None:
         self.log_output.append(message)
+        if self._log_dialog_output is not None:
+            self._log_dialog_output.append(message)
 
-    def _toggle_log_panel(self) -> None:
-        visible = self.log_output.isVisible()
-        self.log_output.setVisible(not visible)
-        self.log_toggle_button.setText("收起" if not visible else "展开")
-        if visible:
-            self.log_frame.setMaximumHeight(44)
+    def _show_log_dialog(self) -> None:
+        if self._log_dialog is None:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("运行日志")
+            dialog.resize(980, 640)
+            layout = QVBoxLayout(dialog)
+            layout.setContentsMargins(10, 10, 10, 10)
+            output = QTextEdit()
+            output.setReadOnly(True)
+            output.setPlainText(self.log_output.toPlainText())
+            layout.addWidget(output)
+            self._log_dialog = dialog
+            self._log_dialog_output = output
         else:
-            self.log_frame.setMaximumHeight(16777215)
+            self._log_dialog_output.setPlainText(self.log_output.toPlainText())
+        self._log_dialog.show()
+        self._log_dialog.raise_()
+        self._log_dialog.activateWindow()
 
     def _apply_summary(self, summary: str) -> None:
         values = {}
@@ -307,8 +414,8 @@ class RuntimePage(QWidget):
         self.smart_value.setText(values.get("smart_battle", "-"))
         self.continue_value.setText(values.get("continue_battle", "-"))
         self.log_level_value.setText(values.get("log_level", "-"))
-        self.support_value.setText(values.get("support", "-"))
-        self.sequence_value.setText(values.get("custom_sequence", "-"))
+        self._set_summary_value(self.support_value, values.get("support", "-"))
+        self._set_summary_value(self.sequence_value, values.get("custom_sequence", "-"))
 
     def _load_config_controls(self, config: RuntimeEditableConfig) -> None:
         self._suppress_config_signals = True
@@ -332,9 +439,9 @@ class RuntimePage(QWidget):
             return
         self._sync_mode_controls()
         if self._build_current_config() == self._saved_config:
-            self.config_status_label.setText("已保存配置")
+            self._set_config_status_saved()
         else:
-            self.config_status_label.setText("有未应用修改")
+            self._set_config_status_dirty()
         self._refresh_config_controls_enabled()
 
     def _sync_mode_controls(self) -> None:
@@ -354,3 +461,102 @@ class RuntimePage(QWidget):
         dirty = self._build_current_config() != self._saved_config
         self.apply_button.setEnabled(editable and dirty)
         self.reset_button.setEnabled(editable and dirty)
+
+    def _update_lifecycle_visuals(self, text: str) -> None:
+        if text == "运行中":
+            state = "running"
+        elif text == "启动中":
+            state = "starting"
+        elif text == "停止中":
+            state = "stopped"
+        elif text.startswith("运行失败"):
+            state = "failed"
+        elif text == "手动停止":
+            state = "stopped"
+        else:
+            state = "idle"
+        self._set_dynamic_property(self.status_dot, "statusState", state)
+        self._set_dynamic_property(self.status_value, "statusState", state)
+
+    def _make_card(
+        self,
+        object_name: str | None = None,
+        *,
+        layout_role: str | None = None,
+    ) -> QFrame:
+        card = QFrame()
+        if object_name:
+            card.setObjectName(object_name)
+        card.setProperty("panelRole", "card")
+        if layout_role:
+            card.setProperty("layoutRole", layout_role)
+        card.setFrameShape(QFrame.Shape.StyledPanel)
+        return card
+
+    def _make_surface(self, *, layout_role: str | None = None) -> QFrame:
+        frame = QFrame()
+        frame.setProperty("panelRole", "surface")
+        if layout_role:
+            frame.setProperty("layoutRole", layout_role)
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
+        return frame
+
+    def _section_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("textRole", "section")
+        return label
+
+    def _muted_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setProperty("textRole", "muted")
+        return label
+
+    def _create_combo_view(self) -> QListView:
+        view = QListView()
+        view.setProperty("viewRole", "comboPopup")
+        view.setWordWrap(False)
+        view.setSpacing(0)
+        view.setUniformItemSizes(True)
+        view.setTextElideMode(Qt.TextElideMode.ElideNone)
+        return view
+
+    def _kv_row(self, key: str, value_label: QLabel) -> QHBoxLayout:
+        value_label.setProperty(
+            "textRole",
+            "mono" if key in {"助战目标", "操作序列"} else "muted",
+        )
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        key_label = QLabel(key)
+        key_label.setProperty("textRole", "muted")
+        row.addWidget(key_label)
+        row.addStretch(1)
+        row.addWidget(value_label, stretch=0)
+        return row
+
+    def _set_summary_value(self, label: QLabel, value: str) -> None:
+        full_text = value or "-"
+        label.setToolTip(full_text)
+        label.setText(
+            label.fontMetrics().elidedText(
+                full_text,
+                Qt.TextElideMode.ElideMiddle,
+                120,
+            )
+        )
+
+    def _set_config_status_saved(self) -> None:
+        self.config_status_label.setText("✓ 已保存配置")
+        self._set_dynamic_property(self.config_status_label, "noticeRole", "saved")
+
+    def _set_config_status_dirty(self) -> None:
+        self.config_status_label.setText("有未应用修改")
+        self._set_dynamic_property(self.config_status_label, "noticeRole", "dirty")
+
+    def _set_dynamic_property(self, widget: QWidget, name: str, value: str) -> None:
+        widget.setProperty(name, value)
+        style = widget.style()
+        if style is not None:
+            style.unpolish(widget)
+            style.polish(widget)
+        widget.update()

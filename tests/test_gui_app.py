@@ -1,18 +1,26 @@
 import os
+import queue
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import yaml
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QTabBar
 from PySide6.QtGui import QImage
 
 from core.gui.app.main_window import LuminaMainWindow, compute_initial_window_geometry
+from core.gui.app.style import build_app_stylesheet
 from core.gui.app.qt_app import ensure_qt_application
-from core.gui.runtime.controller import RuntimeController
-from core.gui.runtime.runtime_page import RuntimePage
+from core.gui.runtime.controller import (
+    AutomationRuntimeController,
+    AutomationRuntimeWorker,
+    RuntimeController,
+)
+from core.gui.runtime.runtime_page import RuntimePage, _RuntimeToggleSwitch
 from core.gui.services.runtime_config_service import RuntimeEditableConfig
 
 
@@ -64,6 +72,52 @@ class DummyRuntimeController(RuntimeController):
         self.summary_changed.emit(self.current_summary)
 
 
+class FakeManagedWorker(QObject):
+    log_emitted = Signal(str)
+    state_changed = Signal(str)
+    preview_changed = Signal(QImage)
+    run_started = Signal()
+    run_completed = Signal()
+    run_failed = Signal(str)
+    finished = Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.start_calls = 0
+        self.stop_calls = 0
+        self._running = False
+
+    def start(self) -> None:
+        self.start_calls += 1
+        self._running = True
+
+    def isRunning(self) -> bool:
+        return self._running
+
+    def request_stop(self) -> None:
+        self.stop_calls += 1
+
+    def finish(self) -> None:
+        self._running = False
+        self.finished.emit()
+
+
+class FakeRuntimeProcess:
+    def __init__(self) -> None:
+        self.terminate_calls = 0
+        self.kill_calls = 0
+        self._alive = True
+
+    def is_alive(self) -> bool:
+        return self._alive
+
+    def terminate(self) -> None:
+        self.terminate_calls += 1
+
+    def kill(self) -> None:
+        self.kill_calls += 1
+
+
 class GuiAppTests(unittest.TestCase):
     def setUp(self) -> None:
         ensure_qt_application()
@@ -93,14 +147,61 @@ class GuiAppTests(unittest.TestCase):
             ["运行", "自定义操作序列", "坐标工具", "遮挡工具"],
         )
         self.assertTrue(hasattr(window, "workspace_tabs"))
+        self.assertTrue(hasattr(window, "header_layout"))
         self.assertFalse(hasattr(window, "nav_list"))
         self.assertFalse(hasattr(window, "page_hint_label"))
         self.assertFalse(hasattr(window, "log_frame"))
-        self.assertTrue(hasattr(window.runtime_page, "log_toggle_button"))
+        self.assertEqual(window.workspace_tabs.objectName(), "topNavTabs")
+        self.assertEqual(window.header_layout.spacing(), 8)
+        self.assertEqual(window.header_layout.contentsMargins().left(), 18)
+        self.assertEqual(window.header_layout.contentsMargins().right(), 18)
+        self.assertEqual(window.header_layout.contentsMargins().top(), 2)
+        self.assertEqual(window.header_layout.contentsMargins().bottom(), 2)
+        title = window.findChild(QLabel, "mainWindowTitle")
+        self.assertIsNotNone(title)
+        self.assertEqual(title.text(), "Lumina")
         self.assertEqual(window.x(), expected_geometry[0])
         self.assertEqual(window.y(), expected_geometry[1])
         self.assertEqual(window.width(), expected_geometry[2])
         self.assertEqual(window.height(), expected_geometry[3])
+
+    def test_app_stylesheet_uses_transparent_label_backgrounds(self) -> None:
+        stylesheet = build_app_stylesheet()
+
+        self.assertIn("QLabel {\n        background: transparent;", stylesheet)
+        self.assertIn('QLabel[textRole="badge"] {', stylesheet)
+        self.assertIn("background: #222222;", stylesheet)
+
+    def test_app_stylesheet_uses_underline_top_nav_style(self) -> None:
+        stylesheet = build_app_stylesheet()
+
+        self.assertIn("QTabBar#topNavTabs {", stylesheet)
+        self.assertIn("background: transparent;", stylesheet)
+        self.assertIn("QTabBar#topNavTabs::tab:selected", stylesheet)
+        self.assertIn("border-bottom: 2px solid #26c281;", stylesheet)
+        self.assertNotIn("background: #2a2a2a;", stylesheet)
+        self.assertIn("padding: 4px 14px 4px 14px;", stylesheet)
+        self.assertIn("margin-right: 4px;", stylesheet)
+        self.assertIn("min-height: 20px;", stylesheet)
+
+    def test_app_stylesheet_defines_shared_gui_component_roles(self) -> None:
+        stylesheet = build_app_stylesheet()
+
+        self.assertIn('QComboBox[controlRole="formCombo"] {', stylesheet)
+        self.assertIn('QListView[viewRole="comboPopup"] {', stylesheet)
+        self.assertIn('QPushButton[buttonRole="pillToggle"] {', stylesheet)
+        self.assertIn('QFrame[separatorRole="divider"] {', stylesheet)
+        self.assertIn('QWidget[headerRole="panel"] {', stylesheet)
+        self.assertIn('QLabel[noticeRole="saved"] {', stylesheet)
+        self.assertIn('QLabel[noticeRole="dirty"] {', stylesheet)
+        self.assertIn('QLabel#runtimeStatusDot[statusState="idle"] {', stylesheet)
+        self.assertIn('QLabel#runtimeStatusValue[statusState="idle"] {', stylesheet)
+        self.assertIn('QFrame[layoutRole="toolbar"] {', stylesheet)
+        self.assertIn('QFrame[layoutRole="sidePanel"] {', stylesheet)
+        self.assertIn('QFrame[layoutRole="canvasPanel"] {', stylesheet)
+        self.assertIn('QFrame[layoutRole="editorPanel"] {', stylesheet)
+        self.assertIn('QTextEdit[editorRole="export"] {', stylesheet)
+        self.assertIn('QLabel[textRole="panelTitle"] {', stylesheet)
 
     def test_compute_initial_window_geometry_converts_physical_target_to_logical_size(self) -> None:
         x, y, width, height = compute_initial_window_geometry(
@@ -151,12 +252,14 @@ class GuiAppTests(unittest.TestCase):
         self.assertFalse(page.stop_button.isEnabled())
         self.assertEqual(page.status_value.text(), "运行失败：no ready adb device found")
 
-    def test_runtime_page_log_drawer_starts_collapsed(self) -> None:
+    def test_runtime_page_log_panel_is_always_visible(self) -> None:
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
 
-        self.assertFalse(page.log_output.isVisible())
-        self.assertEqual(page.log_toggle_button.text(), "展开")
+        self.assertFalse(page.log_output.isHidden())
+        self.assertFalse(hasattr(page, "log_toggle_button"))
+        self.assertIsInstance(page.log_clear_button, QPushButton)
+        self.assertIsInstance(page.log_popout_button, QPushButton)
 
     def test_runtime_page_loads_editable_config_controls(self) -> None:
         controller = DummyRuntimeController()
@@ -166,7 +269,34 @@ class GuiAppTests(unittest.TestCase):
         self.assertFalse(page.smart_battle_checkbox.isChecked())
         self.assertTrue(page.continue_battle_checkbox.isChecked())
         self.assertEqual(page.log_level_combo.currentText(), "INFO")
-        self.assertEqual(page.config_status_label.text(), "已保存配置")
+        self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
+        self.assertEqual(page.mode_combo.property("controlRole"), "formCombo")
+        self.assertEqual(page.log_level_combo.property("controlRole"), "formCombo")
+        self.assertEqual(page.mode_combo.view().property("viewRole"), "comboPopup")
+        self.assertEqual(page.log_level_combo.view().property("viewRole"), "comboPopup")
+
+    def test_runtime_page_uses_custom_dark_combo_popup_views(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        self.assertIsInstance(page.mode_combo.view(), QListView)
+        self.assertIsInstance(page.log_level_combo.view(), QListView)
+        self.assertEqual(page.mode_combo.property("controlRole"), "formCombo")
+        self.assertEqual(page.log_level_combo.property("controlRole"), "formCombo")
+        self.assertEqual(page.mode_combo.styleSheet(), "")
+        self.assertEqual(page.log_level_combo.styleSheet(), "")
+        self.assertFalse(page.mode_combo.view().wordWrap())
+        self.assertFalse(page.log_level_combo.view().wordWrap())
+        self.assertEqual(page.mode_combo.view().spacing(), 0)
+        self.assertEqual(page.log_level_combo.view().spacing(), 0)
+        self.assertTrue(page.mode_combo.view().uniformItemSizes())
+        self.assertTrue(page.log_level_combo.view().uniformItemSizes())
+        self.assertEqual(page.mode_combo.view().textElideMode(), Qt.TextElideMode.ElideNone)
+        self.assertEqual(page.log_level_combo.view().textElideMode(), Qt.TextElideMode.ElideNone)
+        self.assertEqual(page.mode_combo.view().property("viewRole"), "comboPopup")
+        self.assertEqual(page.log_level_combo.view().property("viewRole"), "comboPopup")
+        self.assertEqual(page.mode_combo.view().styleSheet(), "")
+        self.assertEqual(page.log_level_combo.view().styleSheet(), "")
 
     def test_runtime_page_marks_dirty_and_applies_runtime_config(self) -> None:
         controller = DummyRuntimeController()
@@ -180,7 +310,7 @@ class GuiAppTests(unittest.TestCase):
 
         self.assertEqual(len(controller.applied_configs), 1)
         self.assertEqual(controller.applied_configs[0].log_level, "DEBUG")
-        self.assertEqual(page.config_status_label.text(), "已保存配置")
+        self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
         self.assertEqual(page.log_level_value.text(), "DEBUG")
 
     def test_runtime_page_restore_discards_unsaved_changes(self) -> None:
@@ -193,7 +323,7 @@ class GuiAppTests(unittest.TestCase):
         page.reset_button.click()
 
         self.assertEqual(page.mode_combo.currentText(), "main")
-        self.assertEqual(page.config_status_label.text(), "已保存配置")
+        self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
 
     def test_runtime_page_custom_sequence_disables_smart_battle_checkbox(self) -> None:
         controller = DummyRuntimeController()
@@ -203,20 +333,14 @@ class GuiAppTests(unittest.TestCase):
 
         self.assertFalse(page.smart_battle_checkbox.isEnabled())
 
-    def test_runtime_page_uses_neutral_checkbox_style_for_runtime_toggles(self) -> None:
+    def test_runtime_page_uses_switch_widgets_for_runtime_toggles(self) -> None:
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
 
-        smart_style = page.smart_battle_checkbox.styleSheet()
-        continue_style = page.continue_battle_checkbox.styleSheet()
-
-        self.assertEqual(smart_style, continue_style)
-        self.assertIn("QCheckBox::indicator:checked", smart_style)
-        self.assertIn("image: none", smart_style)
-        self.assertIn("width: 16px", smart_style)
-        self.assertIn("#8b5cf6", smart_style)
-        self.assertEqual(page.smart_battle_checkbox.text(), "")
-        self.assertEqual(page.continue_battle_checkbox.text(), "")
+        self.assertIsInstance(page.smart_battle_checkbox, _RuntimeToggleSwitch)
+        self.assertIsInstance(page.continue_battle_checkbox, _RuntimeToggleSwitch)
+        self.assertEqual(page.smart_battle_checkbox.sizeHint().width(), 54)
+        self.assertEqual(page.continue_battle_checkbox.sizeHint().width(), 54)
 
     def test_runtime_page_running_state_disables_config_controls(self) -> None:
         controller = DummyRuntimeController()
@@ -239,10 +363,85 @@ class GuiAppTests(unittest.TestCase):
         image = QImage(1920, 1080, QImage.Format.Format_RGB888)
         page.set_preview_image(image)
 
-        self.assertEqual(page.left_card.minimumWidth(), 340)
-        self.assertEqual(page.left_card.maximumWidth(), 340)
+        self.assertEqual(page.left_card.minimumWidth(), 210)
+        self.assertEqual(page.left_card.maximumWidth(), 210)
         self.assertEqual(page.sizeHint(), before_page_hint)
         self.assertEqual(page.preview_label.sizeHint(), before_preview_hint)
+
+    def test_runtime_page_matches_run_tab_layout_contract(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        self.assertEqual(page.left_card.minimumWidth(), 210)
+        self.assertEqual(page.left_card.maximumWidth(), 210)
+        self.assertEqual(page.left_card.property("layoutRole"), "sidePanel")
+        self.assertFalse(page.log_output.isHidden())
+        self.assertGreaterEqual(page.log_output.minimumHeight(), 120)
+        self.assertFalse(hasattr(page, "preview_head_widget"))
+        self.assertFalse(hasattr(page, "preview_badge"))
+        self.assertEqual(page.log_clear_button.height(), 26)
+        self.assertEqual(page.log_clear_button.maximumHeight(), 26)
+        self.assertEqual(page.log_popout_button.height(), 26)
+        self.assertEqual(page.log_popout_button.maximumHeight(), 26)
+        self.assertEqual(page.start_button.height(), 30)
+        self.assertEqual(page.stop_button.height(), 30)
+        self.assertEqual(page.log_head_widget.property("headerRole"), "panel")
+        self.assertEqual(page.log_title_label.property("textRole"), "panelTitle")
+        self.assertEqual(page.preview_card.property("layoutRole"), "canvasPanel")
+        self.assertEqual(page.log_card.property("layoutRole"), "canvasPanel")
+        self.assertEqual(page.preview_label.objectName(), "runtimePreviewViewport")
+        self.assertEqual(page.preview_label.styleSheet(), "")
+        self.assertEqual(page.log_output.objectName(), "runtimeLogOutput")
+        self.assertEqual(page.log_output.styleSheet(), "")
+
+    def test_runtime_page_uses_current_screen_label(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        labels = [label.text() for label in page.findChildren(QLabel)]
+        self.assertNotIn("当前画面", labels)
+        self.assertNotIn("当前截图", labels)
+
+    def test_runtime_page_elides_long_summary_values_without_wrapping(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+        support_text = "berserker/morgan/support-slot-very-long-name"
+        sequence_text = "config/custom_sequences/demo_super_long_sequence_name.yaml"
+
+        page.set_summary_text(
+            "\n".join(
+                [
+                    "battle_mode=main",
+                    "smart_battle=off",
+                    "continue_battle=True",
+                    "log_level=INFO",
+                    f"support={support_text}",
+                    f"custom_sequence={sequence_text}",
+                ]
+            )
+        )
+
+        self.assertFalse(page.support_value.wordWrap())
+        self.assertFalse(page.sequence_value.wordWrap())
+        self.assertEqual(page.support_value.maximumWidth(), 120)
+        self.assertEqual(page.sequence_value.maximumWidth(), 120)
+        self.assertEqual(page.support_value.toolTip(), support_text)
+        self.assertEqual(page.sequence_value.toolTip(), sequence_text)
+        self.assertNotEqual(page.support_value.text(), support_text)
+        self.assertNotEqual(page.sequence_value.text(), sequence_text)
+
+    def test_runtime_page_uses_shared_notice_and_status_roles(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        self.assertEqual(page.config_status_label.property("noticeRole"), "saved")
+        self.assertEqual(page.status_dot.objectName(), "runtimeStatusDot")
+        self.assertEqual(page.status_dot.property("statusState"), "idle")
+        self.assertEqual(page.status_value.property("statusState"), "idle")
+
+        page.log_level_combo.setCurrentText("DEBUG")
+
+        self.assertEqual(page.config_status_label.property("noticeRole"), "dirty")
 
 
 class RuntimeConfigServiceTests(unittest.TestCase):
@@ -289,3 +488,87 @@ class RuntimeConfigServiceTests(unittest.TestCase):
             self.assertIn("log_level: INFO # log comment", updated_text)
             self.assertIn("  enabled: false # smart comment", updated_text)
             self.assertIn("  class: berserker", updated_text)
+
+
+class RuntimeWorkerTests(unittest.TestCase):
+    def test_controller_sets_stopping_state_and_suppresses_failure_after_manual_stop(self) -> None:
+        ensure_qt_application()
+        worker = FakeManagedWorker()
+        lifecycles: list[str] = []
+        failures: list[str] = []
+
+        controller = AutomationRuntimeController(
+            worker_factory=lambda _path: worker,
+        )
+        controller.lifecycle_changed.connect(lifecycles.append)
+        controller.error_occurred.connect(failures.append)
+
+        controller.start()
+        worker.run_started.emit()
+        controller.stop()
+        worker.run_failed.emit("boom")
+        worker.finish()
+
+        self.assertEqual(worker.start_calls, 1)
+        self.assertEqual(worker.stop_calls, 1)
+        self.assertIn("停止中", lifecycles)
+        self.assertEqual(failures, [])
+        self.assertEqual(lifecycles[-1], "手动停止")
+
+    def test_worker_escalates_from_terminate_to_kill_after_stop_deadlines(self) -> None:
+        worker = AutomationRuntimeWorker("config/battle_config.yaml")
+        process = FakeRuntimeProcess()
+
+        worker._process = process
+        worker._stop_requested = True
+        worker._terminate_sent = False
+        worker._kill_sent = False
+        worker._terminate_deadline = 10.0
+        worker._kill_deadline = 11.5
+
+        worker._enforce_stop_deadlines(9.5)
+        worker._enforce_stop_deadlines(10.0)
+        worker._enforce_stop_deadlines(11.5)
+
+        self.assertEqual(process.terminate_calls, 1)
+        self.assertEqual(process.kill_calls, 1)
+
+    def test_worker_emits_started_after_runtime_assembly_begins_running(self) -> None:
+        class DummyEngine:
+            def run(self) -> None:
+                return None
+
+        class DummyAdb:
+            serial = "emulator-5560"
+
+        class DummyAssembly:
+            adb = DummyAdb()
+            engine = DummyEngine()
+
+        with patch(
+            "core.gui.runtime.worker_process.build_runtime_assembly",
+            return_value=DummyAssembly(),
+        ):
+            worker_process = __import__(
+                "core.gui.runtime.worker_process",
+                fromlist=["run_runtime_process"],
+            )
+            events: list[dict[str, object]] = []
+
+            class _Queue:
+                def put(self, item):
+                    events.append(item)
+
+                def get(self, timeout=None):
+                    raise queue.Empty
+
+            worker_process.run_runtime_process(
+                config_path="config/battle_config.yaml",
+                event_queue=_Queue(),
+                control_queue=_Queue(),
+            )
+
+        self.assertIn(
+            {"type": "started"},
+            events,
+        )

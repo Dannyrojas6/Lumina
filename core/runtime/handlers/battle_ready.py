@@ -20,15 +20,21 @@ class BattleReadyHandler:
     def handle(self) -> None:
         if getattr(self.session, "custom_sequence_enabled", False):
             self._run_custom_sequence_turn()
+            if getattr(self.session, "stop_requested", False):
+                return
             self.session.battle.attack()
             return
 
         if self.session.smart_battle_enabled:
             self._run_main_sequence_turn(log_reason="进入智能战斗 v0.0.1，开始释放预设技能")
+            if getattr(self.session, "stop_requested", False):
+                return
             self.session.battle.attack()
             return
 
         self._run_main_sequence_turn(log_reason="进入战斗流程，开始释放预设技能")
+        if getattr(self.session, "stop_requested", False):
+            return
         self.session.battle.attack()
 
     def _run_main_sequence_turn(self, *, log_reason: str) -> None:
@@ -37,7 +43,11 @@ class BattleReadyHandler:
             if actions:
                 log.info(log_reason)
                 for action in actions:
+                    if getattr(self.session, "stop_requested", False):
+                        return
                     self._use_action_with_optional_target(action)
+                    if getattr(self.session, "stop_requested", False):
+                        return
             self.session.battle_actions_done = True
             return
         log.info("检测到后续回合，跳过技能释放，直接进入攻击")

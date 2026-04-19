@@ -1,6 +1,6 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -163,6 +163,7 @@ class DummyBattleReadySession:
         self.resources.template.side_effect = lambda name, category="ui": name
         self.battle_actions_done = False
         self.smart_battle_enabled = smart_battle_enabled
+        self.stop_requested = False
 
     def refresh_screen(self) -> str:
         return "screen.png"
@@ -856,6 +857,19 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         handler.session.battle.finish_servant_skill.assert_called_once_with(1, target=2)
         handler.session.battle.attack.assert_called_once_with()
 
+    def test_battle_ready_skips_attack_when_manual_stop_requested_during_skill_sequence(
+        self,
+    ) -> None:
+        handler = DummyBattleReadyHandler(default_skill_target=2)
+        handler.session.battle.finish_servant_skill.side_effect = (
+            lambda *args, **kwargs: setattr(handler.session, "stop_requested", True)
+        )
+
+        handler.handle()
+
+        handler.session.battle.click_servant_skill.assert_called_once_with(1)
+        handler.session.battle.attack.assert_not_called()
+
     def test_custom_sequence_battle_ready_executes_turn_actions_and_attacks(self) -> None:
         plan = SimpleNamespace(
             actions=[
@@ -922,6 +936,37 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "无己方目标"):
             handler.handle()
+
+    @patch("core.runtime.custom_sequence.time.sleep")
+    def test_custom_sequence_battle_ready_stops_without_extra_sleep_when_manual_stop_requested_during_target_wait(
+        self,
+        sleep_mock,
+    ) -> None:
+        plan = SimpleNamespace(
+            actions=[SimpleNamespace(type="servant_skill", actor=2, skill=3, target=1)],
+            nobles=[],
+        )
+        handler = DummyCustomBattleReadyHandler(
+            wave=1,
+            turn=1,
+            plan=plan,
+            recognizer_matches=[None, None],
+        )
+        handler.session.stop_requested = False
+
+        original_refresh = handler.session.refresh_screen
+
+        def _refresh_and_stop():
+            handler.session.stop_requested = True
+            return original_refresh()
+
+        handler.session.refresh_screen = _refresh_and_stop
+
+        handler.handle()
+
+        sleep_mock.assert_not_called()
+        handler.session.battle.select_servant_target.assert_not_called()
+        handler.session.battle.attack.assert_not_called()
 
     def test_custom_sequence_battle_ready_without_plan_attacks_directly(self) -> None:
         handler = DummyCustomBattleReadyHandler(wave=1, turn=2, plan=None)
@@ -1819,6 +1864,26 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(session.consecutive_unknown_count, 1)
         self.assertTrue(session.unknown_snapshot_saved)
 
+    def test_unknown_handler_returns_immediately_when_manual_stop_requested(self) -> None:
+        session = DummyUnknownSession(template_positions={"next.png": (321, 654)})
+        session.stop_requested = True
+        waiter = DummyWaiter()
+        handler = UnknownHandler(session, waiter)
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=GameState.BATTLE_RESULT,
+            best_score=0.88,
+            matched_template="fight_result_3.png",
+            missing_templates=[],
+        )
+
+        handler.handle(unknown)
+
+        session.adb.click_raw.assert_not_called()
+        self.assertEqual(waiter.calls, [])
+
     def test_engine_unknown_retry_wait_is_shorter(self) -> None:
         from core.runtime.engine import AutomationEngine
 
@@ -1853,10 +1918,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
 
         engine.run()
 
-        self.assertEqual(
-            waiter.calls,
-            [("等待下一次状态识别", 0.5)],
-        )
+        self.assertEqual(waiter.calls, [])
 
     def test_engine_uses_hot_state_candidates_from_previous_state(self) -> None:
         from core.runtime.engine import AutomationEngine
@@ -1899,6 +1961,47 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 GameState.LOADING_TIPS,
             ),
         )
+
+    def test_engine_stops_immediately_after_unknown_wait_when_stop_requested(self) -> None:
+        from core.runtime.engine import AutomationEngine
+
+        session = SimpleNamespace(
+            config=SimpleNamespace(loop_count=10),
+            loop_done=0,
+            state=GameState.UNKNOWN,
+            consecutive_unknown_count=0,
+            unknown_snapshot_saved=False,
+            stop_requested=False,
+        )
+        waiter = DummyWaiter()
+        state_detector = Mock()
+        state_detector.detect.return_value = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=None,
+            best_score=0.0,
+            matched_template=None,
+            missing_templates=[],
+        )
+
+        def _handle_unknown(_detection):
+            session.stop_requested = True
+
+        unknown_handler = Mock()
+        unknown_handler.handle.side_effect = _handle_unknown
+
+        engine = AutomationEngine.__new__(AutomationEngine)
+        engine.session = session
+        engine.waiter = waiter
+        engine.state_detector = state_detector
+        engine.handlers = {}
+        engine.unknown_handler = unknown_handler
+
+        engine.run()
+
+        state_detector.detect.assert_called_once()
+        self.assertEqual(waiter.calls, [])
 
     def test_support_click_returns_cleanly_when_manual_stop_requested(self) -> None:
         handler = DummySupportTimingHandler()

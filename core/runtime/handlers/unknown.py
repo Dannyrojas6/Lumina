@@ -34,6 +34,8 @@ class UnknownHandler:
         ]
 
     def handle(self, detection: StateDetectionResult) -> None:
+        if getattr(self.session, "stop_requested", False):
+            return
         missing_count = len(detection.missing_templates)
         if detection.state == GameState.UNKNOWN:
             if self._should_attempt_ap_recovery_fallback(detection) and handle_ap_recovery_prompt(
@@ -65,7 +67,7 @@ class UnknownHandler:
             if detection.best_match_state is not None:
                 log.warning(
                     "未识别到已建模状态，最佳候选=%s score=%.2f template=%s screenshot=%s "
-                    "missing_templates=%d unknown_snapshot=%s consecutive_unknown=%d，等待1s后重试",
+                    "missing_templates=%d unknown_snapshot=%s consecutive_unknown=%d",
                     detection.best_match_state.name,
                     detection.best_score,
                     detection.matched_template,
@@ -77,7 +79,7 @@ class UnknownHandler:
                 return
             log.warning(
                 "状态识别失败，未找到可用模板匹配 screenshot=%s missing_templates=%d "
-                "unknown_snapshot=%s consecutive_unknown=%d，等待1s后重试",
+                "unknown_snapshot=%s consecutive_unknown=%d",
                 detection.screen_path,
                 missing_count,
                 snapshot_path,
@@ -88,7 +90,7 @@ class UnknownHandler:
         self.session.consecutive_unknown_count = 0
         self.session.unknown_snapshot_saved = False
         log.warning(
-            "检测到未处理状态=%s screenshot=%s，等待1s后重试",
+            "检测到未处理状态=%s screenshot=%s",
             detection.state.name,
             detection.screen_path,
         )

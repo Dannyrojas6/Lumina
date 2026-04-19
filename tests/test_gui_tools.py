@@ -62,26 +62,55 @@ class GuiToolTests(unittest.TestCase):
         page = CoordinateToolPage()
         self.assertEqual(page.window_title(), "坐标工具")
         self.assertIsInstance(page.layout(), QVBoxLayout)
+        toolbar = page.layout().itemAt(0).widget()
+        self.assertIsInstance(toolbar, QFrame)
+        self.assertEqual(toolbar.property("layoutRole"), "toolbar")
         side_panel = page.findChild(QFrame, "coordinateToolSidePanel")
         self.assertIsNotNone(side_panel)
-        self.assertEqual(side_panel.maximumWidth(), 360)
+        self.assertEqual(side_panel.width(), 210)
+        self.assertEqual(side_panel.minimumWidth(), 210)
+        self.assertEqual(side_panel.maximumWidth(), 210)
+        self.assertEqual(side_panel.property("layoutRole"), "sidePanel")
+        canvas_frame = page.findChild(QFrame, "coordinateCanvasFrame")
+        self.assertIsNotNone(canvas_frame)
+        self.assertEqual(canvas_frame.property("panelRole"), "surface")
+        self.assertEqual(canvas_frame.property("layoutRole"), "canvasPanel")
 
     def test_mask_region_tool_page_can_be_created(self) -> None:
         page = MaskRegionToolPage()
         self.assertEqual(page.window_title(), "遮挡工具")
         self.assertIsInstance(page.layout(), QVBoxLayout)
+        toolbar = page.layout().itemAt(0).widget()
+        self.assertIsInstance(toolbar, QFrame)
+        self.assertEqual(toolbar.property("layoutRole"), "toolbar")
         side_panel = page.findChild(QFrame, "maskToolSidePanel")
         self.assertIsNotNone(side_panel)
-        self.assertEqual(side_panel.width(), 340)
-        self.assertEqual(side_panel.minimumWidth(), 340)
-        self.assertEqual(side_panel.maximumWidth(), 340)
+        self.assertEqual(side_panel.width(), 210)
+        self.assertEqual(side_panel.minimumWidth(), 210)
+        self.assertEqual(side_panel.maximumWidth(), 210)
+        self.assertEqual(side_panel.property("layoutRole"), "sidePanel")
+        self.assertEqual(page.crop_preview.property("previewRole"), "toolPreview")
+        self.assertEqual(page.mask_preview.property("previewRole"), "toolPreview")
+        self.assertEqual(page.crop_preview.styleSheet(), "")
+        self.assertEqual(page.mask_preview.styleSheet(), "")
+        self.assertEqual(page.export_edit.property("editorRole"), "export")
 
     def test_custom_sequence_page_removes_large_hint_text_box(self) -> None:
         page = CustomSequencePage()
         self.assertEqual(len(page.findChildren(QTextEdit)), 0)
         side_panel = page.findChild(QFrame, "customSequenceSidePanel")
         self.assertIsNotNone(side_panel)
-        self.assertEqual(side_panel.maximumWidth(), 360)
+        self.assertEqual(side_panel.property("layoutRole"), "sidePanel")
+        left_panel = page.findChild(QFrame, "customSequenceInputPanel")
+        self.assertIsNotNone(left_panel)
+        self.assertEqual(left_panel.minimumWidth(), 230)
+        self.assertEqual(left_panel.maximumWidth(), 230)
+        self.assertEqual(left_panel.property("layoutRole"), "sidePanel")
+        self.assertEqual(side_panel.minimumWidth(), 200)
+        self.assertEqual(side_panel.maximumWidth(), 200)
+        wave_button = page.wave_buttons[1]
+        self.assertEqual(wave_button.property("buttonRole"), "pillToggle")
+        self.assertEqual(wave_button.styleSheet(), "")
 
     def test_coordinate_canvas_prefers_live_drag_preview_over_previous_rect(self) -> None:
         canvas = CoordinateCanvas()
@@ -155,12 +184,39 @@ class GuiToolTests(unittest.TestCase):
             page.mask_preview.alignment(),
             Qt.AlignmentFlag.AlignCenter,
         )
-        self.assertEqual(page.crop_preview.minimumHeight(), 180)
-        self.assertEqual(page.crop_preview.maximumHeight(), 180)
-        self.assertEqual(page.mask_preview.minimumHeight(), 180)
-        self.assertEqual(page.mask_preview.maximumHeight(), 180)
-        self.assertEqual(page.export_edit.minimumHeight(), 220)
-        self.assertEqual(page.export_edit.maximumHeight(), 220)
+        self.assertEqual(page.crop_preview.minimumHeight(), 96)
+        self.assertEqual(page.crop_preview.maximumHeight(), 96)
+        self.assertEqual(page.mask_preview.minimumHeight(), 96)
+        self.assertEqual(page.mask_preview.maximumHeight(), 96)
+        self.assertGreater(page.export_edit.minimumHeight(), 0)
+
+    def test_custom_sequence_page_uses_shared_divider_role(self) -> None:
+        page = CustomSequencePage()
+
+        dividers = [
+            frame
+            for frame in page.findChildren(QFrame)
+            if frame.property("separatorRole") == "divider"
+        ]
+        self.assertGreaterEqual(len(dividers), 3)
+        for divider in dividers:
+            self.assertEqual(divider.styleSheet(), "")
+
+    def test_custom_sequence_page_uses_shared_editor_panel_roles(self) -> None:
+        page = CustomSequencePage()
+
+        editor_panels = [
+            frame
+            for frame in page.findChildren(QFrame)
+            if frame.property("layoutRole") == "editorPanel"
+        ]
+        toolbar_panels = [
+            frame
+            for frame in page.findChildren(QFrame)
+            if frame.property("layoutRole") == "toolbar"
+        ]
+        self.assertGreaterEqual(len(editor_panels), 3)
+        self.assertGreaterEqual(len(toolbar_panels), 1)
 
     def test_mask_canvas_export_clips_masks_to_crop_region(self) -> None:
         canvas = MaskCanvas()
