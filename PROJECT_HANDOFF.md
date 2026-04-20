@@ -35,6 +35,7 @@
 - 可选的 `custom_sequence` 战斗链路：按 `wave + turn` 执行录入动作，并按录入时机释放宝具
 - 普通卡默认只在低置信度或显式调试时留证，低置信度时立即停止等待人工确认
 - 启动前固定环境与关键资源自检
+- 主配置缺失、关键配置值越界、本地 servant 资源越界、错误模型路径都会在启动前或加载阶段直接拦住
 - `tests/replay/` 静态回放回归
 
 ### 半成品能力
@@ -92,6 +93,12 @@
 - [core/runtime/waiter.py](/D:/VSCodeRepository/Lumina/core/runtime/waiter.py) 统一页面级等待
 - [core/runtime/handlers](/D:/VSCodeRepository/Lumina/core/runtime/handlers) 按页面拆分处理逻辑
 - [core/gui](/D:/VSCodeRepository/Lumina/core/gui) 提供 Qt 主程序、运行页和工具页
+- `UNKNOWN` 兜底仍保留，但现在是有限状态机：
+  - 连续两次 `UNKNOWN` 才允许点默认兜底模板
+  - 同一模板有 `2` 秒冷却
+  - 同一轮最多尝试 `2` 次
+  - 两次都没有进展就直接停止
+- `UNKNOWN` 里的 `AP` 恢复仍保留，但要求 `1` 秒内连续双命中，并在点果实前再确认一次当前页
 
 ### 助战识别
 
@@ -99,6 +106,8 @@
 - 原始图只来自本地从者目录里的 `atlas/faces/`
 - 默认正例是目标从者自己的 `atlas/faces`
 - 默认反例为空；只有显式传参时才加入 `Atlas` 反例
+- `support.servant` 非空时，目标助战默认找不到就停止
+- 只有 `support.allow_fallback_pick=true` 时，才允许回退默认助战位一次
 
 ### 战斗 `OCR`
 
@@ -148,12 +157,19 @@
   - `docs/drafts/` 只看作草稿
 - 不要把“能启动项目”误判成“助战链一定可跑”：
   - 助战识别依赖本地从者资源
+- 不要把旧的本地 `reference_meta.json` 当成还能继续兼容：
+  - `model_path` 现在只接受 `assets/models/portrait_encoder.onnx`
 - 不要把“配置里没写 `device`”当作还能继续兼容：
   - 现在固定环境已经是正式契约，不是口头约定
+- 不要把“找不到目标助战”误判成还会默认帮你选第一个：
+  - 现在默认直接停止
+  - 只有显式打开 `support.allow_fallback_pick` 才会回退一次
 - 不要把 AI 执行环境里的 `uv run` 权限拦截误判成项目环境坏掉：
   - 受限环境里如果 `uv run` 被拦，先申请权限，不要改走别的 Python 启动链
 - 不要把 `tests/` 当成唯一真相：
   - 当前主验证仍然依赖脚本、日志和调试截图
+- 不要忘记留证目录现在会自动清理旧文件：
+  - `unknown` 和 `command_cards` 都只保留每日 `10` 份、总量 `30` 份
 
 ## 接手时的最小验证
 

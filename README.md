@@ -6,7 +6,7 @@ Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务可通过 `ADB`
 
 - `ADB` 连接模拟器并持续截图
 - 主菜单进本、助战筛选、编队确认、战斗、结算继续
-- 助战按目标从者查找，找不到时回退默认位
+- 助战按目标从者查找；默认找不到就停止，只有显式打开 `allow_fallback_pick` 才会回退默认位一次
 - 战斗内读取当前波次、敌方剩余数量、当前回合数
 - `OCR` 读取前排三位从者 `NP`
 - `OCR` 读取敌方三个位的 `HP`
@@ -63,12 +63,21 @@ uv run python .\gui_main.py
 - `match_threshold`：界面模板识别阈值
 - `log_level`：排查时建议用 `DEBUG`
 - `device`：可选目标设备序列号、启动前自动连接地址
-- `support`：助战职阶、目标从者、回退位、头像核验参数
+- `support`：助战职阶、目标从者、默认位、是否允许回退、头像核验参数
 - `ocr`：战斗文字读取参数
 - `smart_battle`：主链路下的保守智能战斗开关、前排角色和出卡优先级
 - `battle_mode`：选择当前主链路或自定义操作序列战斗
 - `custom_sequence_battle`：选择当前要加载的自定义操作序列文件
 - `skill_sequence`：`battle_mode=main` 下两种主链路子模式临时共用的开局技能顺序
+
+运行保护规则：
+
+- 主配置文件缺失时直接失败，不再回退默认配置
+- `match_threshold`、`quest_slot`、`support.pick_index`、`support.max_scroll_pages` 和关键等待时间会在加载阶段直接校验
+- `support.servant` 非空时，目标助战找不到默认直接停止；只有 `support.allow_fallback_pick=true` 才允许回退默认位一次
+- `UNKNOWN` 兜底仍保留，但要满足连续两次 `UNKNOWN` 才触发，同一模板有 `2` 秒冷却，同一轮最多尝试 `2` 次
+- `UNKNOWN` 里的 `AP` 恢复仍保留，但要求 `1` 秒内连续双命中，并在点果实前再次确认当前页
+- `unknown` 和 `command_cards` 留证都会自动裁到固定上限：每日最多 `10`，总量最多 `30`
 
 `battle_mode` 当前规则：
 
@@ -129,6 +138,7 @@ uv run python .\gui_main.py
 - [unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)：未识别界面截图
 - [ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)：`OCR` 裁图与调试图
 - [command_cards](/D:/VSCodeRepository/Lumina/assets/screenshots/command_cards)：普通卡识别截图与分析 JSON
+- `unknown` 和 `command_cards` 当前都会自动清理旧文件，只保留每日 `10` 份、总量 `30` 份
 - [tests/replay](/D:/VSCodeRepository/Lumina/tests/replay)：静态回放回归样本
 - [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
 - [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
