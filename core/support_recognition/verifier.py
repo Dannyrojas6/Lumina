@@ -108,7 +108,7 @@ class SupportPortraitVerifier:
         self.meta = meta
         self.config = config
         self.resources = resources
-        model_path = Path(resources.assets_dir) / meta.model_path
+        model_path = Path(resources.assets_dir).parent / meta.model_path
         self.encoder = encoder or PortraitEncoder(model_path)
         self.min_score = (
             float(config.min_slot_score)

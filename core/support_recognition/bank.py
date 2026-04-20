@@ -21,6 +21,7 @@ DEFAULT_SQUARE_WEIGHT = 0.4
 DEFAULT_FACE_WEIGHT = 0.6
 DEFAULT_MIN_SCORE = 0.30
 DEFAULT_MIN_MARGIN = 0.15
+EXPECTED_MODEL_PATH = "assets/models/portrait_encoder.onnx"
 
 
 @dataclass(frozen=True)
@@ -64,9 +65,14 @@ class PortraitReferenceMeta:
     @classmethod
     def from_json(cls, path: Path) -> "PortraitReferenceMeta":
         data = json.loads(path.read_text(encoding="utf-8"))
+        model_path = _normalize_model_path(str(data["model_path"]))
+        if model_path != EXPECTED_MODEL_PATH:
+            raise ValueError(
+                "reference_meta.json model_path must be assets/models/portrait_encoder.onnx"
+            )
         return cls(
             servant_name=str(data["servant_name"]),
-            model_path=str(data["model_path"]),
+            model_path=model_path,
             image_size=int(data["image_size"]),
             embedding_dim=int(data["embedding_dim"]),
             square_weight=float(data.get("square_weight", DEFAULT_SQUARE_WEIGHT)),
@@ -91,7 +97,7 @@ class PortraitReferenceMeta:
     def to_json(self, path: Path) -> None:
         payload = {
             "servant_name": self.servant_name,
-            "model_path": self.model_path,
+            "model_path": EXPECTED_MODEL_PATH,
             "image_size": self.image_size,
             "embedding_dim": self.embedding_dim,
             "square_weight": self.square_weight,
@@ -109,6 +115,10 @@ class PortraitReferenceMeta:
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _normalize_model_path(model_path: str) -> str:
+    return Path(model_path).as_posix()
 
 
 def load_reference_bank(path: str | Path) -> PortraitReferenceBank:
