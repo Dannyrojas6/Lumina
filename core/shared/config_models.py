@@ -79,6 +79,7 @@ class SupportConfig:
     servant: str = ""
     pick_index: int = 1
     max_scroll_pages: int = 3
+    allow_fallback_pick: bool = False
     recognition: SupportRecognitionConfig = field(
         default_factory=SupportRecognitionConfig
     )

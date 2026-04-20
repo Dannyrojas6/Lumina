@@ -44,11 +44,18 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     if isinstance(support_data, SupportConfig):
         support = support_data
     else:
+        if not isinstance(support_data, dict):
+            raise TypeError("support must be a mapping")
         support = SupportConfig(
             class_name=str(support_data.get("class", "all")),
             servant=str(support_data.get("servant", "")),
-            pick_index=int(support_data.get("pick_index", 1)),
-            max_scroll_pages=int(support_data.get("max_scroll_pages", 3)),
+            pick_index=parse_support_pick_index(support_data.get("pick_index", 1)),
+            max_scroll_pages=parse_support_max_scroll_pages(
+                support_data.get("max_scroll_pages", 3)
+            ),
+            allow_fallback_pick=bool(
+                support_data.get("allow_fallback_pick", False)
+            ),
             recognition=parse_support_recognition(
                 support_data.get("recognition", {})
             ),
@@ -81,6 +88,22 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     data["default_skill_target"] = parse_default_skill_target(
         data.get("default_skill_target", 3)
     )
+    data["match_threshold"] = parse_match_threshold(
+        data.get("match_threshold", 0.75)
+    )
+    data["skill_interval"] = parse_non_negative_float(
+        data.get("skill_interval", 1.5),
+        field_name="skill_interval",
+    )
+    data["skill_pre_skip_delay"] = parse_non_negative_float(
+        data.get("skill_pre_skip_delay", 0.5),
+        field_name="skill_pre_skip_delay",
+    )
+    data["master_skill_open_delay"] = parse_non_negative_float(
+        data.get("master_skill_open_delay", 0.4),
+        field_name="master_skill_open_delay",
+    )
+    data["quest_slot"] = parse_quest_slot(data.get("quest_slot", 1))
     return BattleConfig(**data)
 
 
@@ -121,10 +144,10 @@ def default_battle_config() -> BattleConfig:
 
 
 def load_battle_config(config_path: str = "config/battle_config.yaml") -> BattleConfig:
-    """优先加载磁盘配置，缺失时退回默认配置。"""
-    if Path(config_path).exists():
-        return battle_config_from_yaml(config_path)
-    return default_battle_config()
+    """加载主运行配置；缺失时直接失败。"""
+    if not Path(config_path).exists():
+        raise FileNotFoundError(f"battle config file not found: {config_path}")
+    return battle_config_from_yaml(config_path)
 
 
 def custom_sequence_directory_for_config(config_path: Path) -> Path:
@@ -242,7 +265,10 @@ def parse_support_recognition(data: Any) -> SupportRecognitionConfig:
     return SupportRecognitionConfig(
         min_slot_score=float(raw.get("min_slot_score", 0.78)),
         min_slot_margin=float(raw.get("min_slot_margin", 0.004)),
-        confirm_delay=float(raw.get("confirm_delay", 0.25)),
+        confirm_delay=parse_non_negative_float(
+            raw.get("confirm_delay", 0.25),
+            field_name="support.recognition.confirm_delay",
+        ),
         save_debug_mismatches=bool(raw.get("save_debug_mismatches", True)),
         max_debug_images=int(raw.get("max_debug_images", 12)),
     )
@@ -282,6 +308,46 @@ def parse_default_skill_target(data: Any) -> int:
     if target < 1 or target > 3:
         raise ValueError("default_skill_target must be within 1..3")
     return target
+
+
+def parse_match_threshold(data: Any) -> float:
+    """解析模板识别阈值。"""
+    threshold = float(data)
+    if threshold <= 0 or threshold > 1:
+        raise ValueError("match_threshold must be within (0, 1]")
+    return threshold
+
+
+def parse_non_negative_float(data: Any, *, field_name: str) -> float:
+    """解析非负时间或延迟配置。"""
+    value = float(data)
+    if value < 0:
+        raise ValueError(f"{field_name} must be >= 0")
+    return value
+
+
+def parse_quest_slot(data: Any) -> int:
+    """解析主菜单关卡入口。"""
+    slot = int(data)
+    if slot < 1 or slot > 3:
+        raise ValueError("quest_slot must be within 1..3")
+    return slot
+
+
+def parse_support_pick_index(data: Any) -> int:
+    """解析默认助战位序号。"""
+    pick_index = int(data)
+    if pick_index < 1 or pick_index > 3:
+        raise ValueError("support.pick_index must be within 1..3")
+    return pick_index
+
+
+def parse_support_max_scroll_pages(data: Any) -> int:
+    """解析助战最大搜索页数。"""
+    max_scroll_pages = int(data)
+    if max_scroll_pages < 1:
+        raise ValueError("support.max_scroll_pages must be >= 1")
+    return max_scroll_pages
 
 
 def parse_battle_mode(data: Any) -> Literal["main", "custom_sequence"]:

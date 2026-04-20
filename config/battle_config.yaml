@@ -5,7 +5,7 @@ loop_count: 10 # 刷本次数（-1 为无限循环）
 battle_mode: main # main=主链路；custom_sequence=自定义操作序列战斗
 continue_battle: false # 结算后若出现连续出击界面则点击继续；false 时改为点击关闭
 default_skill_target: 3 # 技能释放后若出现选人界面，且动作本身没写 target，则默认选择该目标位
-match_threshold: 0.70 # 图像识别置信度阈值（0~1，越高越严格）
+match_threshold: 0.70 # 图像识别置信度阈值，必须在 (0, 1]，越高越严格
 log_level: DEBUG # 日志级别，可选 DEBUG/INFO/WARNING
 skill_interval: 1.5 # 每个技能释放后的额外等待时间（秒）
 skill_pre_skip_delay: 0.5 # 点击技能后到点击加速跳过前的等待时间（秒）
@@ -20,12 +20,13 @@ device:
 support:
   class: berserker # v2 支持 all / berserker
   servant: "berserker/morgan" # 目标助战从者完整标识，例如 berserker/morgan；留空则沿用默认位选择
-  pick_index: 1 # 当前页助战位序号，1/2/3
-  max_scroll_pages: 10 # 最多向下搜索的页数，超出后回退到默认位
+  pick_index: 1 # 当前页助战位序号，必须是 1/2/3
+  max_scroll_pages: 10 # 最多向下搜索的页数，必须 >= 1；超过后默认直接停止
+  allow_fallback_pick: false # 仅当显式设为 true 时，目标助战找不到才允许回退默认位一次
   recognition:
     min_slot_score: 0.0 # 0 表示使用向量库默认阈值
     min_slot_margin: 0.0 # 0 表示使用向量库默认分差
-    confirm_delay: 0.25 # 二次确认前等待时间（秒）
+    confirm_delay: 0.25 # 二次确认前等待时间（秒），必须 >= 0
     save_debug_mismatches: true # 低分或歧义时保留少量调试图
     max_debug_images: 12 # 调试图最多保留数量
 

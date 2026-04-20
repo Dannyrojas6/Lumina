@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 
@@ -15,6 +16,14 @@ class SupportRecognitionManifest:
     generated_dir: str = "support/generated"
     reference_bank: str = "support/generated/reference_bank.npz"
     reference_meta: str = "support/generated/reference_meta.json"
+
+    def __post_init__(self) -> None:
+        """校验 manifest 内相对路径仍留在 servant 根目录内。"""
+        _validate_servant_relative_path(self.source_dir, "source_dir")
+        _validate_source_glob(self.source_glob)
+        _validate_servant_relative_path(self.generated_dir, "generated_dir")
+        _validate_servant_relative_path(self.reference_bank, "reference_bank")
+        _validate_servant_relative_path(self.reference_meta, "reference_meta")
 
 
 @dataclass(frozen=True)
@@ -82,3 +91,19 @@ def parse_support_recognition_manifest(data: Any) -> SupportRecognitionManifest:
             data.get("reference_meta", "support/generated/reference_meta.json")
         ),
     )
+
+
+def _validate_servant_relative_path(value: Any, field_name: str) -> None:
+    path = Path(str(value))
+    if path.is_absolute():
+        raise ValueError(f"servant manifest {field_name} must stay inside servant root")
+    if any(part == ".." for part in path.parts):
+        raise ValueError(f"servant manifest {field_name} must stay inside servant root")
+
+
+def _validate_source_glob(value: Any) -> None:
+    pattern = Path(str(value))
+    if pattern.is_absolute():
+        raise ValueError("servant manifest source_glob must stay inside servant root")
+    if any(part == ".." for part in pattern.parts):
+        raise ValueError("servant manifest source_glob must stay inside servant root")

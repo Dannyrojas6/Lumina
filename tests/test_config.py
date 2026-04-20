@@ -127,6 +127,47 @@ smart_battle:
             repo_root / "assets" / "screenshots" / "support_recognition",
         )
 
+    def test_load_servant_manifest_rejects_paths_outside_servant_root(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            servant_dir = root / "local_data" / "servants" / "berserker" / "morgan"
+            servant_dir.mkdir(parents=True)
+
+            cases = {
+                "source_dir": "../escape",
+                "generated_dir": "../../escape",
+                "reference_bank": str((root / "escape" / "reference_bank.npz").resolve()),
+                "reference_meta": "support/generated/../escape/reference_meta.json",
+            }
+
+            for field_name, bad_value in cases.items():
+                catalog = ResourceCatalog(
+                    assets_dir=str(root / "assets"),
+                    servants_dir=str(root / "local_data" / "servants"),
+                )
+                manifest_path = servant_dir / "manifest.yaml"
+                manifest_path.write_text(
+                    dedent(
+                        f"""
+                        servant_name: morgan
+                        display_name: Morgan
+                        class_name: berserker
+                        support_recognition:
+                          source_dir: {"atlas/faces" if field_name != "source_dir" else bad_value}
+                          source_glob: '**/*.png'
+                          generated_dir: {"support/generated" if field_name != "generated_dir" else bad_value}
+                          reference_bank: {"support/generated/reference_bank.npz" if field_name != "reference_bank" else bad_value}
+                          reference_meta: {"support/generated/reference_meta.json" if field_name != "reference_meta" else bad_value}
+                        skills: []
+                        """
+                    ),
+                    encoding="utf-8",
+                )
+
+                with self.subTest(field_name=field_name):
+                    with self.assertRaisesRegex(ValueError, field_name):
+                        catalog.load_servant_manifest("berserker/morgan")
+
     def test_continue_battle_defaults_to_true(self) -> None:
         config = BattleConfig.default()
 

@@ -171,7 +171,14 @@ class ResourceCatalog:
         support = (
             manifest.support_recognition if manifest else SupportRecognitionManifest()
         )
-        return str(self.servant_dir(servant_name) / support.source_dir)
+        self._validate_support_source_glob(support.source_glob)
+        return str(
+            self._resolve_servant_relative_path(
+                servant_name,
+                support.source_dir,
+                "source_dir",
+            )
+        )
 
     def support_generated_dir(
         self,
@@ -182,7 +189,13 @@ class ResourceCatalog:
         support = (
             manifest.support_recognition if manifest else SupportRecognitionManifest()
         )
-        return str(self.servant_dir(servant_name) / support.generated_dir)
+        return str(
+            self._resolve_servant_relative_path(
+                servant_name,
+                support.generated_dir,
+                "generated_dir",
+            )
+        )
 
     def servant_manifest_path(self, servant_name: str) -> str:
         """返回从者资料文件路径。"""
@@ -201,7 +214,13 @@ class ResourceCatalog:
         support = (
             manifest.support_recognition if manifest else SupportRecognitionManifest()
         )
-        return str(self.servant_dir(servant_name) / support.reference_bank)
+        return str(
+            self._resolve_servant_relative_path(
+                servant_name,
+                support.reference_bank,
+                "reference_bank",
+            )
+        )
 
     def support_reference_meta_path(
         self,
@@ -212,7 +231,13 @@ class ResourceCatalog:
         support = (
             manifest.support_recognition if manifest else SupportRecognitionManifest()
         )
-        return str(self.servant_dir(servant_name) / support.reference_meta)
+        return str(
+            self._resolve_servant_relative_path(
+                servant_name,
+                support.reference_meta,
+                "reference_meta",
+            )
+        )
 
     def load_servant_manifest(self, servant_name: str) -> ServantManifest:
         """加载单个从者资料。"""
@@ -259,6 +284,29 @@ class ResourceCatalog:
         if raw_path.is_absolute():
             return raw_path
         return (self._repo_root / raw_path).resolve()
+
+    def _resolve_servant_relative_path(
+        self,
+        servant_name: str,
+        relative_path: str | Path,
+        field_name: str,
+    ) -> Path:
+        servant_root = self.servant_dir(servant_name).resolve()
+        resolved_path = (servant_root / Path(relative_path)).resolve()
+        try:
+            resolved_path.relative_to(servant_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"servant manifest {field_name} must stay inside servant root"
+            ) from exc
+        return resolved_path
+
+    def _validate_support_source_glob(self, source_glob: str) -> None:
+        pattern = Path(source_glob)
+        if pattern.is_absolute():
+            raise ValueError("servant manifest source_glob must stay inside servant root")
+        if any(part == ".." for part in pattern.parts):
+            raise ValueError("servant manifest source_glob must stay inside servant root")
 
     def _normalize_servant_name(self, servant_name: str) -> str:
         return str(servant_name).replace("\\", "/").strip().strip("/")
