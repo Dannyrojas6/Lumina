@@ -443,6 +443,91 @@ class GuiAppTests(unittest.TestCase):
 
         self.assertEqual(page.config_status_label.property("noticeRole"), "dirty")
 
+    def test_runtime_controller_missing_config_stays_constructible_and_reports_error(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing_path = Path(temp_dir) / "battle_config.yaml"
+            controller = AutomationRuntimeController(
+                config_path=missing_path,
+                worker_factory=lambda _path: (_ for _ in ()).throw(AssertionError("should not create worker")),
+            )
+            summaries: list[str] = []
+            lifecycles: list[str] = []
+            failures: list[str] = []
+            controller.summary_changed.connect(summaries.append)
+            controller.lifecycle_changed.connect(lifecycles.append)
+            controller.error_occurred.connect(failures.append)
+
+            controller.refresh_summary()
+
+            self.assertFalse(controller.config_available)
+            self.assertEqual(controller.current_summary, controller.CONFIG_UNAVAILABLE_SUMMARY)
+            self.assertIn("battle_config.yaml", controller.current_config_error or "")
+            self.assertTrue(controller.current_lifecycle_text.startswith("配置不可用："))
+            self.assertEqual(summaries[-1], controller.CONFIG_UNAVAILABLE_SUMMARY)
+            self.assertEqual(lifecycles[-1], controller.current_lifecycle_text)
+            self.assertEqual(failures[-1], controller.current_config_error)
+
+    def test_runtime_page_disables_all_runtime_controls_when_config_unavailable(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing_path = Path(temp_dir) / "battle_config.yaml"
+            controller = AutomationRuntimeController(config_path=missing_path)
+
+            page = RuntimePage(controller)
+            page.start_button.click()
+
+            self.assertEqual(page.status_value.text(), controller.current_lifecycle_text)
+            self.assertFalse(page.start_button.isEnabled())
+            self.assertFalse(page.stop_button.isEnabled())
+            self.assertFalse(page.apply_button.isEnabled())
+            self.assertFalse(page.reset_button.isEnabled())
+            self.assertFalse(page.mode_combo.isEnabled())
+            self.assertFalse(page.smart_battle_checkbox.isEnabled())
+            self.assertFalse(page.continue_battle_checkbox.isEnabled())
+            self.assertFalse(page.log_level_combo.isEnabled())
+            self.assertEqual(page.config_status_label.text(), controller.current_config_error)
+            self.assertEqual(page.mode_value.text(), "配置不可用")
+
+    def test_runtime_page_recovers_after_config_file_is_restored(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "battle_config.yaml"
+            controller = AutomationRuntimeController(config_path=config_path)
+            page = RuntimePage(controller)
+            valid_config = {
+                "battle_mode": "main",
+                "continue_battle": False,
+                "log_level": "DEBUG",
+                "support": {
+                    "class_name": "berserker",
+                    "servant": "morgan",
+                },
+                "smart_battle": {
+                    "enabled": True,
+                },
+                "custom_sequence_battle": {
+                    "sequence": "demo.yaml",
+                },
+            }
+            config_path.write_text(
+                yaml.safe_dump(valid_config, sort_keys=False, allow_unicode=True),
+                encoding="utf-8",
+            )
+
+            controller.refresh_summary()
+
+            self.assertTrue(controller.config_available)
+            self.assertEqual(page.status_value.text(), "空闲")
+            self.assertTrue(page.start_button.isEnabled())
+            self.assertTrue(page.mode_combo.isEnabled())
+            self.assertTrue(page.smart_battle_checkbox.isEnabled())
+            self.assertTrue(page.continue_battle_checkbox.isEnabled())
+            self.assertTrue(page.log_level_combo.isEnabled())
+            self.assertEqual(page.mode_value.text(), "main")
+            self.assertEqual(page.log_level_value.text(), "DEBUG")
+
 
 class RuntimeConfigServiceTests(unittest.TestCase):
     def test_save_runtime_editable_config_updates_only_targeted_fields(self) -> None:

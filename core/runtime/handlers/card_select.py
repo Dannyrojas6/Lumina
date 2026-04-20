@@ -426,8 +426,7 @@ class CardSelectHandler:
                 support_attacker=self.session.support_attacker_servant_name(),
             )
         except Exception as exc:
-            log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
-            return None
+            raise RuntimeError(f"普通指令卡归属识别失败，已停止运行：{exc}") from exc
         log.info("普通指令卡归属识别：%s", owners)
         return owners
 
@@ -438,25 +437,27 @@ class CardSelectHandler:
         frontline_servants = self.session.frontline_servant_names()
         if not servant_priority or not frontline_servants:
             return None, None
+        screen_rgb = self.session.get_latest_screen_rgb()
         try:
-            screen_rgb = self.session.get_latest_screen_rgb()
             prediction = self.session.get_command_card_recognizer().analyze_frontline(
                 screen_rgb,
                 frontline_servants,
                 support_attacker=self.session.support_attacker_servant_name(),
             )
-            image_path = masked_path = json_path = None
-            if self.session.should_save_command_card_evidence(prediction):
+            cards = prediction.cards
+        except Exception as exc:
+            raise RuntimeError(f"普通指令卡识别失败，已停止运行：{exc}") from exc
+        image_path = masked_path = json_path = None
+        if self.session.should_save_command_card_evidence(prediction):
+            try:
                 image_path, masked_path, json_path = (
                     self.session.save_command_card_evidence(
                         prediction,
                         screen_rgb,
                     )
                 )
-            cards = prediction.cards
-        except Exception as exc:
-            log.warning("普通指令卡识别失败，已回退默认出卡：%s", exc)
-            return None, None
+            except Exception as exc:
+                log.warning("普通指令卡证据写盘失败，已跳过留证：%s", exc)
         if image_path is not None:
             log.info(
                 "普通指令卡识别证据：image=%s masked=%s json=%s",

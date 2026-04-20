@@ -2,6 +2,7 @@ import unittest
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import numpy as np
 
@@ -103,6 +104,148 @@ class RuntimeSessionCommandCardEvidenceTest(unittest.TestCase):
                 payload = json.load(file)
             self.assertEqual(payload["masked_preview_path"], masked_path)
             self.assertEqual(payload["parts_preview_path"], str(parts_path))
+
+    def test_save_unknown_snapshot_prunes_oldest_file_when_daily_limit_is_reached(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            session = object.__new__(RuntimeSession)
+            session.resources = ResourceCatalog(
+                screen_path=str(Path(tmp_dir) / "screen.png")
+            )
+            session.latest_screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+            def _strftime(fmt: str) -> str:
+                if fmt == "%Y%m%d":
+                    return "20260419"
+                if fmt == "%Y%m%d_%H%M%S":
+                    return "20260419_101530"
+                return fmt
+
+            unknown_dir = Path(tmp_dir) / "unknown" / "20260419"
+            unknown_dir.mkdir(parents=True, exist_ok=True)
+            for index in range(10):
+                (unknown_dir / f"unknown_existing_{index}.png").write_bytes(b"0")
+
+            with patch("core.runtime.session.time.strftime", side_effect=_strftime):
+                saved_path = RuntimeSession.save_unknown_snapshot(session)
+
+            self.assertIsNotNone(saved_path)
+            assert saved_path is not None
+            self.assertTrue(Path(saved_path).exists())
+            saved_files = sorted(unknown_dir.glob("*.png"))
+            self.assertEqual(len(saved_files), 10)
+            self.assertFalse((unknown_dir / "unknown_existing_0.png").exists())
+
+    def test_save_unknown_snapshot_prunes_oldest_file_when_total_limit_is_reached(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            session = object.__new__(RuntimeSession)
+            session.resources = ResourceCatalog(
+                screen_path=str(Path(tmp_dir) / "screen.png")
+            )
+            session.latest_screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+            def _strftime(fmt: str) -> str:
+                if fmt == "%Y%m%d":
+                    return "20260419"
+                if fmt == "%Y%m%d_%H%M%S":
+                    return "20260419_101530"
+                return fmt
+
+            unknown_root = Path(tmp_dir) / "unknown"
+            for day_index in range(30):
+                day_dir = unknown_root / f"202603{day_index:02d}"
+                day_dir.mkdir(parents=True, exist_ok=True)
+                (day_dir / f"unknown_existing_{day_index}.png").write_bytes(b"0")
+
+            with patch("core.runtime.session.time.strftime", side_effect=_strftime):
+                saved_path = RuntimeSession.save_unknown_snapshot(session)
+
+            self.assertIsNotNone(saved_path)
+            assert saved_path is not None
+            self.assertTrue(Path(saved_path).exists())
+            self.assertEqual(len(list(unknown_root.rglob("*.png"))), 30)
+            self.assertFalse((unknown_root / "20260300" / "unknown_existing_0.png").exists())
+
+    def test_save_command_card_evidence_prunes_oldest_group_when_daily_limit_is_reached(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            session = object.__new__(RuntimeSession)
+            session.resources = ResourceCatalog(command_card_debug_dir=tmp_dir)
+            session.last_current_turn = 2
+            session.last_wave_index = 1
+            session.loop_done = 0
+            screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
+            prediction = _make_prediction()
+
+            def _strftime(fmt: str) -> str:
+                if fmt == "%Y%m%d":
+                    return "20260419"
+                if fmt == "%Y%m%d_%H%M%S":
+                    return "20260419_101530"
+                return fmt
+
+            evidence_dir = Path(tmp_dir) / "20260419"
+            evidence_dir.mkdir(parents=True, exist_ok=True)
+            for index in range(10):
+                (evidence_dir / f"command_cards_existing_{index}.json").write_text("{}", encoding="utf-8")
+                (evidence_dir / f"command_cards_existing_{index}.png").write_bytes(b"0")
+                (evidence_dir / f"command_cards_existing_{index}_masked.png").write_bytes(b"0")
+                (evidence_dir / f"command_cards_existing_{index}_parts.png").write_bytes(b"0")
+
+            with patch("core.runtime.session.time.strftime", side_effect=_strftime):
+                image_path, masked_path, json_path = RuntimeSession.save_command_card_evidence(
+                    session,
+                    prediction,
+                    screen_rgb,
+                )
+
+            self.assertTrue(Path(image_path).exists())
+            self.assertTrue(Path(masked_path).exists())
+            self.assertTrue(Path(json_path).exists())
+            self.assertEqual(len(list(evidence_dir.glob("*.json"))), 10)
+            self.assertFalse((evidence_dir / "command_cards_existing_0.json").exists())
+            self.assertFalse((evidence_dir / "command_cards_existing_0.png").exists())
+
+    def test_save_command_card_evidence_prunes_oldest_group_when_total_limit_is_reached(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            session = object.__new__(RuntimeSession)
+            session.resources = ResourceCatalog(command_card_debug_dir=tmp_dir)
+            session.last_current_turn = 2
+            session.last_wave_index = 1
+            session.loop_done = 0
+            screen_rgb = np.zeros((1080, 1920, 3), dtype=np.uint8)
+            prediction = _make_prediction()
+
+            def _strftime(fmt: str) -> str:
+                if fmt == "%Y%m%d":
+                    return "20260419"
+                if fmt == "%Y%m%d_%H%M%S":
+                    return "20260419_101530"
+                return fmt
+
+            evidence_root = Path(tmp_dir)
+            for day_index in range(30):
+                day_dir = evidence_root / f"202603{day_index:02d}"
+                day_dir.mkdir(parents=True, exist_ok=True)
+                (day_dir / f"command_cards_existing_{day_index}.json").write_text(
+                    "{}",
+                    encoding="utf-8",
+                )
+                (day_dir / f"command_cards_existing_{day_index}.png").write_bytes(b"0")
+                (day_dir / f"command_cards_existing_{day_index}_masked.png").write_bytes(b"0")
+                (day_dir / f"command_cards_existing_{day_index}_parts.png").write_bytes(b"0")
+
+            with patch("core.runtime.session.time.strftime", side_effect=_strftime):
+                image_path, masked_path, json_path = RuntimeSession.save_command_card_evidence(
+                    session,
+                    prediction,
+                    screen_rgb,
+                )
+
+            self.assertTrue(Path(image_path).exists())
+            self.assertTrue(Path(masked_path).exists())
+            self.assertTrue(Path(json_path).exists())
+            self.assertEqual(len(list(evidence_root.rglob("*.json"))), 30)
+            self.assertFalse((evidence_root / "20260300" / "command_cards_existing_0.json").exists())
+            self.assertFalse((evidence_root / "20260300" / "command_cards_existing_0.png").exists())
 
 
 if __name__ == "__main__":

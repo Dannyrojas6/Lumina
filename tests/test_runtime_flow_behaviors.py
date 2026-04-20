@@ -40,6 +40,7 @@ class DummyWaiter:
         self.state_exit_result = None
         self.post_card_wait_calls: list[dict[str, object]] = []
         self.post_card_wait_result = None
+        self.state_detector = Mock()
 
     def wait_seconds(self, reason: str, seconds: float) -> None:
         self.calls.append((reason, seconds))
@@ -346,6 +347,7 @@ class DummyCardSelectSession:
         self.battle = Mock()
         self.adb = Mock()
         self.smart_battle_enabled = smart_battle_enabled
+        self.command_card_evidence_groups_saved = 0
 
     def command_card_priority(self) -> list[str]:
         return [
@@ -381,6 +383,7 @@ class DummyCardSelectSession:
         prediction: CommandCardPrediction,
         screen_rgb: np.ndarray,
     ) -> tuple[str, str, str]:
+        self.command_card_evidence_groups_saved += 1
         self.saved_predictions.append(prediction)
         self.saved_rgb_frames.append(screen_rgb)
         return ("frame.png", "frame_masked.png", "frame.json")
@@ -419,6 +422,12 @@ class DummyUnknownSession:
         self.recognizer.match.side_effect = self._match
         self.unknown_snapshot_saved = False
         self.consecutive_unknown_count = 0
+        self.unknown_fallback_attempts_this_turn = 0
+        self.unknown_last_fallback_template: str | None = None
+        self.unknown_last_fallback_click_time: float | None = None
+        self.ap_recovery_consecutive_hits = 0
+        self.ap_recovery_window_started_at: float | None = None
+        self.ap_recovery_last_hit_time: float | None = None
 
     def get_latest_screen_image(self) -> np.ndarray:
         return self._screen
@@ -1009,6 +1018,17 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(handler.selected_support_class, "berserker")
         self.assertEqual(handler.fallback_pick_index, 1)
 
+    def test_support_select_stops_before_filter_click_when_verifier_init_fails(self) -> None:
+        handler = DummySupportHandler()
+        handler.session.config.support.servant = "berserker/morgan"
+        handler.session.get_support_verifier = Mock(return_value=None)
+
+        with self.assertRaisesRegex(RuntimeError, "核验器初始化失败"):
+            handler.handle()
+
+        self.assertIsNone(handler.selected_support_class)
+        handler.session.adb.click.assert_not_called()
+
     def test_battle_result_stage_one_clicks_continue_without_finishing_battle(self) -> None:
         handler = DummyBattleResultHandler(stage=1)
 
@@ -1191,6 +1211,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
                 ("已点击结算页下一步", 0.5),
                 ("等待结算完成收尾", 1.0),
                 ("已点击连续出击", 0.5),
+                ("等待行动力恢复再次确认", 0.25),
                 ("已将行动力恢复列表滚到底部", 0.5),
                 ("已点击青铜果实", 0.5),
                 ("已确认行动力恢复", 0.5),
@@ -1738,6 +1759,30 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
             ],
         )
 
+    def test_card_select_stops_when_recognition_chain_raises(self) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+
+        class _Recognizer:
+            def analyze_frontline(self, screen_rgb, frontline_servants, *, support_attacker):
+                raise RuntimeError("识别链内部异常")
+
+        handler.session.get_command_card_recognizer = lambda: _Recognizer()
+
+        with self.assertRaisesRegex(RuntimeError, "识别链内部异常"):
+            CardSelectHandler.handle(handler)
+
+        self.assertEqual(handler.call_order, ["read_np", "read_cards"])
+
+    def test_card_select_continues_when_evidence_write_fails_for_complete_result(self) -> None:
+        handler = DummyCardSelectHandler(_make_prediction(low_confidence=False))
+        handler.session.should_save_command_card_evidence = lambda prediction: True
+        handler.session.save_command_card_evidence = Mock(side_effect=RuntimeError("写盘失败"))
+
+        CardSelectHandler.handle(handler)
+
+        self.assertEqual(handler.session.save_command_card_evidence.call_count, 1)
+        self.assertEqual(handler.call_order, ["read_np", "read_cards", "build_plan", "execute_plan", "wait_after_plan"])
+
     def test_unknown_handler_defers_fallback_for_untrusted_page_family(self) -> None:
         session = DummyUnknownSession(template_positions={"next.png": (321, 654)})
         handler = UnknownHandler(session, DummyWaiter())
@@ -1784,6 +1829,50 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(session.consecutive_unknown_count, 0)
         self.assertFalse(session.unknown_snapshot_saved)
 
+    def test_unknown_handler_stops_after_two_unproductive_fallbacks(self) -> None:
+        session = DummyUnknownSession(template_positions={"next.png": (321, 654)})
+        waiter = DummyWaiter()
+        waiter.state_detector.detect.return_value = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=GameState.BATTLE_RESULT,
+            best_score=0.88,
+            matched_template="fight_result_3.png",
+            missing_templates=[],
+        )
+        handler = UnknownHandler(session, waiter)
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=GameState.BATTLE_RESULT,
+            best_score=0.88,
+            matched_template="fight_result_3.png",
+            missing_templates=[],
+        )
+
+        with patch("core.runtime.handlers.unknown.time.monotonic", return_value=0.0):
+            handler.handle(unknown)
+        with patch("core.runtime.handlers.unknown.time.monotonic", return_value=0.1):
+            handler.handle(unknown)
+
+        self.assertEqual(session.adb.click_raw.call_count, 1)
+        self.assertEqual(session.unknown_fallback_attempts_this_turn, 1)
+        self.assertEqual(session.unknown_last_fallback_template, "next.png")
+
+        with patch("core.runtime.handlers.unknown.time.monotonic", return_value=3.1):
+            with self.assertRaisesRegex(RuntimeError, "UNKNOWN 连续兜底"):
+                handler.handle(unknown)
+
+        self.assertEqual(session.adb.click_raw.call_count, 2)
+        self.assertEqual(session.unknown_fallback_attempts_this_turn, 2)
+        self.assertTrue(session.stop_requested)
+        self.assertEqual(
+            waiter.calls,
+            [("未知状态兜底：已点击下一步", 0.5), ("未知状态兜底：已点击下一步", 0.5)],
+        )
+
     def test_unknown_handler_recovers_ap_recovery_prompt_when_detected(self) -> None:
         session = DummyUnknownSession(
             template_positions={
@@ -1826,6 +1915,7 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         self.assertEqual(
             waiter.calls,
             [
+                ("等待行动力恢复再次确认", 0.25),
                 ("已将行动力恢复列表滚到底部", 0.5),
                 ("已点击青铜果实", 0.5),
                 ("已确认行动力恢复", 0.5),
@@ -1834,6 +1924,51 @@ class RuntimeFlowBehaviorTest(unittest.TestCase):
         )
         self.assertEqual(session.consecutive_unknown_count, 0)
         self.assertFalse(session.unknown_snapshot_saved)
+
+    def test_unknown_handler_stops_when_ap_recovery_confirmation_is_lost(self) -> None:
+        session = DummyUnknownSession(
+            template_positions={
+                "ap_recovery.png": (500, 500),
+                "bronzed_cobalt_fruit.png": (620, 710),
+                "confirm.png": (1100, 720),
+                "support_select.png": (100, 200),
+            }
+        )
+        ap_checks = {"count": 0}
+
+        def _match(template_path, screen):
+            if template_path == "ap_recovery.png":
+                ap_checks["count"] += 1
+                return (500, 500) if ap_checks["count"] <= 2 else None
+            if template_path == "bronzed_cobalt_fruit.png":
+                return (620, 710)
+            if template_path == "confirm.png":
+                return (1100, 720)
+            if template_path == "support_select.png":
+                return (100, 200)
+            return session._template_positions.get(template_path)
+
+        session.recognizer.match.side_effect = _match
+        waiter = DummyWaiter()
+        handler = UnknownHandler(session, waiter)
+        unknown = StateDetectionResult(
+            state=GameState.UNKNOWN,
+            screen_path="screen.png",
+            elapsed=0.01,
+            best_match_state=None,
+            best_score=0.0,
+            matched_template=None,
+            missing_templates=[],
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "行动力恢复确认前状态丢失"):
+            handler.handle(unknown)
+
+        self.assertEqual(session.adb.click_raw.call_args_list, [unittest.mock.call(1525, 747)])
+        self.assertEqual(
+            waiter.calls,
+            [("等待行动力恢复再次确认", 0.25), ("已将行动力恢复列表滚到底部", 0.5)],
+        )
 
     def test_unknown_handler_does_not_reenter_ap_recovery_when_loading_is_best_candidate(
         self,

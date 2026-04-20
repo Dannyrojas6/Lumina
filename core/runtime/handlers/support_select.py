@@ -27,9 +27,17 @@ class SupportSelectHandler:
 
         support_cfg = self.session.config.support
         support_class = str(support_cfg.class_name)
-        servant_name = str(support_cfg.servant)
+        servant_name = str(support_cfg.servant).strip()
         pick_index = int(support_cfg.pick_index)
         max_scroll_pages = int(support_cfg.max_scroll_pages)
+        allow_fallback_pick = bool(getattr(support_cfg, "allow_fallback_pick", False))
+
+        if servant_name:
+            if self.session.get_support_verifier(servant_name) is None:
+                raise RuntimeError(
+                    f"目标助战核验器初始化失败，已停止运行：{servant_name}"
+                )
+
         self._select_support_class(support_class)
 
         if servant_name:
@@ -39,10 +47,16 @@ class SupportSelectHandler:
                 servant_name, max_scroll_pages
             ):
                 return
+            if not allow_fallback_pick:
+                raise RuntimeError(
+                    f"未找到目标助战={servant_name}，刷新后仍未命中，已停止运行。"
+                )
             log.warning(
-                "未找到目标助战=%s，刷新后仍未命中，回退到默认助战位",
+                "未找到目标助战=%s，刷新后仍未命中，已按配置回退到默认助战位",
                 servant_name,
             )
+            self._fallback_pick_support(pick_index)
+            return
 
         self._fallback_pick_support(pick_index)
 
@@ -173,8 +187,7 @@ class SupportSelectHandler:
     def _fallback_pick_support(self, pick_index: int) -> None:
         support_pos = GameCoordinates.SUPPORT_POSITIONS.get(pick_index)
         if support_pos is None:
-            log.warning("无效助战序号=%s，回退到第 1 位", pick_index)
-            support_pos = GameCoordinates.SUPPORT_POSITIONS[1]
+            raise RuntimeError(f"无效助战序号={pick_index}，请检查配置。")
         self.session.adb.click(*support_pos)
         self._wait_after_support_click(f"已回退选择默认助战位={pick_index}")
 

@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 
 from core.runtime.session import RuntimeSession
 from core.runtime.waiter import Waiter
 from core.shared import GameCoordinates, GameState
 
 log = logging.getLogger("core.runtime.handlers.battle_result")
+
+AP_RECOVERY_CONFIRM_WINDOW = 1.0
+AP_RECOVERY_RECHECK_DELAY = 0.25
 
 
 def wait_for_template(
@@ -51,19 +55,26 @@ def handle_ap_recovery_prompt(
     destination_timeout: float,
     destination_poll_interval: float,
 ) -> bool:
-    ap_recovery_pos = wait_for_template(
+    ap_recovery_pos = confirm_ap_recovery_prompt(
         session,
         waiter,
-        "ap_recovery.png",
-        category="ap",
-        timeout=appear_timeout,
-        poll_interval=appear_poll_interval,
+        appear_timeout=appear_timeout,
+        appear_poll_interval=appear_poll_interval,
+        confirm_window=AP_RECOVERY_CONFIRM_WINDOW,
+        recheck_delay=AP_RECOVERY_RECHECK_DELAY,
     )
     if not ap_recovery_pos:
         return False
 
     session.adb.click_raw(*GameCoordinates.AP_RECOVERY_SCROLL_POSITION)
     waiter.wait_seconds("已将行动力恢复列表滚到底部", 0.5)
+    session.refresh_screen()
+    if not session.recognizer.match(
+        session.resources.template("ap_recovery.png", category="ap"),
+        session.get_latest_screen_image(),
+    ):
+        session.stop_requested = True
+        raise RuntimeError("行动力恢复确认前状态丢失，已停止运行。")
 
     bronze_pos = wait_for_template(
         session,
@@ -76,6 +87,7 @@ def handle_ap_recovery_prompt(
     if not bronze_pos:
         if getattr(session, "stop_requested", False):
             return True
+        session.stop_requested = True
         raise RuntimeError("已识别到行动力恢复界面，但未识别到青铜果实。")
     session.adb.click_raw(*bronze_pos)
     waiter.wait_seconds("已点击青铜果实", 0.5)
@@ -91,6 +103,7 @@ def handle_ap_recovery_prompt(
     if not confirm_pos:
         if getattr(session, "stop_requested", False):
             return True
+        session.stop_requested = True
         raise RuntimeError("青铜果实数量不足，未能进入确认界面。")
     session.adb.click_raw(*confirm_pos)
     waiter.wait_seconds("已确认行动力恢复", 0.5)
@@ -129,6 +142,41 @@ def wait_for_post_ap_recovery_destination(
             if getattr(session, "stop_requested", False):
                 return
     raise RuntimeError("行动力恢复确认后未在超时内进入下一轮界面，已停止运行。")
+
+
+def confirm_ap_recovery_prompt(
+    session: RuntimeSession,
+    waiter: Waiter,
+    *,
+    appear_timeout: float,
+    appear_poll_interval: float,
+    confirm_window: float,
+    recheck_delay: float,
+) -> tuple[int, int] | None:
+    start_time = time.monotonic()
+    ap_recovery_pos = wait_for_template(
+        session,
+        waiter,
+        "ap_recovery.png",
+        category="ap",
+        timeout=appear_timeout,
+        poll_interval=appear_poll_interval,
+    )
+    if not ap_recovery_pos:
+        return None
+    waiter.wait_seconds("等待行动力恢复再次确认", recheck_delay)
+    if getattr(session, "stop_requested", False):
+        return None
+    session.refresh_screen()
+    confirmed_pos = session.recognizer.match(
+        session.resources.template("ap_recovery.png", category="ap"),
+        session.get_latest_screen_image(),
+    )
+    if not confirmed_pos:
+        return None
+    if time.monotonic() - start_time > confirm_window:
+        return None
+    return confirmed_pos
 
 
 class BattleResultHandler:

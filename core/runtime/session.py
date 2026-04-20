@@ -31,6 +31,11 @@ from core.support_recognition.verifier import SupportPortraitVerifier
 
 log = logging.getLogger("core.runtime.session")
 
+UNKNOWN_SNAPSHOT_DAILY_LIMIT = 10
+UNKNOWN_SNAPSHOT_TOTAL_LIMIT = 30
+COMMAND_CARD_EVIDENCE_DAILY_LIMIT = 10
+COMMAND_CARD_EVIDENCE_TOTAL_LIMIT = 30
+
 
 @dataclass
 class RuntimeSession:
@@ -59,6 +64,12 @@ class RuntimeSession:
     stop_requested: bool = False
     unknown_snapshot_saved: bool = False
     consecutive_unknown_count: int = 0
+    unknown_fallback_attempts_this_turn: int = 0
+    unknown_last_fallback_template: str | None = None
+    unknown_last_fallback_click_time: float | None = None
+    ap_recovery_consecutive_hits: int = 0
+    ap_recovery_window_started_at: float | None = None
+    ap_recovery_last_hit_time: float | None = None
     support_verifiers: dict[str, SupportPortraitVerifier] = field(default_factory=dict)
     command_card_recognizer: Optional[CommandCardRecognizer] = None
     on_state_changed: Callable[[GameState], None] | None = None
@@ -108,13 +119,27 @@ class RuntimeSession:
         if self.latest_screen_rgb is None:
             return None
 
-        screenshot_dir = Path(self.resources.screen_path).parent / "unknown"
+        screenshot_root = Path(self.resources.screen_path).parent / "unknown"
+        date_dir = screenshot_root / time.strftime("%Y%m%d")
+        screenshot_dir = date_dir
         screenshot_dir.mkdir(parents=True, exist_ok=True)
+        self._prune_oldest_files(
+            screenshot_dir,
+            suffix=".png",
+            keep_at_most=UNKNOWN_SNAPSHOT_DAILY_LIMIT - 1,
+        )
+        self._prune_oldest_files(
+            screenshot_root,
+            suffix=".png",
+            keep_at_most=UNKNOWN_SNAPSHOT_TOTAL_LIMIT - 1,
+        )
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         save_path = screenshot_dir / f"unknown_{timestamp}.png"
-        cv2.imwrite(
+        if not cv2.imwrite(
             str(save_path), cv2.cvtColor(self.latest_screen_rgb, cv2.COLOR_RGB2BGR)
-        )
+        ):
+            log.warning("unknown 留证写盘失败 path=%s", save_path)
+            return None
         return str(save_path)
 
     def get_support_verifier(
@@ -148,10 +173,17 @@ class RuntimeSession:
         screen_rgb: np.ndarray,
     ) -> tuple[str, str, str]:
         """保存本回合普通卡识别证据。"""
-        evidence_dir = (
-            Path(self.resources.command_card_debug_dir) / time.strftime("%Y%m%d")
-        )
+        evidence_root = Path(self.resources.command_card_debug_dir)
+        evidence_dir = evidence_root / time.strftime("%Y%m%d")
         evidence_dir.mkdir(parents=True, exist_ok=True)
+        self._prune_oldest_command_card_groups(
+            evidence_dir,
+            keep_at_most=COMMAND_CARD_EVIDENCE_DAILY_LIMIT - 1,
+        )
+        self._prune_oldest_command_card_groups(
+            evidence_root,
+            keep_at_most=COMMAND_CARD_EVIDENCE_TOTAL_LIMIT - 1,
+        )
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         milliseconds = int((time.time() % 1) * 1000)
         stem = f"command_cards_{timestamp}_{milliseconds:03d}"
@@ -176,6 +208,67 @@ class RuntimeSession:
             parts_preview_path=str(parts_path),
         )
         return str(image_path), str(masked_path), str(json_path)
+
+    @staticmethod
+    def _count_files(root: Path, *, suffix: str) -> int:
+        if not root.exists():
+            return 0
+        return sum(1 for path in root.rglob(f"*{suffix}") if path.is_file())
+
+    def _prune_oldest_files(
+        self,
+        root: Path,
+        *,
+        suffix: str,
+        keep_at_most: int,
+    ) -> None:
+        if keep_at_most < 0 or not root.exists():
+            return
+        files = sorted(
+            (path for path in root.rglob(f"*{suffix}") if path.is_file()),
+            key=lambda path: (path.stat().st_mtime, str(path)),
+        )
+        overflow = len(files) - keep_at_most
+        if overflow <= 0:
+            return
+        for path in files[:overflow]:
+            path.unlink(missing_ok=True)
+
+    def _prune_oldest_command_card_groups(
+        self,
+        root: Path,
+        *,
+        keep_at_most: int,
+    ) -> None:
+        if keep_at_most < 0 or not root.exists():
+            return
+        json_files = sorted(
+            (path for path in root.rglob("*.json") if path.is_file()),
+            key=lambda path: (path.stat().st_mtime, str(path)),
+        )
+        overflow = len(json_files) - keep_at_most
+        if overflow <= 0:
+            return
+        for json_path in json_files[:overflow]:
+            stem = json_path.stem
+            related_paths = (
+                json_path.with_name(f"{stem}.png"),
+                json_path.with_name(f"{stem}_masked.png"),
+                json_path.with_name(f"{stem}_parts.png"),
+                json_path,
+            )
+            for path in related_paths:
+                path.unlink(missing_ok=True)
+
+    def reset_unknown_runtime_state(self) -> None:
+        self.unknown_snapshot_saved = False
+        self.consecutive_unknown_count = 0
+        self.unknown_fallback_attempts_this_turn = 0
+        self.unknown_last_fallback_template = None
+        self.unknown_last_fallback_click_time = None
+        self.ap_recovery_consecutive_hits = 0
+        self.ap_recovery_window_started_at = None
+        self.ap_recovery_last_hit_time = None
 
     def should_save_command_card_evidence(
         self,

@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from core.device import FIXED_1920X1080
 from core.runtime.startup_check import (
@@ -56,6 +56,80 @@ skills: []
 
             with self.assertRaisesRegex(FileNotFoundError, "reference_bank"):
                 validate_support_servant_resources(catalog, "berserker/morgan")
+
+    def test_validate_support_servant_resources_rejects_invalid_reference_meta(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            servant_dir = root / "local_data" / "servants" / "berserker" / "morgan"
+            atlas_dir = servant_dir / "atlas" / "faces"
+            generated_dir = servant_dir / "support" / "generated"
+            atlas_dir.mkdir(parents=True)
+            generated_dir.mkdir(parents=True)
+            (atlas_dir / "sample.png").write_bytes(b"png")
+            (generated_dir / "reference_bank.npz").write_bytes(b"bank")
+            (generated_dir / "reference_meta.json").write_text("{}", encoding="utf-8")
+            (servant_dir / "manifest.yaml").write_text(
+                """
+servant_name: berserker/morgan
+display_name: Morgan
+class_name: berserker
+support_recognition:
+  source_dir: atlas/faces
+  generated_dir: support/generated
+  reference_bank: support/generated/reference_bank.npz
+  reference_meta: support/generated/reference_meta.json
+skills: []
+""",
+                encoding="utf-8",
+            )
+            catalog = ResourceCatalog(
+                assets_dir=str(root / "assets"),
+                servants_dir=str(root / "local_data" / "servants"),
+            )
+
+            with patch(
+                "core.runtime.startup_check.SupportPortraitVerifier.from_servant",
+                side_effect=ValueError("invalid model_path"),
+            ):
+                with self.assertRaisesRegex(ValueError, "invalid model_path"):
+                    validate_support_servant_resources(catalog, "berserker/morgan")
+
+    def test_validate_support_servant_resources_rejects_unloadable_reference_bank(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            servant_dir = root / "local_data" / "servants" / "berserker" / "morgan"
+            atlas_dir = servant_dir / "atlas" / "faces"
+            generated_dir = servant_dir / "support" / "generated"
+            atlas_dir.mkdir(parents=True)
+            generated_dir.mkdir(parents=True)
+            (atlas_dir / "sample.png").write_bytes(b"png")
+            (generated_dir / "reference_bank.npz").write_bytes(b"bank")
+            (generated_dir / "reference_meta.json").write_text("{}", encoding="utf-8")
+            (servant_dir / "manifest.yaml").write_text(
+                """
+servant_name: berserker/morgan
+display_name: Morgan
+class_name: berserker
+support_recognition:
+  source_dir: atlas/faces
+  generated_dir: support/generated
+  reference_bank: support/generated/reference_bank.npz
+  reference_meta: support/generated/reference_meta.json
+skills: []
+""",
+                encoding="utf-8",
+            )
+            catalog = ResourceCatalog(
+                assets_dir=str(root / "assets"),
+                servants_dir=str(root / "local_data" / "servants"),
+            )
+
+            with patch(
+                "core.runtime.startup_check.SupportPortraitVerifier.from_servant",
+                side_effect=ValueError("invalid reference_bank"),
+            ):
+                with self.assertRaisesRegex(ValueError, "invalid reference_bank"):
+                    validate_support_servant_resources(catalog, "berserker/morgan")
 
     def test_validate_runtime_prerequisites_accepts_existing_templates_and_support_assets(
         self,
@@ -132,12 +206,17 @@ skills: []
             )
             config.support.servant = "berserker/morgan"
 
-            validate_runtime_prerequisites(
-                config,
-                catalog,
-                FIXED_1920X1080,
-                device_resolution=(1920, 1080),
-            )
+            with patch(
+                "core.runtime.startup_check.SupportPortraitVerifier.from_servant",
+                return_value=Mock(),
+            ) as verifier_factory:
+                validate_runtime_prerequisites(
+                    config,
+                    catalog,
+                    FIXED_1920X1080,
+                    device_resolution=(1920, 1080),
+                )
+            verifier_factory.assert_called_once_with(catalog, "berserker/morgan")
 
     def test_validate_runtime_prerequisites_requires_ap_recovery_templates(self) -> None:
         with TemporaryDirectory() as tmp_dir:

@@ -7,6 +7,7 @@ from typing import Iterable
 
 from core.device.profile import DeviceProfile
 from core.shared import BattleConfig, ResourceCatalog
+from core.support_recognition.verifier import SupportPortraitVerifier
 
 
 def validate_runtime_prerequisites(
@@ -46,6 +47,7 @@ def validate_support_servant_resources(
         Path(resources.support_reference_meta_path(servant_name, manifest)),
         f"{servant_name} reference_meta",
     )
+    SupportPortraitVerifier.from_servant(resources, servant_name)
 
 
 def _validate_required_templates(resources: ResourceCatalog) -> None:

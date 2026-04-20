@@ -119,8 +119,7 @@ class AutomationEngine:
             if state_changed_callback is not None:
                 state_changed_callback(detection.state)
             if detection.state != GameState.UNKNOWN:
-                self.session.consecutive_unknown_count = 0
-                self.session.unknown_snapshot_saved = False
+                self.session.reset_unknown_runtime_state()
             log.debug("当前状态：%s", self.session.state.name)
             handler = self.handlers.get(self.session.state)
             if handler is None:

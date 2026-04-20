@@ -121,6 +121,9 @@ class RuntimePage(QWidget):
         super().__init__()
         self.runtime_controller = runtime_controller
         self._summary_text = getattr(runtime_controller, "current_summary", "") or "等待读取配置"
+        self._config_available = bool(
+            getattr(runtime_controller, "config_available", True)
+        )
         self._saved_config = runtime_controller.load_editable_config()
         self._suppress_config_signals = False
         self._is_running = False
@@ -130,7 +133,8 @@ class RuntimePage(QWidget):
         self._bind_controller()
         self._load_config_controls(self._saved_config)
         self._apply_summary(self._summary_text)
-        self._update_lifecycle_visuals("空闲")
+        self._sync_controller_config_state(force=True)
+        self.set_status_text(self._controller_lifecycle_text())
 
     def _build_ui(self) -> None:
         root = QHBoxLayout(self)
@@ -330,19 +334,15 @@ class RuntimePage(QWidget):
 
     def set_running_state(self, is_running: bool) -> None:
         self._is_running = is_running
-        self.start_button.setEnabled(not is_running)
-        self.stop_button.setEnabled(is_running)
+        self._sync_controller_config_state()
+        self._refresh_action_buttons()
         self._refresh_config_controls_enabled()
 
     def set_status_text(self, text: str) -> None:
+        self._sync_controller_config_state()
         self.status_value.setText(text)
         self._update_lifecycle_visuals(text)
-        if text == "启动中":
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(False)
-        if text == "停止中":
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(False)
+        self._refresh_action_buttons()
         self._refresh_config_controls_enabled()
 
     def set_summary_text(self, summary: str) -> None:
@@ -359,6 +359,8 @@ class RuntimePage(QWidget):
         self.preview_label.setText("")
 
     def _handle_start_clicked(self) -> None:
+        if not self.start_button.isEnabled():
+            return
         self.set_status_text("启动中")
         self.runtime_controller.start()
 
@@ -366,6 +368,8 @@ class RuntimePage(QWidget):
         self.runtime_controller.stop()
 
     def _handle_apply_clicked(self) -> None:
+        if not self._controller_config_available():
+            return
         config = self._build_current_config()
         self.runtime_controller.apply_editable_config(config)
         self._saved_config = config
@@ -374,6 +378,8 @@ class RuntimePage(QWidget):
         self._refresh_config_controls_enabled()
 
     def _handle_reset_clicked(self) -> None:
+        if not self._controller_config_available():
+            return
         self._saved_config = self.runtime_controller.load_editable_config()
         self._load_config_controls(self._saved_config)
         self._set_config_status_saved()
@@ -450,9 +456,22 @@ class RuntimePage(QWidget):
         )
 
     def _controls_editable(self) -> bool:
-        return not self._is_running and self.status_value.text() != "启动中"
+        return (
+            self._controller_config_available()
+            and not self._is_running
+            and self.status_value.text() not in {"启动中", "停止中"}
+        )
 
     def _refresh_config_controls_enabled(self) -> None:
+        if not self._controller_config_available():
+            self.mode_combo.setEnabled(False)
+            self.smart_battle_checkbox.setEnabled(False)
+            self.continue_battle_checkbox.setEnabled(False)
+            self.log_level_combo.setEnabled(False)
+            self.apply_button.setEnabled(False)
+            self.reset_button.setEnabled(False)
+            self._set_config_status_unavailable()
+            return
         editable = self._controls_editable()
         self.mode_combo.setEnabled(editable)
         self.continue_battle_checkbox.setEnabled(editable)
@@ -461,6 +480,44 @@ class RuntimePage(QWidget):
         dirty = self._build_current_config() != self._saved_config
         self.apply_button.setEnabled(editable and dirty)
         self.reset_button.setEnabled(editable and dirty)
+
+    def _refresh_action_buttons(self) -> None:
+        status_text = self.status_value.text()
+        can_start = (
+            self._controller_config_available()
+            and not self._is_running
+            and status_text not in {"启动中", "停止中"}
+        )
+        can_stop = (
+            self._controller_config_available()
+            and self._is_running
+            and status_text not in {"启动中", "停止中"}
+        )
+        self.start_button.setEnabled(can_start)
+        self.stop_button.setEnabled(can_stop)
+
+    def _controller_config_available(self) -> bool:
+        return bool(getattr(self.runtime_controller, "config_available", True))
+
+    def _controller_lifecycle_text(self) -> str:
+        return getattr(self.runtime_controller, "current_lifecycle_text", "空闲") or "空闲"
+
+    def _controller_config_error_text(self) -> str:
+        return getattr(self.runtime_controller, "current_config_error", None) or "配置不可用"
+
+    def _sync_controller_config_state(self, *, force: bool = False) -> None:
+        available = self._controller_config_available()
+        if force or available != self._config_available:
+            self._saved_config = self.runtime_controller.load_editable_config()
+            available = self._controller_config_available()
+            self._config_available = available
+            self._load_config_controls(self._saved_config)
+            if available:
+                self._set_config_status_saved()
+            else:
+                self._set_config_status_unavailable()
+        elif not available:
+            self._set_config_status_unavailable()
 
     def _update_lifecycle_visuals(self, text: str) -> None:
         if text == "运行中":
@@ -551,6 +608,10 @@ class RuntimePage(QWidget):
 
     def _set_config_status_dirty(self) -> None:
         self.config_status_label.setText("有未应用修改")
+        self._set_dynamic_property(self.config_status_label, "noticeRole", "dirty")
+
+    def _set_config_status_unavailable(self) -> None:
+        self.config_status_label.setText(self._controller_config_error_text())
         self._set_dynamic_property(self.config_status_label, "noticeRole", "dirty")
 
     def _set_dynamic_property(self, widget: QWidget, name: str, value: str) -> None:

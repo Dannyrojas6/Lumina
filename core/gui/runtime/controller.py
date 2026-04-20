@@ -39,6 +39,13 @@ class RuntimeController(QObject):
     error_occurred = Signal(str)
     summary_changed = Signal(str)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.current_summary = ""
+        self.current_lifecycle_text = "空闲"
+        self.current_config_error: str | None = None
+        self.config_available = True
+
     def start(self) -> None:  # pragma: no cover - 子类覆盖
         raise NotImplementedError
 
@@ -221,6 +228,23 @@ class AutomationRuntimeWorker(QThread):
 class AutomationRuntimeController(RuntimeController):
     """Qt 主程序对 Lumina 主链的运行控制器。"""
 
+    CONFIG_UNAVAILABLE_SUMMARY = "\n".join(
+        [
+            "battle_mode=配置不可用",
+            "smart_battle=-",
+            "continue_battle=-",
+            "log_level=-",
+            "support=-",
+            "custom_sequence=-",
+        ]
+    )
+    _PLACEHOLDER_EDITABLE_CONFIG = RuntimeEditableConfig(
+        battle_mode="main",
+        smart_battle_enabled=False,
+        continue_battle=True,
+        log_level="INFO",
+    )
+
     def __init__(
         self,
         *,
@@ -231,7 +255,6 @@ class AutomationRuntimeController(RuntimeController):
         self.config_path = Path(config_path)
         self._worker: AutomationRuntimeWorker | None = None
         self._worker_factory = worker_factory or (lambda path: AutomationRuntimeWorker(path))
-        self.current_summary = ""
         self._stop_requested = False
         self._completed_normally = False
         self._last_failure_message: str | None = None
@@ -239,7 +262,12 @@ class AutomationRuntimeController(RuntimeController):
 
     def refresh_summary(self) -> None:
         """重新读取当前 battle_config 摘要。"""
-        config = load_runtime_config(self.config_path)
+        try:
+            config = load_runtime_config(self.config_path)
+        except Exception as exc:
+            self._set_config_unavailable(str(exc) or exc.__class__.__name__)
+            return
+
         mode = f"battle_mode={config.battle_mode}"
         smart = f"smart_battle={'on' if config.smart_battle.enabled else 'off'}"
         support = f"support={config.support.class_name}/{config.support.servant or '-'}"
@@ -254,13 +282,25 @@ class AutomationRuntimeController(RuntimeController):
                 f"custom_sequence={sequence}",
             ]
         )
+        self.config_available = True
+        self.current_config_error = None
         self.current_summary = summary
         self.summary_changed.emit(summary)
+        if self._worker is None or not self._worker.isRunning():
+            self._set_lifecycle("空闲")
 
     def load_editable_config(self) -> RuntimeEditableConfig:
-        return load_runtime_editable_config(self.config_path)
+        if not self.config_available:
+            return self._PLACEHOLDER_EDITABLE_CONFIG
+        try:
+            return load_runtime_editable_config(self.config_path)
+        except Exception as exc:
+            self._set_config_unavailable(str(exc) or exc.__class__.__name__)
+            return self._PLACEHOLDER_EDITABLE_CONFIG
 
     def apply_editable_config(self, config: RuntimeEditableConfig) -> None:
+        if not self.config_available:
+            raise RuntimeError("配置不可用，无法应用运行前修改。")
         save_runtime_editable_config(self.config_path, config)
         self.refresh_summary()
 
@@ -268,6 +308,8 @@ class AutomationRuntimeController(RuntimeController):
         if self._worker is not None and self._worker.isRunning():
             return
         self.refresh_summary()
+        if not self.config_available:
+            return
         self._stop_requested = False
         self._completed_normally = False
         self._last_failure_message = None
@@ -280,7 +322,7 @@ class AutomationRuntimeController(RuntimeController):
         worker.run_completed.connect(self._on_worker_completed)
         worker.finished.connect(self._on_worker_finished)
         self._worker = worker
-        self.lifecycle_changed.emit("启动中")
+        self._set_lifecycle("启动中")
         worker.start()
 
     def stop(self) -> None:
@@ -288,12 +330,12 @@ class AutomationRuntimeController(RuntimeController):
             return
         self._stop_requested = True
         self._worker.request_stop()
-        self.lifecycle_changed.emit("停止中")
+        self._set_lifecycle("停止中")
         self.log_emitted.emit("已请求强制停止当前运行")
 
     def _on_worker_started(self) -> None:
         self.running_changed.emit(True)
-        self.lifecycle_changed.emit("运行中")
+        self._set_lifecycle("运行中")
         self.log_emitted.emit("GUI 已启动主链运行")
 
     def _on_worker_completed(self) -> None:
@@ -307,16 +349,28 @@ class AutomationRuntimeController(RuntimeController):
             return
         self._last_failure_message = message
         self.error_occurred.emit(message)
-        self.lifecycle_changed.emit(f"运行失败：{message}")
+        self._set_lifecycle(f"运行失败：{message}")
         self.log_emitted.emit(f"运行异常：{message}")
 
     def _on_worker_finished(self) -> None:
         self.running_changed.emit(False)
         if self._last_failure_message is None:
             if self._stop_requested:
-                self.lifecycle_changed.emit("手动停止")
+                self._set_lifecycle("手动停止")
             elif self._completed_normally:
-                self.lifecycle_changed.emit("空闲")
+                self._set_lifecycle("空闲")
             else:
-                self.lifecycle_changed.emit("空闲")
+                self._set_lifecycle("空闲")
         self._worker = None
+
+    def _set_lifecycle(self, text: str) -> None:
+        self.current_lifecycle_text = text
+        self.lifecycle_changed.emit(text)
+
+    def _set_config_unavailable(self, message: str) -> None:
+        self.config_available = False
+        self.current_config_error = message
+        self.current_summary = self.CONFIG_UNAVAILABLE_SUMMARY
+        self.summary_changed.emit(self.current_summary)
+        self._set_lifecycle(f"配置不可用：{message}")
+        self.error_occurred.emit(message)
