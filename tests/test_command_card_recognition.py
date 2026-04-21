@@ -66,6 +66,7 @@ COMMAND_CARD_DEBUG_DIR = (
 )
 RUNTIME_EVIDENCE_FAILED_SLOT2_QUICK_1 = "command_cards_20260414_093541_852.png"
 RUNTIME_EVIDENCE_FAILED_SLOT2_QUICK_2 = "command_cards_20260414_093620_670.png"
+RUNTIME_EVIDENCE_JOINT_MARGIN_EDGE_CASE = "command_cards_20260420_125550_340.png"
 
 
 def _find_command_card_debug_file(filename: str) -> Path:
@@ -339,6 +340,38 @@ class CommandCardRecognitionTest(unittest.TestCase):
                 slot2 = prediction.traces[1]
                 self.assertEqual(slot2.color, "quick")
                 self.assertEqual(slot2.owner, "caster/merlin")
+
+    def test_recognize_frontline_accepts_joint_margin_edge_case_runtime_evidence(
+        self,
+    ) -> None:
+        resources = ResourceCatalog()
+        recognizer = CommandCardRecognizer(resources)
+
+        screen = load_rgb_image(
+            _find_command_card_debug_file(RUNTIME_EVIDENCE_JOINT_MARGIN_EDGE_CASE)
+        )
+        prediction = recognizer.analyze_frontline(
+            screen,
+            [
+                "caster/zhuge_liang",
+                "caster/merlin",
+                "berserker/morgan",
+            ],
+            support_attacker="berserker/morgan",
+        )
+
+        self.assertEqual(
+            prediction.owners,
+            {
+                1: "caster/merlin",
+                2: "caster/merlin",
+                3: "berserker/morgan",
+                4: "caster/zhuge_liang",
+                5: "berserker/morgan",
+            },
+        )
+        self.assertFalse(prediction.joint_low_confidence)
+        self.assertFalse(prediction.has_low_confidence)
 
     def test_failed3_slot3_uses_explicit_crop_and_mask_layout(self) -> None:
         resources = ResourceCatalog()

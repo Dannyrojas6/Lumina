@@ -10,7 +10,7 @@ from core.command_card_recognition.models import (
     CommandCardTrace,
 )
 
-COMMAND_CARD_JOINT_MIN_MARGIN = 0.005
+COMMAND_CARD_JOINT_MIN_MARGIN = 0.004
 COMMAND_CARD_JOINT_PROMOTED_RANK_BONUS = 0.006
 
 
