@@ -162,8 +162,8 @@ def build_app_stylesheet() -> str:
         border: 1px solid #2d2d2d;
         border-radius: 4px;
         color: #9a9890;
-        padding: 3px 8px;
-        min-height: 24px;
+        padding: 2px 10px;
+        min-height: 22px;
         combobox-popup: 0;
     }
 
@@ -227,9 +227,9 @@ def build_app_stylesheet() -> str:
     }
 
     QFrame[layoutRole="sidePanel"] {
-        background: #1e1e1e;
-        border: 1px solid #252525;
-        border-radius: 7px;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
     }
 
     QFrame[layoutRole="canvasPanel"] {
@@ -257,11 +257,12 @@ def build_app_stylesheet() -> str:
     }
 
     QLabel[textRole="section"] {
-        color: #555555;
-        font-size: 9px;
-        font-weight: 500;
+        color: #8b8880;
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.04em;
+        padding-bottom: 2px;
     }
 
     QLabel[textRole="panelTitle"] {
@@ -350,9 +351,43 @@ def build_app_stylesheet() -> str:
         color: #aa5050;
     }
 
+    QLabel#runtimePreviewStatusValue {
+        background: #1f1f1f;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        padding: 1px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        min-width: 50px;
+    }
+
+    QLabel#runtimePreviewStatusValue[statusState="idle"] {
+        color: #888888;
+    }
+
+    QLabel#runtimePreviewStatusValue[statusState="starting"] {
+        color: #5ab0da;
+        border-color: #2a4060;
+    }
+
+    QLabel#runtimePreviewStatusValue[statusState="running"] {
+        color: #4daa77;
+        border-color: #2a5a3a;
+    }
+
+    QLabel#runtimePreviewStatusValue[statusState="stopped"] {
+        color: #aa8840;
+        border-color: #4a3a20;
+    }
+
+    QLabel#runtimePreviewStatusValue[statusState="failed"] {
+        color: #aa5050;
+        border-color: #4a2020;
+    }
+
     QLabel#runtimePreviewViewport {
         background: #141414;
-        border-top: 1px solid #1e1e1e;
+        border: 0;
     }
 
     QTextEdit#runtimeLogOutput {

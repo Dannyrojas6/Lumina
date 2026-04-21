@@ -349,14 +349,14 @@ class AutomationRuntimeController(RuntimeController):
             return
         self._last_failure_message = message
         self.error_occurred.emit(message)
-        self._set_lifecycle(f"运行失败：{message}")
+        self._set_lifecycle("故障")
         self.log_emitted.emit(f"运行异常：{message}")
 
     def _on_worker_finished(self) -> None:
         self.running_changed.emit(False)
         if self._last_failure_message is None:
             if self._stop_requested:
-                self._set_lifecycle("手动停止")
+                self._set_lifecycle("已停止")
             elif self._completed_normally:
                 self._set_lifecycle("空闲")
             else:
@@ -372,5 +372,5 @@ class AutomationRuntimeController(RuntimeController):
         self.current_config_error = message
         self.current_summary = self.CONFIG_UNAVAILABLE_SUMMARY
         self.summary_changed.emit(self.current_summary)
-        self._set_lifecycle(f"配置不可用：{message}")
+        self._set_lifecycle("故障")
         self.error_occurred.emit(message)

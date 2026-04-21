@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.gui.app.qt_app import load_app_icon
 from core.gui.runtime.controller import AutomationRuntimeController, RuntimeController
 from core.gui.runtime.runtime_page import RuntimePage
 from core.gui.tools.coordinate_page import CoordinateToolPage
@@ -50,6 +51,9 @@ class LuminaMainWindow(QMainWindow):
         super().__init__()
         self.runtime_controller = runtime_controller or AutomationRuntimeController()
         self.setWindowTitle("Lumina")
+        icon = load_app_icon()
+        if not icon.isNull():
+            self.setWindowIcon(icon)
         self._apply_default_window_geometry()
         self._build_ui()
 

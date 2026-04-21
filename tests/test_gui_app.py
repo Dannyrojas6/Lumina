@@ -8,8 +8,9 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import yaml
+from PIL import Image
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QTabBar
+from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QSplitter, QTabBar
 from PySide6.QtGui import QImage
 
 from core.gui.app.main_window import LuminaMainWindow, compute_initial_window_geometry
@@ -22,6 +23,10 @@ from core.gui.runtime.controller import (
 )
 from core.gui.runtime.runtime_page import RuntimePage, _RuntimeToggleSwitch
 from core.gui.services.runtime_config_service import RuntimeEditableConfig
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+APP_ICON_PNG_PATH = REPO_ROOT / "assets" / "ui" / "app_icon.png"
+APP_ICON_ICO_PATH = REPO_ROOT / "assets" / "ui" / "app_icon.ico"
 
 
 class DummyRuntimeController(RuntimeController):
@@ -125,6 +130,30 @@ class GuiAppTests(unittest.TestCase):
     def test_ensure_qt_application_returns_application(self) -> None:
         app = ensure_qt_application()
         self.assertIsInstance(app, QApplication)
+        self.assertFalse(app.windowIcon().isNull())
+
+    def test_gui_icon_assets_exist_and_use_transparent_corners(self) -> None:
+        self.assertTrue(APP_ICON_PNG_PATH.is_file())
+        self.assertTrue(APP_ICON_ICO_PATH.is_file())
+
+        image = QImage(str(APP_ICON_PNG_PATH))
+        self.assertFalse(image.isNull())
+        self.assertEqual(image.width(), image.height())
+        self.assertTrue(image.hasAlphaChannel())
+        self.assertEqual(image.pixelColor(0, 0).alpha(), 0)
+        self.assertEqual(image.pixelColor(image.width() - 1, 0).alpha(), 0)
+        self.assertEqual(image.pixelColor(0, image.height() - 1).alpha(), 0)
+        self.assertEqual(
+            image.pixelColor(image.width() - 1, image.height() - 1).alpha(),
+            0,
+        )
+        self.assertGreater(image.pixelColor(image.width() // 2, 60).alpha(), 0)
+
+        with Image.open(APP_ICON_ICO_PATH) as ico:
+            self.assertGreaterEqual(
+                set(ico.ico.sizes()),
+                {(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)},
+            )
 
     def test_main_window_contains_all_primary_workspaces(self) -> None:
         controller = DummyRuntimeController()
@@ -164,6 +193,7 @@ class GuiAppTests(unittest.TestCase):
         self.assertEqual(window.y(), expected_geometry[1])
         self.assertEqual(window.width(), expected_geometry[2])
         self.assertEqual(window.height(), expected_geometry[3])
+        self.assertFalse(window.windowIcon().isNull())
 
     def test_app_stylesheet_uses_transparent_label_backgrounds(self) -> None:
         stylesheet = build_app_stylesheet()
@@ -186,8 +216,13 @@ class GuiAppTests(unittest.TestCase):
 
     def test_app_stylesheet_defines_shared_gui_component_roles(self) -> None:
         stylesheet = build_app_stylesheet()
+        preview_status_block = stylesheet.split('QLabel#runtimePreviewStatusValue {', 1)[1].split("}", 1)[0]
+        side_panel_block = stylesheet.split('QFrame[layoutRole="sidePanel"] {', 1)[1].split("}", 1)[0]
+        canvas_panel_block = stylesheet.split('QFrame[layoutRole="canvasPanel"] {', 1)[1].split("}", 1)[0]
 
         self.assertIn('QComboBox[controlRole="formCombo"] {', stylesheet)
+        self.assertIn("padding: 2px 10px;", stylesheet)
+        self.assertIn("min-height: 22px;", stylesheet)
         self.assertIn('QListView[viewRole="comboPopup"] {', stylesheet)
         self.assertIn('QPushButton[buttonRole="pillToggle"] {', stylesheet)
         self.assertIn('QFrame[separatorRole="divider"] {', stylesheet)
@@ -196,12 +231,20 @@ class GuiAppTests(unittest.TestCase):
         self.assertIn('QLabel[noticeRole="dirty"] {', stylesheet)
         self.assertIn('QLabel#runtimeStatusDot[statusState="idle"] {', stylesheet)
         self.assertIn('QLabel#runtimeStatusValue[statusState="idle"] {', stylesheet)
+        self.assertIn('QLabel#runtimePreviewStatusValue {', stylesheet)
+        self.assertIn("font-size: 11px;", preview_status_block)
+        self.assertIn("font-weight: 500;", preview_status_block)
         self.assertIn('QFrame[layoutRole="toolbar"] {', stylesheet)
         self.assertIn('QFrame[layoutRole="sidePanel"] {', stylesheet)
         self.assertIn('QFrame[layoutRole="canvasPanel"] {', stylesheet)
         self.assertIn('QFrame[layoutRole="editorPanel"] {', stylesheet)
         self.assertIn('QTextEdit[editorRole="export"] {', stylesheet)
         self.assertIn('QLabel[textRole="panelTitle"] {', stylesheet)
+        self.assertIn('QLabel[textRole="section"] {', stylesheet)
+        self.assertIn("font-size: 11px;", stylesheet)
+        self.assertIn("background: transparent;", side_panel_block)
+        self.assertIn("border: 0;", side_panel_block)
+        self.assertNotEqual(side_panel_block.strip(), canvas_panel_block.strip())
 
     def test_compute_initial_window_geometry_converts_physical_target_to_logical_size(self) -> None:
         x, y, width, height = compute_initial_window_geometry(
@@ -236,7 +279,7 @@ class GuiAppTests(unittest.TestCase):
         page.start_button.click()
 
         self.assertEqual(controller.started, 1)
-        self.assertEqual(page.status_value.text(), "启动中")
+        self.assertEqual(page.preview_status_value.text(), "启动中")
         self.assertFalse(page.start_button.isEnabled())
         self.assertFalse(page.stop_button.isEnabled())
 
@@ -245,12 +288,12 @@ class GuiAppTests(unittest.TestCase):
         page = RuntimePage(controller)
 
         page.start_button.click()
-        controller.lifecycle_changed.emit("运行失败：no ready adb device found")
+        controller.lifecycle_changed.emit("故障")
         controller.running_changed.emit(False)
 
         self.assertTrue(page.start_button.isEnabled())
         self.assertFalse(page.stop_button.isEnabled())
-        self.assertEqual(page.status_value.text(), "运行失败：no ready adb device found")
+        self.assertEqual(page.preview_status_value.text(), "故障")
 
     def test_runtime_page_log_panel_is_always_visible(self) -> None:
         controller = DummyRuntimeController()
@@ -274,6 +317,14 @@ class GuiAppTests(unittest.TestCase):
         self.assertEqual(page.log_level_combo.property("controlRole"), "formCombo")
         self.assertEqual(page.mode_combo.view().property("viewRole"), "comboPopup")
         self.assertEqual(page.log_level_combo.view().property("viewRole"), "comboPopup")
+        self.assertEqual(page.mode_combo.minimumWidth(), 138)
+        self.assertEqual(page.mode_combo.maximumWidth(), 138)
+        self.assertEqual(page.log_level_combo.minimumWidth(), 138)
+        self.assertEqual(page.log_level_combo.maximumWidth(), 138)
+        self.assertEqual(page.mode_combo.minimumHeight(), 28)
+        self.assertEqual(page.mode_combo.maximumHeight(), 28)
+        self.assertEqual(page.log_level_combo.minimumHeight(), 28)
+        self.assertEqual(page.log_level_combo.maximumHeight(), 28)
 
     def test_runtime_page_uses_custom_dark_combo_popup_views(self) -> None:
         controller = DummyRuntimeController()
@@ -359,40 +410,132 @@ class GuiAppTests(unittest.TestCase):
 
         before_page_hint = page.sizeHint()
         before_preview_hint = page.preview_label.sizeHint()
+        before_preview_min_hint = page.preview_label.minimumSizeHint()
 
         image = QImage(1920, 1080, QImage.Format.Format_RGB888)
         page.set_preview_image(image)
 
-        self.assertEqual(page.left_card.minimumWidth(), 210)
-        self.assertEqual(page.left_card.maximumWidth(), 210)
         self.assertEqual(page.sizeHint(), before_page_hint)
         self.assertEqual(page.preview_label.sizeHint(), before_preview_hint)
+        self.assertEqual(page.preview_label.minimumSizeHint(), before_preview_min_hint)
 
     def test_runtime_page_matches_run_tab_layout_contract(self) -> None:
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
+        page.resize(1600, 900)
+        page.show()
+        QApplication.processEvents()
 
-        self.assertEqual(page.left_card.minimumWidth(), 210)
-        self.assertEqual(page.left_card.maximumWidth(), 210)
-        self.assertEqual(page.left_card.property("layoutRole"), "sidePanel")
+        self.assertTrue(hasattr(page, "settings_column"))
+        self.assertTrue(hasattr(page, "center_stage"))
+        self.assertTrue(hasattr(page, "summary_column"))
+        self.assertTrue(hasattr(page, "summary_card"))
+        self.assertFalse(hasattr(page, "preview_log_splitter"))
+        self.assertEqual(page.center_stage.layout().count(), 2)
+        self.assertIs(page.center_stage.layout().itemAt(0).widget(), page.preview_card)
+        self.assertIs(page.center_stage.layout().itemAt(1).widget(), page.log_card)
+        self.assertEqual(len(page.findChildren(QSplitter)), 0)
+        self.assertFalse(hasattr(page, "status_card"))
+        self.assertFalse(hasattr(page, "status_value"))
+        self.assertEqual(page.layout().spacing(), 6)
+        self.assertEqual(page.settings_column.property("layoutRole"), "sidePanel")
+        self.assertEqual(page.summary_column.property("layoutRole"), "sidePanel")
+        self.assertLessEqual(abs(page.settings_column.width() - page.summary_column.width()), 1)
+        self.assertEqual(page.settings_column.layout().spacing(), 10)
+        self.assertEqual(page.summary_column.layout().spacing(), 10)
         self.assertFalse(page.log_output.isHidden())
         self.assertGreaterEqual(page.log_output.minimumHeight(), 120)
-        self.assertFalse(hasattr(page, "preview_head_widget"))
-        self.assertFalse(hasattr(page, "preview_badge"))
+        self.assertTrue(hasattr(page, "preview_head_widget"))
+        self.assertTrue(hasattr(page, "action_buttons_row"))
+        action_row_layout = page.action_buttons_row.layout()
+        self.assertIsNotNone(action_row_layout)
+        self.assertEqual(action_row_layout.contentsMargins().top(), 2)
+        self.assertEqual(action_row_layout.contentsMargins().bottom(), 2)
+        self.assertEqual(action_row_layout.contentsMargins().left(), 0)
+        self.assertEqual(action_row_layout.contentsMargins().right(), 0)
+        self.assertEqual(action_row_layout.spacing(), 6)
         self.assertEqual(page.log_clear_button.height(), 26)
         self.assertEqual(page.log_clear_button.maximumHeight(), 26)
         self.assertEqual(page.log_popout_button.height(), 26)
         self.assertEqual(page.log_popout_button.maximumHeight(), 26)
-        self.assertEqual(page.start_button.height(), 30)
-        self.assertEqual(page.stop_button.height(), 30)
+        self.assertGreaterEqual(page.start_button.height(), 30)
+        self.assertGreaterEqual(page.stop_button.height(), 30)
+        self.assertEqual(page.action_buttons_row.parentWidget(), page.settings_column)
+        self.assertEqual(page.start_button.parentWidget(), page.action_buttons_row)
+        self.assertEqual(page.stop_button.parentWidget(), page.action_buttons_row)
+        self.assertLessEqual(abs(page.start_button.width() - page.stop_button.width()), 1)
+        self.assertEqual(page.config_card.parentWidget(), page.settings_column)
+        config_grid = page.config_card.layout().itemAt(1).layout()
+        self.assertIsNotNone(config_grid)
+        mode_cell = config_grid.cellRect(0, 1)
+        log_cell = config_grid.cellRect(3, 1)
+        self.assertEqual(page.mode_combo.geometry().x() + page.mode_combo.width(), mode_cell.x() + mode_cell.width())
+        self.assertEqual(page.log_level_combo.geometry().x() + page.log_level_combo.width(), log_cell.x() + log_cell.width())
+        config_buttons_layout = page.config_card.layout().itemAt(2).layout()
+        self.assertIsNotNone(config_buttons_layout)
+        self.assertEqual(config_buttons_layout.count(), 2)
+        self.assertEqual(config_buttons_layout.spacing(), 6)
+        self.assertIs(config_buttons_layout.itemAt(0).widget(), page.apply_button)
+        self.assertIs(config_buttons_layout.itemAt(1).widget(), page.reset_button)
+        self.assertGreaterEqual(page.apply_button.height(), 30)
+        self.assertGreaterEqual(page.reset_button.height(), 30)
+        self.assertLessEqual(abs(page.apply_button.width() - page.reset_button.width()), 1)
+        self.assertEqual(page.summary_card.parentWidget(), page.summary_column)
+        self.assertIs(page.summary_column.layout().itemAt(0).widget(), page.summary_card)
+        self.assertEqual(page.preview_head_widget.property("headerRole"), "panel")
+        self.assertEqual(page.preview_head_widget.height(), 38)
+        self.assertEqual(page.preview_head_widget.maximumHeight(), 38)
+        self.assertEqual(page.preview_title_label.property("textRole"), "panelTitle")
+        self.assertEqual(page.preview_title_label.text(), "实时画面")
+        self.assertEqual(page.preview_status_value.objectName(), "runtimePreviewStatusValue")
+        self.assertEqual(page.preview_status_value.height(), 26)
+        self.assertEqual(page.preview_status_value.maximumHeight(), 26)
+        self.assertEqual(page.preview_status_value.text(), "空闲")
+        self.assertEqual(page.preview_status_value.property("statusState"), "idle")
         self.assertEqual(page.log_head_widget.property("headerRole"), "panel")
         self.assertEqual(page.log_title_label.property("textRole"), "panelTitle")
         self.assertEqual(page.preview_card.property("layoutRole"), "canvasPanel")
         self.assertEqual(page.log_card.property("layoutRole"), "canvasPanel")
+        self.assertEqual(page.center_stage.layout().spacing(), 6)
+        self.assertEqual(page.summary_card.property("panelRole"), "card")
+        self.assertEqual(page.summary_section_label.text(), "当前已保存配置")
         self.assertEqual(page.preview_label.objectName(), "runtimePreviewViewport")
         self.assertEqual(page.preview_label.styleSheet(), "")
+        self.assertEqual(page.preview_card.layout().contentsMargins().left(), 0)
+        self.assertEqual(page.preview_card.layout().contentsMargins().top(), 0)
+        self.assertTrue(page.preview_label.hasHeightForWidth())
+        self.assertEqual(page.preview_label.sizeHint().width(), 720)
+        self.assertEqual(page.preview_label.sizeHint().height(), 405)
+        self.assertEqual(page.preview_label.minimumSizeHint().width(), 560)
+        self.assertEqual(page.preview_label.minimumSizeHint().height(), 315)
+        self.assertEqual(page.preview_label.heightForWidth(720), 405)
         self.assertEqual(page.log_output.objectName(), "runtimeLogOutput")
         self.assertEqual(page.log_output.styleSheet(), "")
+
+    def test_runtime_page_expands_left_panel_after_capping_right_preview_width(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        page.resize(1600, 900)
+        page.show()
+        QApplication.processEvents()
+
+        preview_body_height = page.preview_label.height()
+        expected_center_width = int(round(preview_body_height * 16 / 9))
+        total_columns_width = (
+            page.settings_column.width()
+            + page.summary_column.width()
+            + page.center_stage.width()
+            + page.layout().spacing() * 2
+        )
+
+        self.assertLessEqual(abs(page.center_stage.width() - expected_center_width), 24)
+        self.assertLessEqual(abs(page.settings_column.width() - page.summary_column.width()), 1)
+        self.assertLessEqual(abs(total_columns_width - page.contentsRect().width()), 2)
+        self.assertEqual(
+            page.preview_card.height() + page.log_card.height() + page.center_stage.layout().spacing(),
+            page.center_stage.height(),
+        )
 
     def test_runtime_page_uses_current_screen_label(self) -> None:
         controller = DummyRuntimeController()
@@ -423,8 +566,8 @@ class GuiAppTests(unittest.TestCase):
 
         self.assertFalse(page.support_value.wordWrap())
         self.assertFalse(page.sequence_value.wordWrap())
-        self.assertEqual(page.support_value.maximumWidth(), 120)
-        self.assertEqual(page.sequence_value.maximumWidth(), 120)
+        self.assertEqual(page.support_value.maximumWidth(), 180)
+        self.assertEqual(page.sequence_value.maximumWidth(), 180)
         self.assertEqual(page.support_value.toolTip(), support_text)
         self.assertEqual(page.sequence_value.toolTip(), sequence_text)
         self.assertNotEqual(page.support_value.text(), support_text)
@@ -435,13 +578,20 @@ class GuiAppTests(unittest.TestCase):
         page = RuntimePage(controller)
 
         self.assertEqual(page.config_status_label.property("noticeRole"), "saved")
-        self.assertEqual(page.status_dot.objectName(), "runtimeStatusDot")
-        self.assertEqual(page.status_dot.property("statusState"), "idle")
-        self.assertEqual(page.status_value.property("statusState"), "idle")
+        self.assertEqual(page.preview_status_value.property("statusState"), "idle")
 
         page.log_level_combo.setCurrentText("DEBUG")
 
         self.assertEqual(page.config_status_label.property("noticeRole"), "dirty")
+
+    def test_runtime_page_preview_header_status_tracks_lifecycle_text(self) -> None:
+        controller = DummyRuntimeController()
+        page = RuntimePage(controller)
+
+        controller.lifecycle_changed.emit("运行中")
+
+        self.assertEqual(page.preview_status_value.text(), "运行中")
+        self.assertEqual(page.preview_status_value.property("statusState"), "running")
 
     def test_runtime_controller_missing_config_stays_constructible_and_reports_error(
         self,
@@ -464,7 +614,7 @@ class GuiAppTests(unittest.TestCase):
             self.assertFalse(controller.config_available)
             self.assertEqual(controller.current_summary, controller.CONFIG_UNAVAILABLE_SUMMARY)
             self.assertIn("battle_config.yaml", controller.current_config_error or "")
-            self.assertTrue(controller.current_lifecycle_text.startswith("配置不可用："))
+            self.assertEqual(controller.current_lifecycle_text, "故障")
             self.assertEqual(summaries[-1], controller.CONFIG_UNAVAILABLE_SUMMARY)
             self.assertEqual(lifecycles[-1], controller.current_lifecycle_text)
             self.assertEqual(failures[-1], controller.current_config_error)
@@ -479,7 +629,8 @@ class GuiAppTests(unittest.TestCase):
             page = RuntimePage(controller)
             page.start_button.click()
 
-            self.assertEqual(page.status_value.text(), controller.current_lifecycle_text)
+            self.assertEqual(page.preview_status_value.text(), "故障")
+            self.assertNotIn("battle_config.yaml", page.preview_status_value.text())
             self.assertFalse(page.start_button.isEnabled())
             self.assertFalse(page.stop_button.isEnabled())
             self.assertFalse(page.apply_button.isEnabled())
@@ -519,7 +670,7 @@ class GuiAppTests(unittest.TestCase):
             controller.refresh_summary()
 
             self.assertTrue(controller.config_available)
-            self.assertEqual(page.status_value.text(), "空闲")
+            self.assertEqual(page.preview_status_value.text(), "空闲")
             self.assertTrue(page.start_button.isEnabled())
             self.assertTrue(page.mode_combo.isEnabled())
             self.assertTrue(page.smart_battle_checkbox.isEnabled())
@@ -598,7 +749,7 @@ class RuntimeWorkerTests(unittest.TestCase):
         self.assertEqual(worker.stop_calls, 1)
         self.assertIn("停止中", lifecycles)
         self.assertEqual(failures, [])
-        self.assertEqual(lifecycles[-1], "手动停止")
+        self.assertEqual(lifecycles[-1], "已停止")
 
     def test_worker_escalates_from_terminate_to_kill_after_stop_deadlines(self) -> None:
         worker = AutomationRuntimeWorker("config/battle_config.yaml")
