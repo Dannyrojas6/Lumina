@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from core.device.profile import DeviceProfile
-from core.shared import BattleConfig, ResourceCatalog
+from core.shared import BattleConfig, ResourceCatalog, SupportRecognitionConfig
 from core.support_recognition.verifier import SupportPortraitVerifier
 
 
@@ -21,7 +21,11 @@ def validate_runtime_prerequisites(
     _validate_required_templates(resources)
     _validate_device_resolution(profile, device_resolution)
     if config.support.servant.strip():
-        validate_support_servant_resources(resources, config.support.servant)
+        validate_support_servant_resources(
+            resources,
+            config.support.servant,
+            config.support.recognition,
+        )
     if config.battle_mode == "main" and config.smart_battle.enabled:
         for slot in config.smart_battle.frontline:
             resources.load_servant_manifest(slot.servant)
@@ -30,6 +34,7 @@ def validate_runtime_prerequisites(
 def validate_support_servant_resources(
     resources: ResourceCatalog,
     servant_name: str,
+    recognition_config: SupportRecognitionConfig,
 ) -> None:
     """校验助战链依赖的本地资源是否齐全。"""
     manifest = resources.load_servant_manifest(servant_name)
@@ -47,7 +52,11 @@ def validate_support_servant_resources(
         Path(resources.support_reference_meta_path(servant_name, manifest)),
         f"{servant_name} reference_meta",
     )
-    SupportPortraitVerifier.from_servant(resources, servant_name)
+    SupportPortraitVerifier.from_servant(
+        servant_name=servant_name,
+        resources=resources,
+        config=recognition_config,
+    )
 
 
 def _validate_required_templates(resources: ResourceCatalog) -> None:

@@ -53,9 +53,14 @@ skills: []
                 assets_dir=str(root / "assets"),
                 servants_dir=str(root / "local_data" / "servants"),
             )
+            recognition = BattleConfig().support.recognition
 
             with self.assertRaisesRegex(FileNotFoundError, "reference_bank"):
-                validate_support_servant_resources(catalog, "berserker/morgan")
+                validate_support_servant_resources(
+                    catalog,
+                    "berserker/morgan",
+                    recognition,
+                )
 
     def test_validate_support_servant_resources_rejects_invalid_reference_meta(self) -> None:
         with TemporaryDirectory() as tmp_dir:
@@ -86,13 +91,18 @@ skills: []
                 assets_dir=str(root / "assets"),
                 servants_dir=str(root / "local_data" / "servants"),
             )
+            recognition = BattleConfig().support.recognition
 
             with patch(
                 "core.runtime.startup_check.SupportPortraitVerifier.from_servant",
                 side_effect=ValueError("invalid model_path"),
             ):
                 with self.assertRaisesRegex(ValueError, "invalid model_path"):
-                    validate_support_servant_resources(catalog, "berserker/morgan")
+                    validate_support_servant_resources(
+                        catalog,
+                        "berserker/morgan",
+                        recognition,
+                    )
 
     def test_validate_support_servant_resources_rejects_unloadable_reference_bank(self) -> None:
         with TemporaryDirectory() as tmp_dir:
@@ -123,13 +133,18 @@ skills: []
                 assets_dir=str(root / "assets"),
                 servants_dir=str(root / "local_data" / "servants"),
             )
+            recognition = BattleConfig().support.recognition
 
             with patch(
                 "core.runtime.startup_check.SupportPortraitVerifier.from_servant",
                 side_effect=ValueError("invalid reference_bank"),
             ):
                 with self.assertRaisesRegex(ValueError, "invalid reference_bank"):
-                    validate_support_servant_resources(catalog, "berserker/morgan")
+                    validate_support_servant_resources(
+                        catalog,
+                        "berserker/morgan",
+                        recognition,
+                    )
 
     def test_validate_runtime_prerequisites_accepts_existing_templates_and_support_assets(
         self,
@@ -216,7 +231,11 @@ skills: []
                     FIXED_1920X1080,
                     device_resolution=(1920, 1080),
                 )
-            verifier_factory.assert_called_once_with(catalog, "berserker/morgan")
+            verifier_factory.assert_called_once_with(
+                servant_name="berserker/morgan",
+                resources=catalog,
+                config=config.support.recognition,
+            )
 
     def test_validate_runtime_prerequisites_requires_ap_recovery_templates(self) -> None:
         with TemporaryDirectory() as tmp_dir:
