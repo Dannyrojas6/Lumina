@@ -10,6 +10,9 @@ from typing import Any
 
 PRIMARY_TOPIC_LABELS = {
     "device": "adb device handling",
+    "gui-runtime": "runtime workspace layout",
+    "gui-app": "GUI app shell",
+    "runtime-config": "runtime configuration controls",
     "runtime": "runtime flow handling",
     "battle-runtime": "battle runtime logic",
     "command-card": "command card recognition",
@@ -18,27 +21,37 @@ PRIMARY_TOPIC_LABELS = {
     "shared": "shared configuration",
     "scripts": "project scripts",
     "skill": "git commit skill",
-    "docs": "project documentation",
+    "docs-status": "project status documentation",
     "tests": "targeted test coverage",
     "test-fixtures": "test image fixtures",
     "config": "runtime configuration",
-    "assets": "ui assets",
+    "assets": "project assets",
+    "servant-assets": "servant assets",
     "root-meta": "repository metadata",
+    "local-notes": "local notes",
 }
 
 PRIMARY_TOPIC_TYPES = {
-    "docs": "docs",
+    "docs-status": "docs",
     "tests": "test",
     "test-fixtures": "test",
     "config": "chore",
     "assets": "chore",
+    "servant-assets": "feat",
     "root-meta": "chore",
+    "local-notes": "chore",
 }
 
-ALLOW_EMPTY_VERIFICATION_TOPICS = {"docs"}
+ALLOW_EMPTY_VERIFICATION_TOPICS = {"docs-status"}
 
 TOPIC_TEST_PATTERNS = {
     "device": ['uv run python -m unittest discover -s tests -p "test_adb_controller.py" -v'],
+    "gui-runtime": ['uv run python -m unittest discover -s tests -p "test_gui_app.py" -v'],
+    "gui-app": ['uv run python -m unittest discover -s tests -p "test_gui_app.py" -v'],
+    "runtime-config": [
+        'uv run python -m unittest discover -s tests -p "test_gui_app.py" -v',
+        'uv run python -m unittest discover -s tests -p "test_strict_runtime_guards.py" -v',
+    ],
     "runtime": ['uv run python -m unittest discover -s tests -p "test_runtime*.py" -v'],
     "battle-runtime": ['uv run python -m unittest discover -s tests -p "test_battle*.py" -v'],
     "command-card": ['uv run python -m unittest discover -s tests -p "test_command_card*.py" -v'],
@@ -49,6 +62,7 @@ TOPIC_TEST_PATTERNS = {
     "skill": ['uv run python -m unittest discover -s tests -p "test_git_commit_skill.py" -v'],
     "config": ["uv run python -m unittest discover -s tests -v"],
     "root-meta": ["uv run python -m unittest discover -s tests -v"],
+    "servant-assets": ['uv run python -m unittest discover -s tests -p "test_servant_battle_core_export.py" -v'],
     "test-fixtures": ["uv run python -m unittest discover -s tests -v"],
 }
 
@@ -58,6 +72,17 @@ IGNORED_PATHS = {
     "DevLog.md": "local_notes",
     "DevRecord.md": "local_notes",
 }
+
+IMAGE_EXTENSIONS = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
+
+
+def ignored_reason(path: str) -> str | None:
+    normalized = normalize_path(path)
+    if normalized in IGNORED_PATHS:
+        return IGNORED_PATHS[normalized]
+    if normalized == ".superpowers" or normalized.startswith(".superpowers/"):
+        return "temporary_notes"
+    return None
 
 
 def parse_status_line(line: str) -> dict[str, str] | None:
@@ -122,6 +147,10 @@ def normalize_path(path: str) -> str:
 
 def classify_path(path: str) -> dict[str, str]:
     normalized = normalize_path(path)
+    if normalized.startswith("core/gui/runtime/") or normalized.startswith("core/gui/services/runtime_"):
+        return {"kind": "primary", "topic": "gui-runtime"}
+    if normalized.startswith("core/gui/app/"):
+        return {"kind": "primary", "topic": "gui-app"}
     if normalized.startswith("core/device/"):
         return {"kind": "primary", "topic": "device"}
     if normalized.startswith("core/runtime/"):
@@ -134,6 +163,8 @@ def classify_path(path: str) -> dict[str, str]:
         return {"kind": "primary", "topic": "support-recognition"}
     if normalized.startswith("core/perception/"):
         return {"kind": "primary", "topic": "perception"}
+    if normalized in {"core/shared/config_loader.py", "core/shared/config_models.py"}:
+        return {"kind": "primary", "topic": "runtime-config"}
     if normalized.startswith("core/shared/"):
         return {"kind": "primary", "topic": "shared"}
     if normalized.startswith("scripts/"):
@@ -144,12 +175,16 @@ def classify_path(path: str) -> dict[str, str]:
         return {"kind": "support", "topic": "tests"}
     if normalized.startswith("config/"):
         return {"kind": "support", "topic": "config"}
+    if normalized.startswith("assets/ui/app_icon."):
+        return {"kind": "support", "topic": "gui-app"}
+    if normalized.startswith("assets/servants/"):
+        return {"kind": "support", "topic": "servant-assets"}
     if normalized.startswith("assets/"):
         return {"kind": "support", "topic": "assets"}
     if normalized.startswith("test_image/"):
         return {"kind": "support", "topic": "test-fixtures"}
     if normalized.startswith("docs/"):
-        return {"kind": "support", "topic": "docs"}
+        return {"kind": "support", "topic": "docs-status"}
     if normalized in {
         "README.md",
         "PROJECT_HANDOFF.md",
@@ -161,7 +196,7 @@ def classify_path(path: str) -> dict[str, str]:
         "uv.lock",
         ".gitignore",
     } or normalized.endswith(".md"):
-        return {"kind": "support", "topic": "docs"}
+        return {"kind": "support", "topic": "docs-status"}
     return {"kind": "support", "topic": "root-meta"}
 
 
@@ -169,6 +204,10 @@ def infer_test_topic(path: str) -> str | None:
     name = Path(path).name.lower()
     if "git_commit_skill" in name:
         return "skill"
+    if "gui_app" in name or "gui_tools" in name:
+        return "gui-runtime"
+    if "strict_runtime_guards" in name:
+        return "runtime-config"
     if "command_card" in name or "card_plan" in name:
         return "command-card"
     if "adb" in name or "device" in name:
@@ -196,6 +235,7 @@ def infer_test_topic(path: str) -> str | None:
 
 def make_workspace_record(entry: dict[str, str]) -> dict[str, Any]:
     classification = classify_path(entry["path"])
+    ignore_reason = ignored_reason(entry["path"])
     return {
         "path": entry["path"],
         "index_status": entry["index_status"],
@@ -203,7 +243,8 @@ def make_workspace_record(entry: dict[str, str]) -> dict[str, Any]:
         "is_untracked": entry["index_status"] == "?" and entry["worktree_status"] == "?",
         "kind": classification["kind"],
         "topic": classification["topic"],
-        "ignored": normalize_path(entry["path"]) in IGNORED_PATHS,
+        "ignored": ignore_reason is not None,
+        "ignored_reason": ignore_reason,
     }
 
 
@@ -230,13 +271,23 @@ def attach_support_file(
     if topic == "tests":
         inferred = infer_test_topic(record["path"])
         if inferred and inferred in primary_topics:
-            return inferred
+            return normalize_group_topic(inferred, primary_topics)
         if len(primary_topics) == 1:
-            return next(iter(primary_topics))
+            only_topic = next(iter(primary_topics))
+            if only_topic in {"gui-runtime", "gui-app", "runtime-config", "device", "runtime", "battle-runtime", "command-card", "support-recognition", "perception", "skill"}:
+                return normalize_group_topic(only_topic, primary_topics)
         return None
-    if topic in {"docs", "config", "assets", "root-meta", "test-fixtures"}:
-        if len(primary_topics) == 1:
-            return next(iter(primary_topics))
+    if topic == "gui-app" and "gui-runtime" in primary_topics:
+        return "gui-runtime"
+    if topic == "gui-app" and "gui-app" in primary_topics:
+        return "gui-app"
+    if topic == "servant-assets" and "servant-assets" in primary_topics:
+        return "servant-assets"
+    if topic in {"config", "assets"} and len(primary_topics) == 1:
+        only_topic = next(iter(primary_topics))
+        if only_topic in {"runtime-config", "gui-runtime", "gui-app"}:
+            return normalize_group_topic(only_topic, primary_topics)
+    if topic in {"docs-status", "root-meta", "test-fixtures"}:
         return None
     return None
 
@@ -250,7 +301,7 @@ def suggest_review_topics(
         inferred = infer_test_topic(record["path"])
         if inferred:
             candidate_topics.append(inferred)
-    elif record["topic"] in {"docs", "config", "assets", "root-meta", "test-fixtures"}:
+    elif record["topic"] in {"docs-status", "config", "assets", "root-meta", "test-fixtures", "local-notes"}:
         candidate_topics.append(record["topic"])
     candidate_topics.extend(sorted(primary_topics))
 
@@ -259,6 +310,39 @@ def suggest_review_topics(
         if topic and topic not in unique_topics:
             unique_topics.append(topic)
     return unique_topics
+
+
+def normalize_group_topic(topic: str, primary_topics: set[str]) -> str:
+    if topic == "gui-app" and "gui-runtime" in primary_topics:
+        return "gui-runtime"
+    return topic
+
+
+def review_candidate_for_record(
+    record: dict[str, Any],
+    primary_topics: set[str],
+) -> dict[str, Any] | None:
+    normalized = normalize_path(record["path"])
+    if normalized.endswith(".docx"):
+        return {
+            "path": record["path"],
+            "reason": "binary_or_local_design_doc",
+            "candidate_topics": ["local-notes"],
+        }
+    if record["topic"] == "local-notes" and Path(normalized).suffix.lower() in IMAGE_EXTENSIONS:
+        return {
+            "path": record["path"],
+            "reason": "unreferenced_image",
+            "candidate_topics": ["local-notes"],
+        }
+    candidate_topics = suggest_review_topics(record, primary_topics)
+    if candidate_topics:
+        return {
+            "path": record["path"],
+            "reason": "shared_support_file",
+            "candidate_topics": candidate_topics,
+        }
+    return None
 
 
 def build_test_commands(paths: list[str]) -> list[str]:
@@ -273,7 +357,7 @@ def build_test_commands(paths: list[str]) -> list[str]:
 
 def suggest_verification_commands(topic: str, files: list[str], support_files: list[str]) -> list[str]:
     test_files = [path for path in [*files, *support_files] if normalize_path(path).startswith("tests/")]
-    if topic == "docs":
+    if topic == "docs-status":
         return []
     if topic == "tests":
         return build_test_commands(files)
@@ -291,9 +375,76 @@ def suggest_commit_type(topic: str) -> str:
 
 
 def suggest_commit_summary(topic: str) -> str:
+    if topic == "gui-runtime":
+        return "fix: refine runtime workspace layout and app icon"
+    if topic == "runtime-config":
+        return "feat: expose loop count in runtime config"
+    if topic == "docs-status":
+        return "docs: refresh project status and support scope"
+    if topic == "servant-assets":
+        return "feat: add servant battle core export"
     commit_type = suggest_commit_type(topic)
     label = PRIMARY_TOPIC_LABELS.get(topic, topic.replace("-", " "))
     return f"{commit_type}: update {label}"
+
+
+def suggest_body_lines(topic: str, files: list[str], support_files: list[str]) -> list[str]:
+    all_paths = [*files, *support_files]
+    normalized = [normalize_path(path) for path in all_paths]
+    lines: list[str] = []
+    if topic == "gui-runtime":
+        if any(path.startswith("core/gui/runtime/") for path in normalized):
+            lines.append("move runtime status into the preview header and remove the vertical splitter")
+            lines.append("tighten runtime config control alignment and action button layout")
+        if any(path.startswith("assets/ui/app_icon.") or path.startswith("core/gui/app/") for path in normalized):
+            lines.append("add Lumina app icon assets and wire them into the Qt app and main window")
+        if any(path == "tests/test_gui_app.py" for path in normalized):
+            lines.append("refresh GUI coverage for the updated runtime layout and icon loading")
+    elif topic == "runtime-config":
+        lines.extend(
+            [
+                "add loop count editing to the runtime page and saved configuration summary",
+                "validate loop_count consistently in GUI and strict runtime config loading",
+                "cover infinite and positive loop_count values in runtime tests",
+            ]
+        )
+    elif topic == "docs-status":
+        lines.extend(
+            [
+                "simplify README as the project quick entry point",
+                "clarify tests as a formal verification entry and document emulator-only support",
+                "mark intelligent combat drafts as non-current design material",
+            ]
+        )
+    elif topic == "servant-assets":
+        lines.extend(
+            [
+                "export minimal servant battle data as JSON and Markdown",
+                "document per-servant _meta output files and command usage",
+                "cover Morgan skill and noble phantasm export shape",
+            ]
+        )
+    elif len(all_paths) >= 4:
+        lines.append(f"update {PRIMARY_TOPIC_LABELS.get(topic, topic)} files as one related change")
+        if support_files:
+            lines.append("refresh related tests and documentation")
+    return lines
+
+
+def body_is_recommended(topic: str, files: list[str], support_files: list[str], body_lines: list[str]) -> bool:
+    if body_lines and (len(files) + len(support_files) >= 4):
+        return True
+    return topic in {"gui-runtime", "runtime-config", "docs-status", "servant-assets"} and bool(body_lines)
+
+
+def suggest_group_reason(topic: str) -> str:
+    reasons = {
+        "gui-runtime": "GUI runtime, Qt app icon assets, and GUI tests describe one runtime workspace/UI change.",
+        "runtime-config": "Runtime config loading, GUI editing, strict validation, and tests all cover loop_count behavior.",
+        "docs-status": "Project status, support scope, README, and draft boundaries are documentation-only updates.",
+        "servant-assets": "Servant asset script, docs, and tests all cover battle core export data.",
+    }
+    return reasons.get(topic, f"Files share the {PRIMARY_TOPIC_LABELS.get(topic, topic)} topic.")
 
 
 def finalize_groups(groups: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -304,6 +455,18 @@ def finalize_groups(groups: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
         group["support_files"] = sorted(group["support_files"])
         group["suggested_type"] = suggest_commit_type(topic)
         group["suggested_summary"] = suggest_commit_summary(topic)
+        group["suggested_body_lines"] = suggest_body_lines(
+            topic,
+            group["files"],
+            group["support_files"],
+        )
+        group["body_recommended"] = body_is_recommended(
+            topic,
+            group["files"],
+            group["support_files"],
+            group["suggested_body_lines"],
+        )
+        group["group_reason"] = suggest_group_reason(topic)
         group["suggested_verification_commands"] = suggest_verification_commands(
             topic,
             group["files"],
@@ -327,7 +490,7 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
         [
             {
                 "path": record["path"],
-                "reason": IGNORED_PATHS[normalize_path(record["path"])],
+                "reason": record["ignored_reason"],
             }
             for record in workspace_files
             if record["ignored"]
@@ -364,30 +527,35 @@ def inspect_status_entries(entries: list[dict[str, str]]) -> dict[str, Any]:
 
     if primary_records:
         for record in primary_records:
-            ensure_group(groups, record["topic"])["files"].append(record["path"])
+            group_topic = normalize_group_topic(record["topic"], primary_topics)
+            ensure_group(groups, group_topic)["files"].append(record["path"])
         for record in support_records:
             if record["topic"] == "test-fixtures":
                 ensure_group(groups, "test-fixtures")["files"].append(record["path"])
+                continue
+            if record["topic"] == "docs-status":
+                ensure_group(groups, "docs-status")["files"].append(record["path"])
                 continue
             attached_topic = attach_support_file(record, primary_topics)
             if attached_topic:
                 ensure_group(groups, attached_topic)["support_files"].append(record["path"])
             else:
-                candidate_topics = suggest_review_topics(record, primary_topics)
-                if candidate_topics:
-                    review_candidates.append(
-                        {
-                            "path": record["path"],
-                            "reason": "shared_support_file",
-                            "candidate_topics": candidate_topics,
-                        }
-                    )
+                candidate = review_candidate_for_record(record, primary_topics)
+                if candidate:
+                    review_candidates.append(candidate)
                 else:
                     unassigned_files.append(
                         {"path": record["path"], "reason": "shared_support_file"}
                     )
     else:
         for record in support_records:
+            candidate = review_candidate_for_record(record, primary_topics)
+            if candidate and candidate["reason"] in {
+                "binary_or_local_design_doc",
+                "unreferenced_image",
+            }:
+                review_candidates.append(candidate)
+                continue
             ensure_group(groups, record["topic"])["files"].append(record["path"])
 
     proposed_groups = finalize_groups(groups)
@@ -422,9 +590,22 @@ def collect_repo_status(repo: Path) -> list[dict[str, str]]:
 
 
 def render_text(report: dict[str, Any]) -> str:
+    group_lines = []
+    for group in report["proposed_groups"]:
+        body = group.get("suggested_body_lines", [])
+        group_lines.append(
+            {
+                "group_id": group["group_id"],
+                "suggested_summary": group["suggested_summary"],
+                "group_reason": group.get("group_reason", ""),
+                "body_recommended": group.get("body_recommended", False),
+                "suggested_body_lines": body,
+            }
+        )
     lines = [
         f"workspace_files: {[item['path'] for item in report['workspace_files']]}",
         f"proposed_groups: {[group['group_id'] for group in report['proposed_groups']]}",
+        f"group_suggestions: {group_lines}",
         f"review_candidates: {report['review_candidates']}",
         f"unassigned_files: {report['unassigned_files']}",
         f"ignored_files: {report['ignored_files']}",

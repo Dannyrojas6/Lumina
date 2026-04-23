@@ -45,6 +45,7 @@ class GitCommitSkillStructureTest(unittest.TestCase):
         self.assertIn("whether a commit body is recommended", content)
         self.assertIn("add a short commit body", content)
         self.assertIn("split the commit instead of hiding complexity", content)
+        self.assertIn("suggested_body_lines", content)
 
     def test_openai_yaml_mentions_grouped_workflow(self) -> None:
         content = OPENAI_YAML.read_text(encoding="utf-8")
@@ -110,7 +111,7 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         self.assertEqual(len(report["proposed_groups"]), 1)
         self.assertEqual(report["proposed_groups"][0]["primary_topic"], "device")
 
-    def test_groups_single_primary_topic_with_related_support_files(self) -> None:
+    def test_groups_single_primary_topic_with_related_test_file(self) -> None:
         report = self.module.inspect_status_entries(
             [
                 {
@@ -129,17 +130,176 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
 
         self.assertEqual(report["global_blocking_reasons"], [])
         self.assertEqual(report["unassigned_files"], [])
-        self.assertEqual(len(report["proposed_groups"]), 1)
-        group = report["proposed_groups"][0]
+        groups = {group["primary_topic"]: group for group in report["proposed_groups"]}
+        self.assertEqual(set(groups), {"device", "docs-status"})
+        group = groups["device"]
         self.assertEqual(group["primary_topic"], "device")
         self.assertEqual(group["files"], ["core/device/adb_controller.py"])
         self.assertEqual(
             group["support_files"],
-            ["README.md", "tests/test_adb_controller.py"],
+            ["tests/test_adb_controller.py"],
         )
         self.assertEqual(group["blocking_reasons"], [])
         self.assertTrue(group["suggested_verification_commands"])
         self.assert_conventional_summary(group["suggested_summary"])
+        self.assertIn("suggested_body_lines", group)
+        self.assertIn("body_recommended", group)
+        self.assertIn("group_reason", group)
+        self.assertEqual(groups["docs-status"]["files"], ["README.md"])
+
+    def test_gui_runtime_icon_and_tests_form_body_backed_group(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "core/gui/runtime/runtime_page.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "core/gui/runtime/controller.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "core/gui/app/qt_app.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "core/gui/app/main_window.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "assets/ui/app_icon.png",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+                {
+                    "path": "assets/ui/app_icon.ico",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+                {
+                    "path": "tests/test_gui_app.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+            ]
+        )
+
+        self.assertEqual(report["review_candidates"], [])
+        self.assertEqual(report["global_blocking_reasons"], [])
+        self.assertEqual(len(report["proposed_groups"]), 1)
+        group = report["proposed_groups"][0]
+        self.assertEqual(group["primary_topic"], "gui-runtime")
+        self.assertEqual(group["suggested_summary"], "fix: refine runtime workspace layout and app icon")
+        self.assertTrue(group["body_recommended"])
+        self.assertEqual(
+            group["suggested_body_lines"],
+            [
+                "move runtime status into the preview header and remove the vertical splitter",
+                "tighten runtime config control alignment and action button layout",
+                "add Lumina app icon assets and wire them into the Qt app and main window",
+                "refresh GUI coverage for the updated runtime layout and icon loading",
+            ],
+        )
+        self.assertEqual(
+            group["files"],
+            [
+                "core/gui/app/main_window.py",
+                "core/gui/app/qt_app.py",
+                "core/gui/runtime/controller.py",
+                "core/gui/runtime/runtime_page.py",
+            ],
+        )
+        self.assertEqual(
+            group["support_files"],
+            [
+                "assets/ui/app_icon.ico",
+                "assets/ui/app_icon.png",
+                "tests/test_gui_app.py",
+            ],
+        )
+        self.assertEqual(
+            group["suggested_verification_commands"],
+            ['uv run python -m unittest discover -s tests -p "test_gui_app.py" -v'],
+        )
+
+    def test_gui_app_icon_and_tests_form_gui_app_group(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "core/gui/app/qt_app.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {
+                    "path": "assets/ui/app_icon.png",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                },
+                {
+                    "path": "tests/test_gui_app.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+            ]
+        )
+
+        self.assertEqual(report["review_candidates"], [])
+        self.assertEqual(len(report["proposed_groups"]), 1)
+        group = report["proposed_groups"][0]
+        self.assertEqual(group["primary_topic"], "gui-app")
+        self.assertEqual(group["files"], ["core/gui/app/qt_app.py"])
+        self.assertEqual(
+            group["support_files"],
+            ["assets/ui/app_icon.png", "tests/test_gui_app.py"],
+        )
+        self.assertEqual(
+            group["suggested_verification_commands"],
+            ['uv run python -m unittest discover -s tests -p "test_gui_app.py" -v'],
+        )
+
+    def test_shared_primary_does_not_absorb_unrelated_support_files(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "core/shared/config_loader.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+                {"path": "README.md", "index_status": "M", "worktree_status": " "},
+                {"path": ".superpowers/notes/draft.md", "index_status": "?", "worktree_status": "?"},
+                {"path": "lumina_migration_design.docx", "index_status": "?", "worktree_status": "?"},
+                {
+                    "path": "tests/test_strict_runtime_guards.py",
+                    "index_status": "M",
+                    "worktree_status": " ",
+                },
+            ]
+        )
+
+        groups = {group["primary_topic"]: group for group in report["proposed_groups"]}
+        self.assertIn("runtime-config", groups)
+        self.assertIn("docs-status", groups)
+        self.assertEqual(groups["runtime-config"]["files"], ["core/shared/config_loader.py"])
+        self.assertEqual(groups["runtime-config"]["support_files"], ["tests/test_strict_runtime_guards.py"])
+        self.assertEqual(groups["docs-status"]["files"], ["README.md"])
+        self.assertEqual(
+            report["ignored_files"],
+            [{"path": ".superpowers/notes/draft.md", "reason": "temporary_notes"}],
+        )
+        self.assertEqual(
+            report["review_candidates"],
+            [
+                {
+                    "path": "lumina_migration_design.docx",
+                    "reason": "binary_or_local_design_doc",
+                    "candidate_topics": ["local-notes"],
+                }
+            ],
+        )
 
     def test_multiple_primary_topics_produce_multiple_groups(self) -> None:
         report = self.module.inspect_status_entries(
@@ -177,7 +337,7 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
             self.assert_conventional_summary(group["suggested_summary"])
             self.assertEqual(group["blocking_reasons"], [])
 
-    def test_shared_root_file_enters_review_candidates(self) -> None:
+    def test_shared_root_file_forms_docs_group_with_multiple_primary_topics(self) -> None:
         report = self.module.inspect_status_entries(
             [
                 {
@@ -195,16 +355,9 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         )
 
         self.assertEqual(report["unassigned_files"], [])
-        self.assertEqual(
-            report["review_candidates"],
-            [
-                {
-                    "path": "README.md",
-                    "reason": "shared_support_file",
-                    "candidate_topics": ["docs", "command-card", "device"],
-                }
-            ],
-        )
+        self.assertEqual(report["review_candidates"], [])
+        groups = {group["primary_topic"]: group for group in report["proposed_groups"]}
+        self.assertEqual(groups["docs-status"]["files"], ["README.md"])
         self.assertEqual(report["global_blocking_reasons"], [])
 
     def test_skill_files_form_primary_group(self) -> None:
@@ -252,7 +405,7 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
         self.assertEqual(report["global_blocking_reasons"], [])
         self.assertEqual(len(report["proposed_groups"]), 1)
         group = report["proposed_groups"][0]
-        self.assertEqual(group["primary_topic"], "docs")
+        self.assertEqual(group["primary_topic"], "docs-status")
         self.assertEqual(group["suggested_verification_commands"], [])
         self.assertEqual(group["blocking_reasons"], [])
         self.assert_conventional_summary(group["suggested_summary"])
@@ -323,6 +476,28 @@ class GitCommitScopeInspectorTest(unittest.TestCase):
             fixture_group["files"],
             ["test_image/login_bonus/登录奖励1.png"],
         )
+
+    def test_root_test_image_file_forms_test_fixture_group(self) -> None:
+        report = self.module.inspect_status_entries(
+            [
+                {
+                    "path": "test_image/十连汇呆+元帅.png",
+                    "index_status": "?",
+                    "worktree_status": "?",
+                }
+            ]
+        )
+
+        self.assertEqual(report["review_candidates"], [])
+        self.assertEqual(len(report["proposed_groups"]), 1)
+        group = report["proposed_groups"][0]
+        self.assertEqual(group["primary_topic"], "test-fixtures")
+        self.assertEqual(group["files"], ["test_image/十连汇呆+元帅.png"])
+        self.assertEqual(
+            group["suggested_verification_commands"],
+            ["uv run python -m unittest discover -s tests -v"],
+        )
+        self.assertEqual(report["global_blocking_reasons"], [])
 
     def test_cli_outputs_workspace_group_json_report(self) -> None:
         with TemporaryDirectory() as tmp_dir:

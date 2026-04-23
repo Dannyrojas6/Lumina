@@ -7,7 +7,7 @@ description: Use when Codex needs to inspect the full working tree, propose one 
 
 ## Overview
 
-Use this skill for **local commits only** in this repository. Read the whole working tree, propose commit groups from all current changes, route ambiguous support files into `review_candidates`, and wait for explicit confirmation before each local commit.
+Use this skill for **local commits only** in this repository. Read the whole working tree, propose commit groups from all current changes, route ambiguous support files into `review_candidates`, prefer ready-to-commit groups with body bullets for large changes, and wait for explicit confirmation before each local commit.
 
 Read [project-commit-policy.md](./references/project-commit-policy.md) before acting.
 
@@ -20,7 +20,7 @@ Read [project-commit-policy.md](./references/project-commit-policy.md) before ac
    uv run python .\skill\git-commit\scripts\inspect_commit_scope.py --repo . --format json
    ```
 
-3. Review `workspace_files`, `proposed_groups`, `review_candidates`, `unassigned_files`, and `global_blocking_reasons`.
+3. Review `workspace_files`, `proposed_groups`, `review_candidates`, `unassigned_files`, `ignored_files`, and `global_blocking_reasons`.
 4. If any hard global blocking reason is present, stop and explain the exact block.
 5. If `review_candidates` is non-empty:
    - inspect diffs for those files
@@ -34,13 +34,16 @@ Read [project-commit-policy.md](./references/project-commit-policy.md) before ac
    - suggested verification commands
    - suggested Conventional commit title
    - whether a commit body is recommended
+   - `group_reason`
+   - `body_recommended`
+   - `suggested_body_lines`
 7. Ask for explicit confirmation on one group at a time.
 8. After a group is confirmed:
    - stage only that group's files
    - rerun the inspection to ensure the scope has not drifted
    - rerun the suggested verification commands
    - show the final Conventional commit title
-   - if the group is large or spans multiple subareas under one topic, also show the final commit body
+   - if `body_recommended` is true, show the final commit body from `suggested_body_lines`
    - wait for explicit confirmation again before `git commit`
 9. After one group is committed, inspect the remaining working tree again and continue with the next group if any remain.
 
@@ -63,7 +66,14 @@ Refuse to continue when any of these is true:
 - Do not attempt hunk splitting.
 - Do not silently override partial staging.
 - Allow docs, tests, config, and assets to attach to a single primary topic only when the attachment is unambiguous.
-- Treat `test_image/` as tracked test fixtures, not generic assets.
+- Prefer finer groups such as `gui-runtime`, `gui-app`, `runtime-config`, `docs-status`, `servant-assets`, and `local-notes` instead of broad catch-all groups.
+- Large mixed working trees should be presented as usable commit groups, with suggested body bullets when one title cannot carry the detail.
+- Documentation should follow a code group only when it clearly describes that same topic. Otherwise keep it in `docs-status`.
+- Tests should follow the matching implementation topic by filename or obvious scope. Ambiguous tests go to `review_candidates`.
+- Treat every image under `test_image/` as a useful tracked test fixture. It does not require manual confirmation.
+- Treat `.superpowers/` as temporary discussion material and report it in `ignored_files`.
+- Treat binary design drafts such as `lumina_migration_design.docx` as `review_candidates`, not automatic commit files.
+- Do not auto-attach binary drafts, temporary notes, or unreferenced images outside `test_image/` just because one primary topic exists.
 - When attachment is plausible but not automatic, move the file into `review_candidates` instead of hard-blocking immediately.
 - Report known local-only note files as ignored instead of treating them as commit candidates.
 - Do not revert unrelated changes.
@@ -96,6 +106,7 @@ Requirements:
 - Keep the title concise but specific enough to identify the main scope and effect
 - Never merge unrelated themes into one title
 - When a group is large or touches multiple subareas under one topic, add a short commit body that lists the major changes
+- Prefer the inspection report's `suggested_body_lines` as the initial commit body, then adjust only if the group content requires it
 - If the title plus body still feels vague, split the commit instead of hiding complexity
 
 ## Resources
