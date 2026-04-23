@@ -1,47 +1,38 @@
 # Lumina
 
-Lumina 是一个面向 `FGO` 的自动化脚本。当前只服务可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备，目标是先把刷本主链路做稳，而不是做通用多端方案。
+## 项目简介
 
-## 当前范围
+Lumina 是一个面向 `FGO` 的自动化脚本项目。
+当前只服务可通过 `ADB` 控制的 `1920x1080` 安卓模拟器，目标是先把固定环境下的刷本主链路做稳。
 
-- `ADB` 连接模拟器并持续截图
-- 主菜单进本、助战筛选、编队确认、战斗、结算继续
-- 助战按目标从者查找；默认找不到就停止，只有显式打开 `allow_fallback_pick` 才会回退默认位一次
-- 战斗内读取当前波次、敌方剩余数量、当前回合数
-- `OCR` 读取前排三位从者 `NP`
-- `OCR` 读取敌方三个位的 `HP`
-- 判断前排九个技能位当前是否可点
-- `battle_mode=main` 下支持固定开局动作和保守版 `smart_battle`
-- 支持按 `wave + turn` 执行自定义操作序列，并在攻击阶段按录入时机释放宝具
-- 识别五张普通卡的归属和颜色，并按基础连携优先补满出卡
-- 普通卡默认只在低置信度或显式调试时保存识别证据；任一张卡低置信度时直接停止等待人工确认
+## 当前状态摘要
 
-## 当前限制
-
-- 不做多设备适配
-- 不做后排、换人、替补上场
-- 不做御主技能智能判断
-- 自定义操作序列模式本轮不做换人
-- 不做普通卡完整智能化，只保留基础连携和从者优先出卡
-- `tests/` 当前不是主验证入口
+- 主链已经贯通：主菜单进本、助战筛选、编队确认、加载等待、战斗、结算页处理。
+- 当前支持两条战斗链路：`battle_mode=main` 和 `battle_mode=custom_sequence`。
+- `smart_battle.enabled=true` 当前仍是保守模式，且单场结算后会主动停止，不会继续刷满 `loop_count`。
+- 普通卡已支持归属识别、颜色识别和基础连携补卡；低置信度时会直接停止等待人工确认。
+- 当前不做多设备适配、后排与换人、御主技能智能判断、普通卡完整智能化。
+- `tests/` 已是正式验证入口之一，但不是唯一真相；主链路验证仍要结合现有脚本、日志、调试截图和必要的实际运行。
 
 ## 环境要求
 
 - `Python 3.12`
 - 可用的 `adb`
-- 可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备
+- 只支持可通过 `ADB` 控制的 `1920x1080` 安卓模拟器
+- 需支持 `ADB`，一般安卓模拟器都支持
 - Python 依赖使用 `uv` 管理
-- `battle_config.yaml` 中的 `device.serial` 可留空；留空时只允许当前只有一台可用设备
 
 依赖定义见 [pyproject.toml](/D:/VSCodeRepository/Lumina/pyproject.toml)。
 
-## 安装
+## 安装与运行
+
+安装依赖：
 
 ```bash
 uv sync
 ```
 
-## 运行
+主程序入口：
 
 ```bash
 uv run .\main.py
@@ -53,105 +44,43 @@ Qt 主程序入口：
 uv run python .\gui_main.py
 ```
 
-## 配置入口
+## 配置快速入口
 
 主配置文件在 [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml)。
 
-常用字段：
+最常用字段：
 
 - `loop_count`：刷本次数，`-1` 为无限循环
-- `match_threshold`：界面模板识别阈值
-- `log_level`：排查时建议用 `DEBUG`
-- `device`：可选目标设备序列号、启动前自动连接地址
-- `support`：助战职阶、目标从者、默认位、是否允许回退、头像核验参数
-- `ocr`：战斗文字读取参数
-- `smart_battle`：主链路下的保守智能战斗开关、前排角色和出卡优先级
-- `battle_mode`：选择当前主链路或自定义操作序列战斗
-- `custom_sequence_battle`：选择当前要加载的自定义操作序列文件
-- `skill_sequence`：`battle_mode=main` 下两种主链路子模式临时共用的开局技能顺序
+- `battle_mode`：选择 `main` 或 `custom_sequence`
+- `continue_battle`：结算后若出现连续出击界面，是否继续
+- `support.servant`：目标助战从者
+- `support.allow_fallback_pick`：找不到目标助战时，是否允许回退默认位一次
+- `custom_sequence_battle.sequence`：当前加载的自定义操作序列文件
+- `log_level`：运行日志级别
+- `device.serial`：目标设备序列号；留空时只允许当前 `adb` 只有一台可用设备
 
-运行保护规则：
+运行页当前可直接修改 `loop_count`、`battle_mode`、`smart_battle.enabled`、`continue_battle` 和 `log_level`。
 
-- 主配置文件缺失时直接失败，不再回退默认配置
-- `match_threshold`、`quest_slot`、`support.pick_index`、`support.max_scroll_pages` 和关键等待时间会在加载阶段直接校验
-- `support.servant` 非空时，目标助战找不到默认直接停止；只有 `support.allow_fallback_pick=true` 才允许回退默认位一次
-- `UNKNOWN` 兜底仍保留，但要满足连续两次 `UNKNOWN` 才触发，同一模板有 `2` 秒冷却，同一轮最多尝试 `2` 次
-- `UNKNOWN` 里的 `AP` 恢复仍保留，但要求 `1` 秒内连续双命中，并在点果实前再次确认当前页
-- `unknown` 和 `command_cards` 留证都会自动裁到固定上限：每日最多 `10`，总量最多 `30`
+## 最小验证入口
 
-`battle_mode` 当前规则：
+不连设备时，先跑：
 
-- `main`：沿用当前主链路
-  - `smart_battle.enabled=false`：首回合按 `skill_sequence` 释放开局技能，后续回合直接攻击
-  - `smart_battle.enabled=true`：进入当前保守版 `smart_battle`，宝具和普通卡优先助战，且一场战斗结算后直接停止
-- `custom_sequence`：按 `custom_sequence_battle.sequence` 指向的独立 YAML 执行录入动作
-- `custom_sequence` 模式下，攻击阶段会优先使用普通卡归属识别；归属低置信度时再回退为只按颜色连携出卡
-- `custom_sequence` 模式下，宝具只按当前回合录入的 `nobles` 释放；未录入时不自动放宝具
-- 自定义操作序列文件统一放在 `config/custom_sequences/*.yaml`
-- `smart_battle.wave_plan` 已废弃，配置中不再允许出现
+```powershell
+uv run python -m unittest discover -s tests -v
+uv run .\scripts\ocr_region_check.py --help
+```
 
-`device` 当前规则：
+连设备时，再确认：
 
-- 项目直接固定为 `1920x1080`
-- `device.serial` 留空时，启动阶段会在恢复后自动绑定唯一可用设备
-- `device.connect_targets` 只用于启动前执行 `adb connect`，当前默认示例是 `127.0.0.1:7555`
-- 启动阶段若找不到可用设备，会先执行一次 `kill-server -> start-server -> adb connect`
-- 运行中若 `ADB` 断开，会直接停止主链，不做自动重连
+```powershell
+uv run .\main.py
+uv run python .\gui_main.py
+```
 
-## 识别方式
+## 更多文档
 
-- 界面状态：模板匹配
-- 战斗文字：固定区域 `PaddleOCR`
-- 助战头像：固定三个位区域 + 遮挡排除 + 双路人物头像向量核验
-- 技能可用性：按钮主体和角落信息的混合判断
-
-## 从者资源
-
-当前从者资源分成两块：
-
-- 公共资料：`assets/servants/_meta/`
-- 本地从者资源：`local_data/servants/<className>/<slug>/`
-
-原始从者图片只放在本地从者目录里的 `atlas/`，`support/` 只保留运行和生成结果。
-更细的目录说明和下载命令见 [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)。
-
-## 目录入口
-
-- [main.py](/D:/VSCodeRepository/Lumina/main.py)：程序入口
-- [gui_main.py](/D:/VSCodeRepository/Lumina/gui_main.py)：Qt 主程序入口
-- [core/gui](/D:/VSCodeRepository/Lumina/core/gui)：Qt GUI 主程序、运行页与工具页
-- [core/perception](/D:/VSCodeRepository/Lumina/core/perception)：模板识别与战斗 OCR
-- [core/support_recognition](/D:/VSCodeRepository/Lumina/core/support_recognition)：助战头像识别
-- [core/shared](/D:/VSCodeRepository/Lumina/core/shared)：配置、资源、坐标与基础类型
-- [core/battle_runtime](/D:/VSCodeRepository/Lumina/core/battle_runtime)：战斗判断、快照与动作执行
-- [core/runtime](/D:/VSCodeRepository/Lumina/core/runtime)：主流程引擎、会话状态、等待层与状态处理器
-- [core/device](/D:/VSCodeRepository/Lumina/core/device)：设备控制
-- [config](/D:/VSCodeRepository/Lumina/config)：运行配置
-- [custom_sequences](/D:/VSCodeRepository/Lumina/config/custom_sequences)：自定义操作序列文件
-- [assets/ui](/D:/VSCodeRepository/Lumina/assets/ui)：界面模板
-- [assets/servants](/D:/VSCodeRepository/Lumina/assets/servants)：从者公共资料、索引与下载脚本
-- [assets/screenshots](/D:/VSCodeRepository/Lumina/assets/screenshots)：调试截图
-- [scripts](/D:/VSCodeRepository/Lumina/scripts)：离线检查和资源处理脚本
-
-## 调试入口
-
-- [unknown](/D:/VSCodeRepository/Lumina/assets/screenshots/unknown)：未识别界面截图
-- [ocr](/D:/VSCodeRepository/Lumina/assets/screenshots/ocr)：`OCR` 裁图与调试图
-- [command_cards](/D:/VSCodeRepository/Lumina/assets/screenshots/command_cards)：普通卡识别截图与分析 JSON
-- `unknown` 和 `command_cards` 当前都会自动清理旧文件，只保留每日 `10` 份、总量 `30` 份
-- [tests/replay](/D:/VSCodeRepository/Lumina/tests/replay)：静态回放回归样本
-- [ocr_np_batch_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_np_batch_check.py)：`NP` 离线检查
-- [ocr_region_check.py](/D:/VSCodeRepository/Lumina/scripts/ocr_region_check.py)：通用区域 `OCR` 检查
-- [analyze_command_cards.py](/D:/VSCodeRepository/Lumina/scripts/analyze_command_cards.py)：普通卡单图分析
-- [custom_sequence_recorder.py](/D:/VSCodeRepository/Lumina/scripts/custom_sequence_recorder.py)：自定义操作序列 GUI 录入器
-- [gui_main.py](/D:/VSCodeRepository/Lumina/gui_main.py)：统一 Qt 主程序入口
-- [check_portrait_verifier.py](/D:/VSCodeRepository/Lumina/scripts/check_portrait_verifier.py)：助战头像离线检查
-- [build_reference_bank.py](/D:/VSCodeRepository/Lumina/scripts/build_reference_bank.py)：助战头像向量库生成
-- [watch_support_match.py](/D:/VSCodeRepository/Lumina/scripts/watch_support_match.py)：助战页持续观察与命中留证
-
-## 相关文档
-
-- [AGENTS.md](/D:/VSCodeRepository/Lumina/AGENTS.md)：执行约束
-- [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)：当前项目状态总入口
-- [DevGuide.md](/D:/VSCodeRepository/Lumina/DevGuide.md)：当前开发接手说明
-- [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)：从者资源目录说明
+- [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)：当前真实状态、行为边界和最容易看错的地方
+- [DevGuide.md](/D:/VSCodeRepository/Lumina/DevGuide.md)：接手背景、当前优先级和判断原则
+- [docs/current-project-implementation-audit.md](/D:/VSCodeRepository/Lumina/docs/current-project-implementation-audit.md)：按模块拆开的详细实现审查
+- [docs/ocr_np_validation.md](/D:/VSCodeRepository/Lumina/docs/ocr_np_validation.md)：战斗 `OCR` 专项说明
+- [assets/servants/README.md](/D:/VSCodeRepository/Lumina/assets/servants/README.md)：从者资源目录与下载规则

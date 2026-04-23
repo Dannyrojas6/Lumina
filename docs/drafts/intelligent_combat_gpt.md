@@ -1,6 +1,8 @@
 
 # Intelligent Battle System Plan
 
+> 草稿说明：本文是智能战斗设计草稿，不代表当前仓库已经实现的能力；当前真实状态以 `README.md`、`PROJECT_HANDOFF.md` 和 `DevGuide.md` 为准。
+
 ## 1. Goal
 
 本模块的目标不是构造一个“像人类一样思考”的通用 AI，而是实现一个**可解释、可调试、可扩展**的战斗决策系统。

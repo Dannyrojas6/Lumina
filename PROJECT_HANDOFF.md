@@ -6,7 +6,7 @@
 ## 项目一句话状态
 
 - Lumina 是一个面向 `FGO` 的固定环境自动刷本项目。
-- 当前唯一主目标环境是可通过 `ADB` 控制的 `1920x1080` 模拟器或安卓设备。
+- 当前唯一主目标环境是只支持可通过 `ADB` 控制的 `1920x1080` 安卓模拟器。
 - 当前最重要的事不是扩功能，而是继续补稳主链路，尤其是战斗 `OCR` 和界面状态识别。
 
 ## 当前已经稳定到什么程度
@@ -20,7 +20,7 @@
 3. 编队确认
 4. 加载等待
 5. 战斗内释放技能、进入攻击、选卡
-6. 结算继续并进入下一轮
+6. 结算页处理，并按当前模式结束或进入下一轮
 
 ### 已完成能力
 
@@ -36,7 +36,8 @@
 - 普通卡默认只在低置信度或显式调试时留证，低置信度时立即停止等待人工确认
 - 启动前固定环境与关键资源自检
 - 主配置缺失、关键配置值越界、本地 servant 资源越界、错误模型路径都会在启动前或加载阶段直接拦住
-- `tests/replay/` 静态回放回归
+- Qt 运行页已能直接修改 `loop_count`、`battle_mode`、`smart_battle.enabled`、`continue_battle` 和 `log_level`，并同步显示当前已保存配置
+- `tests/replay/` 静态回放回归与当前 `tests/` 验证入口
 
 ### 半成品能力
 
@@ -54,13 +55,13 @@
 
 ### 第一步
 
-先读 [AGENTS.md](/D:/VSCodeRepository/Lumina/AGENTS.md)。
-它只负责执行约束，不负责解释项目现状。
+先读当前这份 [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)。
+这份文档是当前项目状态总入口。
 
 ### 第二步
 
-读当前这份 [PROJECT_HANDOFF.md](/D:/VSCodeRepository/Lumina/PROJECT_HANDOFF.md)。
-这份文档是当前项目状态总入口。
+再读 [AGENTS.md](/D:/VSCodeRepository/Lumina/AGENTS.md)。
+它只负责执行约束，不负责解释项目现状。
 
 ### 第三步
 
@@ -80,6 +81,8 @@
 - 项目当前不追求通用化
 - 坐标、裁图、模板和资源都围绕 `1920x1080`
 - [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 不再提供设备档位切换；项目直接固定为 `1920x1080`
+- 正式支持范围只写安卓模拟器；真机即使分辨率符合，也不再作为支持对象写进正式文档
+- 这是一条支持策略，不是当前启动阶段的自动识别能力；底层代码仍保留 `device` 命名和现有报错
 - `device.serial` 留空时，只允许当前 `adb` 只有一台可用设备
 - `device.connect_targets` 只用于启动前自动 `adb connect`
 - 启动阶段若 `adb` 状态不对，会先执行一次 `kill-server -> start-server -> adb connect`
@@ -153,6 +156,13 @@
   - `battle_mode=main` 下是否启用它，要看 `smart_battle.enabled`
   - 代码里也有 `custom_sequence`
   - 当前示例配置写什么模式，要以 [battle_config.yaml](/D:/VSCodeRepository/Lumina/config/battle_config.yaml) 当前内容为准
+- 不要把“主链能处理结算继续”误判成“当前默认配置一定会继续刷下一场”：
+  - 代码层面已经具备结算页处理和下一轮衔接能力
+  - 但 `smart_battle.enabled=true` 当前仍会在单场结算后主动停止
+- 不要把 `loop_count` 误判成当前一定会跑满配置次数：
+  - `battle_config.yaml` 和运行页都已支持 `loop_count`
+  - `-1` 表示无限循环
+  - 但 `smart_battle.enabled=true` 当前仍会在单场结算后主动停止
 - 不要把草稿文档当当前事实：
   - `docs/drafts/` 只看作草稿
 - 不要把“能启动项目”误判成“助战链一定可跑”：
@@ -167,7 +177,8 @@
 - 不要把 AI 执行环境里的 `uv run` 权限拦截误判成项目环境坏掉：
   - 受限环境里如果 `uv run` 被拦，先申请权限，不要改走别的 Python 启动链
 - 不要把 `tests/` 当成唯一真相：
-  - 当前主验证仍然依赖脚本、日志和调试截图
+  - `tests/` 已是正式验证入口之一
+  - 当前主验证仍然依赖脚本、日志、调试截图和必要的实际运行
 - 不要忘记留证目录现在会自动清理旧文件：
   - `unknown` 和 `command_cards` 都只保留每日 `10` 份、总量 `30` 份
 
