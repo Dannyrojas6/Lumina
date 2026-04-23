@@ -22,6 +22,7 @@
 例如：
 
 - `assets/servants/_meta/scripts/download_servant_assets.py`
+- `assets/servants/_meta/scripts/build_servant_battle_core.py`
 - `assets/servants/_meta/indexes/servants_cn_en_min.json`
 
 ## 本地从者资源目录
@@ -32,7 +33,7 @@
 
 目录当前分为三块：
 
-- `_meta/`：该从者自己的原始 JSON 和下载清单
+- `_meta/`：该从者自己的原始 JSON、下载清单、战斗核心 JSON 和人类可读 Markdown
 - `atlas/`：原始图片库，也是唯一原始图片来源
 - `support/`：助战识别运行结果，例如 `support/generated/`
 
@@ -113,5 +114,37 @@
 默认会跳过已存在文件；如果要强制重下：
 
 - `uv run .\assets\servants\_meta\scripts\download_servant_assets.py --class-name berserker --rarity 5 --overwrite`
+
+## 战斗核心资料
+
+战斗核心资料从单个从者的 Atlas 原始 JSON 生成。
+
+输入文件：
+
+- `_meta/<servant_id>.json`
+
+输出文件固定放回同一个 `_meta/` 目录：
+
+- `battle_core.json`：给程序读取
+- `battle_core.md`：给人工查看
+
+摩根示例：
+
+- `uv run .\assets\servants\_meta\scripts\build_servant_battle_core.py .\local_data\servants\berserker\morgan\_meta\704000.json --output .\local_data\servants\berserker\morgan\_meta\battle_core.json --markdown-output .\local_data\servants\berserker\morgan\_meta\battle_core.md`
+
+如果只需要 JSON，可以省略 `--markdown-output`。
+
+当前 `battle_core.json` 只保留第一版要用的内容：
+
+- `basicInfo`：基础身份信息和五张配卡
+- `activeSkills`：三个主动技能、完整 10 级冷却、展示用效果表
+- `noblePhantasm`：宝具名、读音、等级、类型、卡色和展示用效果表
+
+当前不输出被动、追加技能、面板、特性、普通卡详情、素材、图片、剧情和羁绊内容。
+
+Markdown 只做阅读优化：
+
+- `coolDown` 会显示成 `8 / 7 / 6`
+- JSON 中仍保留完整数组，例如 `8,8,8,8,8,7,7,7,7,6`
 
 当前项目运行时不会从 `assets/servants/<className>/<slug>/` 读取单个从者资源，只认 `local_data/servants/`。
