@@ -171,6 +171,16 @@ class StrictRuntimeGuardTest(unittest.TestCase):
                 "skill_interval: -0.1",
                 "skill_interval",
             ),
+            (
+                "loop_count_zero",
+                "loop_count: 0",
+                "loop_count",
+            ),
+            (
+                "loop_count_negative",
+                "loop_count: -2",
+                "loop_count",
+            ),
         ]
 
         for name, payload, message in invalid_cases:
@@ -180,6 +190,21 @@ class StrictRuntimeGuardTest(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, message):
                     BattleConfig.from_yaml(str(config_path))
+
+    def test_loop_count_allows_infinite_and_positive_values(self) -> None:
+        valid_cases = [-1, 1, 10]
+
+        for loop_count in valid_cases:
+            with self.subTest(loop_count=loop_count), TemporaryDirectory() as tmp_dir:
+                config_path = Path(tmp_dir) / "battle_config.yaml"
+                config_path.write_text(
+                    f"loop_count: {loop_count}\n",
+                    encoding="utf-8",
+                )
+
+                config = BattleConfig.from_yaml(str(config_path))
+
+                self.assertEqual(config.loop_count, loop_count)
 
     def test_main_menu_rejects_invalid_quest_slot_instead_of_falling_back(self) -> None:
         handler = MainMenuHandler(

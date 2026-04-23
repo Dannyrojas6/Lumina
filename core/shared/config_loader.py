@@ -83,6 +83,7 @@ def battle_config_from_yaml(path: str) -> BattleConfig:
     data["ocr"] = ocr
     data["smart_battle"] = smart_battle
     data["custom_sequence_battle"] = custom_sequence_battle
+    data["loop_count"] = parse_loop_count(data.get("loop_count", 10))
     data["battle_mode"] = battle_mode
     data["continue_battle"] = bool(data.get("continue_battle", True))
     data["default_skill_target"] = parse_default_skill_target(
@@ -308,6 +309,14 @@ def parse_default_skill_target(data: Any) -> int:
     if target < 1 or target > 3:
         raise ValueError("default_skill_target must be within 1..3")
     return target
+
+
+def parse_loop_count(data: Any) -> int:
+    """解析刷本次数。"""
+    loop_count = int(data)
+    if loop_count == -1 or loop_count >= 1:
+        return loop_count
+    raise ValueError("loop_count must be -1 or >= 1")
 
 
 def parse_match_threshold(data: Any) -> float:

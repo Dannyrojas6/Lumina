@@ -11,6 +11,7 @@ import yaml
 
 @dataclass(frozen=True)
 class RuntimeEditableConfig:
+    loop_count: int
     battle_mode: Literal["main", "custom_sequence"]
     smart_battle_enabled: bool
     continue_battle: bool
@@ -24,6 +25,8 @@ def load_runtime_editable_config(
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         raise TypeError("battle_config.yaml must be a mapping")
+
+    loop_count = _parse_loop_count(data.get("loop_count", 10))
 
     battle_mode = str(data.get("battle_mode", "main")).strip().lower()
     if battle_mode not in {"main", "custom_sequence"}:
@@ -39,6 +42,7 @@ def load_runtime_editable_config(
         smart_enabled = bool(smart_battle.get("enabled", False))
 
     return RuntimeEditableConfig(
+        loop_count=loop_count,
         battle_mode=battle_mode,  # type: ignore[arg-type]
         smart_battle_enabled=smart_enabled,
         continue_battle=bool(data.get("continue_battle", True)),
@@ -53,6 +57,7 @@ def save_runtime_editable_config(
     path = Path(config_path)
     text = path.read_text(encoding="utf-8")
     updated = text
+    updated = _replace_top_level_scalar(updated, "loop_count", str(config.loop_count))
     updated = _replace_top_level_scalar(updated, "battle_mode", config.battle_mode)
     updated = _replace_top_level_scalar(
         updated,
@@ -105,6 +110,13 @@ def _replace_smart_battle_enabled(text: str, enabled: bool) -> str:
     lines.append("smart_battle:")
     lines.append(f"  enabled: {_format_bool(enabled)}")
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
+def _parse_loop_count(value: object) -> int:
+    loop_count = int(value)
+    if loop_count == -1 or loop_count >= 1:
+        return loop_count
+    raise ValueError("loop_count must be -1 or >= 1")
 
 
 def _format_bool(value: bool) -> str:

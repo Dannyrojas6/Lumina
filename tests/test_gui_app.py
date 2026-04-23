@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import yaml
 from PIL import Image
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QSplitter, QTabBar
+from PySide6.QtWidgets import QApplication, QLabel, QListView, QPushButton, QSpinBox, QSplitter, QTabBar
 from PySide6.QtGui import QImage
 
 from core.gui.app.main_window import LuminaMainWindow, compute_initial_window_geometry
@@ -36,6 +36,7 @@ class DummyRuntimeController(RuntimeController):
         self.stopped = 0
         self.current_summary = "\n".join(
             [
+                "loop_count=10",
                 "battle_mode=main",
                 "smart_battle=off",
                 "continue_battle=True",
@@ -45,6 +46,7 @@ class DummyRuntimeController(RuntimeController):
             ]
         )
         self.editable_config = RuntimeEditableConfig(
+            loop_count=10,
             battle_mode="main",
             smart_battle_enabled=False,
             continue_battle=True,
@@ -66,6 +68,7 @@ class DummyRuntimeController(RuntimeController):
         self.applied_configs.append(config)
         self.current_summary = "\n".join(
             [
+                f"loop_count={config.loop_count}",
                 f"battle_mode={config.battle_mode}",
                 f"smart_battle={'on' if config.smart_battle_enabled else 'off'}",
                 f"continue_battle={config.continue_battle}",
@@ -308,11 +311,18 @@ class GuiAppTests(unittest.TestCase):
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
 
+        self.assertEqual(page.loop_count_spin.value(), 10)
         self.assertEqual(page.mode_combo.currentText(), "main")
         self.assertFalse(page.smart_battle_checkbox.isChecked())
         self.assertTrue(page.continue_battle_checkbox.isChecked())
         self.assertEqual(page.log_level_combo.currentText(), "INFO")
         self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
+        self.assertIsInstance(page.loop_count_spin, QSpinBox)
+        self.assertEqual(page.loop_count_spin.minimum(), -1)
+        self.assertGreaterEqual(page.loop_count_spin.maximum(), 2147483647)
+        self.assertEqual(page.loop_count_spin.specialValueText(), "无限")
+        self.assertEqual(page.loop_count_spin.minimumHeight(), 28)
+        self.assertEqual(page.loop_count_spin.maximumHeight(), 28)
         self.assertEqual(page.mode_combo.property("controlRole"), "formCombo")
         self.assertEqual(page.log_level_combo.property("controlRole"), "formCombo")
         self.assertEqual(page.mode_combo.view().property("viewRole"), "comboPopup")
@@ -353,28 +363,55 @@ class GuiAppTests(unittest.TestCase):
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
 
-        page.log_level_combo.setCurrentText("DEBUG")
+        page.loop_count_spin.setValue(5)
 
         self.assertEqual(page.config_status_label.text(), "有未应用修改")
         self.assertTrue(page.apply_button.isEnabled())
         page.apply_button.click()
 
         self.assertEqual(len(controller.applied_configs), 1)
-        self.assertEqual(controller.applied_configs[0].log_level, "DEBUG")
+        self.assertEqual(controller.applied_configs[0].loop_count, 5)
         self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
-        self.assertEqual(page.log_level_value.text(), "DEBUG")
+        self.assertEqual(page.loop_count_value.text(), "5")
 
     def test_runtime_page_restore_discards_unsaved_changes(self) -> None:
         controller = DummyRuntimeController()
         page = RuntimePage(controller)
 
-        page.mode_combo.setCurrentText("custom_sequence")
+        page.loop_count_spin.setValue(12)
         self.assertEqual(page.config_status_label.text(), "有未应用修改")
 
         page.reset_button.click()
 
-        self.assertEqual(page.mode_combo.currentText(), "main")
+        self.assertEqual(page.loop_count_spin.value(), 10)
         self.assertEqual(page.config_status_label.text(), "✓ 已保存配置")
+
+    def test_runtime_page_displays_infinite_loop_count_in_control_and_summary(self) -> None:
+        controller = DummyRuntimeController()
+        controller.editable_config = RuntimeEditableConfig(
+            loop_count=-1,
+            battle_mode="main",
+            smart_battle_enabled=False,
+            continue_battle=True,
+            log_level="INFO",
+        )
+        controller.current_summary = "\n".join(
+            [
+                "loop_count=-1",
+                "battle_mode=main",
+                "smart_battle=off",
+                "continue_battle=True",
+                "log_level=INFO",
+                "support=berserker/morgan",
+                "custom_sequence=demo.yaml",
+            ]
+        )
+
+        page = RuntimePage(controller)
+
+        self.assertEqual(page.loop_count_spin.value(), -1)
+        self.assertEqual(page.loop_count_spin.text(), "无限")
+        self.assertEqual(page.loop_count_value.text(), "无限")
 
     def test_runtime_page_custom_sequence_disables_smart_battle_checkbox(self) -> None:
         controller = DummyRuntimeController()
@@ -400,6 +437,7 @@ class GuiAppTests(unittest.TestCase):
         controller.lifecycle_changed.emit("运行中")
         controller.running_changed.emit(True)
 
+        self.assertFalse(page.loop_count_spin.isEnabled())
         self.assertFalse(page.mode_combo.isEnabled())
         self.assertFalse(page.apply_button.isEnabled())
         self.assertFalse(page.reset_button.isEnabled())
@@ -467,8 +505,10 @@ class GuiAppTests(unittest.TestCase):
         self.assertEqual(page.config_card.parentWidget(), page.settings_column)
         config_grid = page.config_card.layout().itemAt(1).layout()
         self.assertIsNotNone(config_grid)
-        mode_cell = config_grid.cellRect(0, 1)
-        log_cell = config_grid.cellRect(3, 1)
+        loop_cell = config_grid.cellRect(0, 1)
+        mode_cell = config_grid.cellRect(1, 1)
+        log_cell = config_grid.cellRect(4, 1)
+        self.assertEqual(page.loop_count_spin.geometry().x() + page.loop_count_spin.width(), loop_cell.x() + loop_cell.width())
         self.assertEqual(page.mode_combo.geometry().x() + page.mode_combo.width(), mode_cell.x() + mode_cell.width())
         self.assertEqual(page.log_level_combo.geometry().x() + page.log_level_combo.width(), log_cell.x() + log_cell.width())
         config_buttons_layout = page.config_card.layout().itemAt(2).layout()
@@ -499,6 +539,7 @@ class GuiAppTests(unittest.TestCase):
         self.assertEqual(page.center_stage.layout().spacing(), 6)
         self.assertEqual(page.summary_card.property("panelRole"), "card")
         self.assertEqual(page.summary_section_label.text(), "当前已保存配置")
+        self.assertEqual(page.loop_count_value.text(), "10")
         self.assertEqual(page.preview_label.objectName(), "runtimePreviewViewport")
         self.assertEqual(page.preview_label.styleSheet(), "")
         self.assertEqual(page.preview_card.layout().contentsMargins().left(), 0)
@@ -554,6 +595,7 @@ class GuiAppTests(unittest.TestCase):
         page.set_summary_text(
             "\n".join(
                 [
+                    "loop_count=10",
                     "battle_mode=main",
                     "smart_battle=off",
                     "continue_battle=True",
@@ -635,11 +677,13 @@ class GuiAppTests(unittest.TestCase):
             self.assertFalse(page.stop_button.isEnabled())
             self.assertFalse(page.apply_button.isEnabled())
             self.assertFalse(page.reset_button.isEnabled())
+            self.assertFalse(page.loop_count_spin.isEnabled())
             self.assertFalse(page.mode_combo.isEnabled())
             self.assertFalse(page.smart_battle_checkbox.isEnabled())
             self.assertFalse(page.continue_battle_checkbox.isEnabled())
             self.assertFalse(page.log_level_combo.isEnabled())
             self.assertEqual(page.config_status_label.text(), controller.current_config_error)
+            self.assertEqual(page.loop_count_value.text(), "-")
             self.assertEqual(page.mode_value.text(), "配置不可用")
 
     def test_runtime_page_recovers_after_config_file_is_restored(self) -> None:
@@ -648,6 +692,7 @@ class GuiAppTests(unittest.TestCase):
             controller = AutomationRuntimeController(config_path=config_path)
             page = RuntimePage(controller)
             valid_config = {
+                "loop_count": 10,
                 "battle_mode": "main",
                 "continue_battle": False,
                 "log_level": "DEBUG",
@@ -672,10 +717,12 @@ class GuiAppTests(unittest.TestCase):
             self.assertTrue(controller.config_available)
             self.assertEqual(page.preview_status_value.text(), "空闲")
             self.assertTrue(page.start_button.isEnabled())
+            self.assertTrue(page.loop_count_spin.isEnabled())
             self.assertTrue(page.mode_combo.isEnabled())
             self.assertTrue(page.smart_battle_checkbox.isEnabled())
             self.assertTrue(page.continue_battle_checkbox.isEnabled())
             self.assertTrue(page.log_level_combo.isEnabled())
+            self.assertEqual(page.loop_count_value.text(), "10")
             self.assertEqual(page.mode_value.text(), "main")
             self.assertEqual(page.log_level_value.text(), "DEBUG")
 
@@ -703,6 +750,7 @@ class RuntimeConfigServiceTests(unittest.TestCase):
             config_path.write_text(original, encoding="utf-8")
 
             loaded = load_runtime_editable_config(config_path)
+            self.assertEqual(loaded.loop_count, 10)
             self.assertEqual(loaded.battle_mode, "custom_sequence")
             self.assertTrue(loaded.smart_battle_enabled)
             self.assertTrue(loaded.continue_battle)
@@ -711,6 +759,7 @@ class RuntimeConfigServiceTests(unittest.TestCase):
             save_runtime_editable_config(
                 config_path,
                 RuntimeEditableConfig(
+                    loop_count=-1,
                     battle_mode="main",
                     smart_battle_enabled=False,
                     continue_battle=False,
@@ -719,11 +768,31 @@ class RuntimeConfigServiceTests(unittest.TestCase):
             )
 
             updated_text = config_path.read_text(encoding="utf-8")
+            self.assertIn("loop_count: -1", updated_text)
             self.assertIn("battle_mode: main # mode comment", updated_text)
             self.assertIn("continue_battle: false # continue comment", updated_text)
             self.assertIn("log_level: INFO # log comment", updated_text)
             self.assertIn("  enabled: false # smart comment", updated_text)
             self.assertIn("  class: berserker", updated_text)
+
+    def test_load_runtime_editable_config_rejects_invalid_loop_count(self) -> None:
+        from core.gui.services.runtime_config_service import load_runtime_editable_config
+
+        for loop_count in (0, -2):
+            with self.subTest(loop_count=loop_count), tempfile.TemporaryDirectory() as temp_dir:
+                config_path = Path(temp_dir) / "battle_config.yaml"
+                config_path.write_text(
+                    f"loop_count: {loop_count}\n"
+                    "battle_mode: main\n"
+                    "continue_battle: true\n"
+                    "log_level: INFO\n"
+                    "smart_battle:\n"
+                    "  enabled: false\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, "loop_count"):
+                    load_runtime_editable_config(config_path)
 
 
 class RuntimeWorkerTests(unittest.TestCase):

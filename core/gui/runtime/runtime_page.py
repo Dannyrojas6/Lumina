@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QRect, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
+from PySide6.QtGui import QColor, QImage, QPainter, QPixmap, QValidator
 from PySide6.QtWidgets import (
     QAbstractButton,
     QComboBox,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QListView,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -97,12 +98,65 @@ class _RuntimeComboBox(QComboBox):
         super().showPopup()
 
 
+class _RuntimeLoopCountSpinBox(QSpinBox):
+    """运行页使用的刷本次数输入框。"""
+
+    MAX_LOOP_COUNT = 2_147_483_647
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setRange(-1, self.MAX_LOOP_COUNT)
+        self.setSpecialValueText("无限")
+        self.setFixedHeight(28)
+        self.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.setKeyboardTracking(False)
+
+    def validate(self, text: str, pos: int) -> tuple[QValidator.State, str, int]:  # type: ignore[override]
+        normalized = text.strip()
+        if normalized == self.specialValueText():
+            return (QValidator.State.Acceptable, text, pos)
+        if normalized in {"", "-", "+"}:
+            return (QValidator.State.Intermediate, text, pos)
+        try:
+            value = int(normalized)
+        except ValueError:
+            return (QValidator.State.Invalid, text, pos)
+        if value == -1 or value >= 1:
+            return (QValidator.State.Acceptable, text, pos)
+        return (QValidator.State.Invalid, text, pos)
+
+    def valueFromText(self, text: str) -> int:  # type: ignore[override]
+        normalized = text.strip()
+        if normalized == self.specialValueText():
+            return -1
+        value = int(normalized)
+        if value == -1 or value >= 1:
+            return value
+        return self.value()
+
+    def stepBy(self, steps: int) -> None:  # type: ignore[override]
+        if steps == 0:
+            return
+        value = self.value()
+        direction = 1 if steps > 0 else -1
+        for _ in range(abs(steps)):
+            if direction > 0:
+                value = 1 if value == -1 else value + 1
+            else:
+                if value > 1:
+                    value -= 1
+                else:
+                    value = -1
+        self.setValue(value)
+
+
 class RuntimePage(QWidget):
     """运行页，负责开始/停止、摘要、状态和截图预览。"""
 
     SIDE_COLUMN_MIN_WIDTH = 150
     COLUMN_GAP = 6
     CENTER_PANEL_GAP = 6
+    LOOP_COUNT_SPIN_WIDTH = 138
     MODE_COMBO_MIN_WIDTH = 138
     MODE_COMBO_MAX_WIDTH = 138
     LOG_LEVEL_COMBO_MIN_WIDTH = 138
@@ -252,6 +306,8 @@ class RuntimePage(QWidget):
         self.mode_combo = _RuntimeComboBox()
         self.mode_combo.addItems(["main", "custom_sequence"])
         self.mode_combo.setView(self._create_combo_view())
+        self.loop_count_spin = _RuntimeLoopCountSpinBox()
+        self.loop_count_spin.setFixedWidth(self.LOOP_COUNT_SPIN_WIDTH)
         self.smart_battle_checkbox = _RuntimeToggleSwitch()
         self.continue_battle_checkbox = _RuntimeToggleSwitch()
         self.log_level_combo = _RuntimeComboBox()
@@ -261,14 +317,16 @@ class RuntimePage(QWidget):
         config_grid = QGridLayout()
         config_grid.setHorizontalSpacing(8)
         config_grid.setVerticalSpacing(7)
-        config_grid.addWidget(self._muted_label("模式"), 0, 0)
-        config_grid.addWidget(self.mode_combo, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        config_grid.addWidget(self._muted_label("智能战斗"), 1, 0)
-        config_grid.addWidget(self.smart_battle_checkbox, 1, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        config_grid.addWidget(self._muted_label("连续出击"), 2, 0)
-        config_grid.addWidget(self.continue_battle_checkbox, 2, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        config_grid.addWidget(self._muted_label("日志级别"), 3, 0)
-        config_grid.addWidget(self.log_level_combo, 3, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("刷本次数"), 0, 0)
+        config_grid.addWidget(self.loop_count_spin, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("模式"), 1, 0)
+        config_grid.addWidget(self.mode_combo, 1, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("智能战斗"), 2, 0)
+        config_grid.addWidget(self.smart_battle_checkbox, 2, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("连续出击"), 3, 0)
+        config_grid.addWidget(self.continue_battle_checkbox, 3, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        config_grid.addWidget(self._muted_label("日志级别"), 4, 0)
+        config_grid.addWidget(self.log_level_combo, 4, 1, alignment=Qt.AlignmentFlag.AlignRight)
         config_layout.addLayout(config_grid)
 
         config_buttons = QHBoxLayout()
@@ -385,6 +443,7 @@ class RuntimePage(QWidget):
         summary_layout.setSpacing(6)
         self.summary_section_label = self._section_label("当前已保存配置")
         summary_layout.addWidget(self.summary_section_label)
+        self.loop_count_value = QLabel("-")
         self.mode_value = QLabel("-")
         self.smart_value = QLabel("-")
         self.continue_value = QLabel("-")
@@ -398,6 +457,7 @@ class RuntimePage(QWidget):
         self.support_value.setTextFormat(Qt.TextFormat.PlainText)
         self.sequence_value.setTextFormat(Qt.TextFormat.PlainText)
         for key, value in (
+            ("刷本次数", self.loop_count_value),
             ("模式", self.mode_value),
             ("智能战斗", self.smart_value),
             ("连续出击", self.continue_value),
@@ -420,6 +480,7 @@ class RuntimePage(QWidget):
         self.stop_button.clicked.connect(self._handle_stop_clicked)
         self.log_clear_button.clicked.connect(self.log_output.clear)
         self.log_popout_button.clicked.connect(self._show_log_dialog)
+        self.loop_count_spin.valueChanged.connect(self._on_config_value_changed)
         self.mode_combo.currentTextChanged.connect(self._on_config_value_changed)
         self.smart_battle_checkbox.toggled.connect(self._on_config_value_changed)
         self.continue_battle_checkbox.toggled.connect(self._on_config_value_changed)
@@ -521,6 +582,9 @@ class RuntimePage(QWidget):
                 continue
             key, value = line.split("=", 1)
             values[key.strip()] = value.strip()
+        self.loop_count_value.setText(
+            self._format_loop_count_text(values.get("loop_count", "-"))
+        )
         self.mode_value.setText(values.get("battle_mode", "-"))
         self.smart_value.setText(values.get("smart_battle", "-"))
         self.continue_value.setText(values.get("continue_battle", "-"))
@@ -530,6 +594,7 @@ class RuntimePage(QWidget):
 
     def _load_config_controls(self, config: RuntimeEditableConfig) -> None:
         self._suppress_config_signals = True
+        self.loop_count_spin.setValue(config.loop_count)
         self.mode_combo.setCurrentText(config.battle_mode)
         self.smart_battle_checkbox.setChecked(config.smart_battle_enabled)
         self.continue_battle_checkbox.setChecked(config.continue_battle)
@@ -540,6 +605,7 @@ class RuntimePage(QWidget):
 
     def _build_current_config(self) -> RuntimeEditableConfig:
         return RuntimeEditableConfig(
+            loop_count=self.loop_count_spin.value(),
             battle_mode=self.mode_combo.currentText(),  # type: ignore[arg-type]
             smart_battle_enabled=self.smart_battle_checkbox.isChecked(),
             continue_battle=self.continue_battle_checkbox.isChecked(),
@@ -598,6 +664,7 @@ class RuntimePage(QWidget):
 
     def _refresh_config_controls_enabled(self) -> None:
         if not self._controller_config_available():
+            self.loop_count_spin.setEnabled(False)
             self.mode_combo.setEnabled(False)
             self.smart_battle_checkbox.setEnabled(False)
             self.continue_battle_checkbox.setEnabled(False)
@@ -607,6 +674,7 @@ class RuntimePage(QWidget):
             self._set_config_status_unavailable()
             return
         editable = self._controls_editable()
+        self.loop_count_spin.setEnabled(editable)
         self.mode_combo.setEnabled(editable)
         self.continue_battle_checkbox.setEnabled(editable)
         self.log_level_combo.setEnabled(editable)
@@ -822,6 +890,12 @@ class RuntimePage(QWidget):
                 label.maximumWidth(),
             )
         )
+
+    def _format_loop_count_text(self, value: str) -> str:
+        normalized = str(value).strip()
+        if normalized == "-1":
+            return "无限"
+        return normalized or "-"
 
     def _set_config_status_saved(self) -> None:
         self.config_status_label.setText("✓ 已保存配置")

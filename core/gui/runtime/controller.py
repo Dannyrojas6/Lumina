@@ -230,6 +230,7 @@ class AutomationRuntimeController(RuntimeController):
 
     CONFIG_UNAVAILABLE_SUMMARY = "\n".join(
         [
+            "loop_count=-",
             "battle_mode=配置不可用",
             "smart_battle=-",
             "continue_battle=-",
@@ -239,6 +240,7 @@ class AutomationRuntimeController(RuntimeController):
         ]
     )
     _PLACEHOLDER_EDITABLE_CONFIG = RuntimeEditableConfig(
+        loop_count=10,
         battle_mode="main",
         smart_battle_enabled=False,
         continue_battle=True,
@@ -269,11 +271,13 @@ class AutomationRuntimeController(RuntimeController):
             return
 
         mode = f"battle_mode={config.battle_mode}"
+        loop_count = f"loop_count={config.loop_count}"
         smart = f"smart_battle={'on' if config.smart_battle.enabled else 'off'}"
         support = f"support={config.support.class_name}/{config.support.servant or '-'}"
         sequence = config.custom_sequence_battle.sequence or "-"
         summary = "\n".join(
             [
+                loop_count,
                 mode,
                 smart,
                 f"continue_battle={config.continue_battle}",
